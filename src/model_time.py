@@ -29,18 +29,20 @@ class TimeHorizon:
 
         self.data_timestep = data_timestep
 
+        # Call the methods to automatically calculate and save the values
+        self.get_data_time_horizon()
+        self.get_model_time_horizon()
+
     def get_data_time_horizon(self):
         """
         This method returns the time horizon of the data.
         """
         # Calculate the time horizon of the data
-        self.data_time_horizon = len(
-            np.arange(
-                self.start_year,
-                (self.end_year + self.data_timestep),
-                self.data_timestep,
-            )
-        )  # Time horizon
+        self.data_time_horizon = np.arange(
+            self.start_year,
+            (self.end_year + self.data_timestep),
+            self.data_timestep,
+        )
 
         return self.data_time_horizon
 
@@ -49,8 +51,8 @@ class TimeHorizon:
         This method returns the time horizon of the model.
         """
         # Calculate the time horizon of the model
-        self.model_time_horizon = len(
-            np.arange(self.start_year, (self.end_year + self.timestep), self.timestep)
+        self.model_time_horizon = np.arange(
+            self.start_year, (self.end_year + self.timestep), self.timestep
         )
 
         return self.model_time_horizon

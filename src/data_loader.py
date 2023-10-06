@@ -52,3 +52,7 @@ class DataLoader:
             os.path.join(data_file_path, "savings_rate_init_arr.pickle"), "rb"
         ) as f:
             self.SAVING_RATE_INIT_ARRAY = pd.read_pickle(f)
+
+        # Load the region list
+        with open(os.path.join(data_file_path, "regions_list.pkl"), "rb") as f:
+            self.REGION_LIST = pd.read_pickle(f)
