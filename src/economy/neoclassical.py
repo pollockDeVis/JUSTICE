@@ -3,8 +3,8 @@ This file contains the neoclassical economic part of the JUSTICE model.
 """
 
 
-from ..default_parameters import EconomyDefaults
-from ..enumerations import Economy
+from src.default_parameters import EconomyDefaults
+from src.enumerations import Economy
 
 
 class NeoclassicalEconomyModel:
@@ -13,7 +13,10 @@ class NeoclassicalEconomyModel:
     This module describes the neoclassical economic part of the JUSTICE model.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        input_dataset,
+    ):
         # Create an instance of EconomyDefaults
         econ_defaults = EconomyDefaults()
 

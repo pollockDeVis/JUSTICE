@@ -5,6 +5,15 @@ This file contains all custom-made enumerations for JUSTICE model.
 from enum import Enum
 
 
+class ModelRunSpec(Enum):
+    """
+    Model Specifications
+    """
+
+    PROBABILISTIC = 1  # With EMA Workbench
+    DETERMINISTIC = 2  # Without EMA Workbench. Can be used for Validation purposes
+
+
 class DamageFunction(Enum):
     """
     Damage Functions
