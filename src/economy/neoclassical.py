@@ -19,6 +19,7 @@ class NeoclassicalEconomyModel:
         self,
         input_dataset,
         time_horizon,
+        **kwargs,  # variable keyword argument so that we can analyze uncertainty range of any parameters
     ):
         # Create an instance of EconomyDefaults
         econ_defaults = EconomyDefaults()
@@ -28,28 +29,36 @@ class NeoclassicalEconomyModel:
             Economy.NEOCLASSICAL.name
         )
 
-        # Assign retrieved values to instance variables
-        self.capital_elasticity_in_production_function = econ_neoclassical_defaults[
-            "capital_elasticity_in_production_function"
-        ]
-        self.depreciation_rate_capital = econ_neoclassical_defaults[
-            "depreciation_rate_capital"
-        ]
-        self.elasticity_of_marginal_utility_of_consumption = econ_neoclassical_defaults[
-            "elasticity_of_marginal_utility_of_consumption"
-        ]
-        self.pure_rate_of_social_time_preference = econ_neoclassical_defaults[
-            "pure_rate_of_social_time_preference"
-        ]
-        self.elasticity_of_output_to_capital = econ_neoclassical_defaults[
-            "elasticity_of_output_to_capital"
-        ]
+        # Assign retrieved values to instance variables if kwargs is empty
+
+        self.capital_elasticity_in_production_function = kwargs.get(
+            "capital_elasticity_in_production_function",
+            econ_neoclassical_defaults["capital_elasticity_in_production_function"],
+        )
+        self.depreciation_rate_capital = kwargs.get(
+            "depreciation_rate_capital",
+            econ_neoclassical_defaults["depreciation_rate_capital"],
+        )
+        self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
+            "elasticity_of_marginal_utility_of_consumption",
+            econ_neoclassical_defaults["elasticity_of_marginal_utility_of_consumption"],
+        )
+        self.pure_rate_of_social_time_preference = kwargs.get(
+            "pure_rate_of_social_time_preference",
+            econ_neoclassical_defaults["pure_rate_of_social_time_preference"],
+        )
+        self.elasticity_of_output_to_capital = kwargs.get(
+            "elasticity_of_output_to_capital",
+            econ_neoclassical_defaults["elasticity_of_output_to_capital"],
+        )
 
         self.region_list = input_dataset.REGION_LIST
         self.gdp_dict = input_dataset.GDP_DICT
         self.population_dict = input_dataset.POPULATION_DICT
+
         self.capital_init_arr = input_dataset.CAPITAL_INIT_ARRAY
         self.savings_rate_init_arr = input_dataset.SAVING_RATE_INIT_ARRAY
+
         self.timestep = time_horizon.timestep
         self.data_timestep = time_horizon.data_timestep
         self.data_time_horizon = time_horizon.data_time_horizon
