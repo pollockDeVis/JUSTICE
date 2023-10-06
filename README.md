@@ -1,6 +1,13 @@
 # JUSTICE
 JUSTICE is an open-source Integrated Assessment Modeling Framework for Normative Uncertainty Analysis
 
+# JUSTICE Integrated Assessment Framework
+
+JUSTICE (JUST Integrated Climate Economy) is an Integrated Assessment Modelling Framework designed to explore the influence on distributive justice outcomes due to underlying modelling assumptions across model components and functions: the economy and climate components, and the damage and social welfare functions. JUSTICE is a simple IAM inspired by the long-established RICE and RICE50+, and is designed to be a surrogate for more complex IAMs for eliciting normative insights.
+
+<img title="JUSTICE Framework" alt="Flowchart of JUSTICE" src="/docs/diagrams/JUSTICE Flowchart.jpeg">
+
+
 ```plaintext
 📂 JUSTICE
 ┣ 📂 .github
