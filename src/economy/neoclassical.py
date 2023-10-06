@@ -10,7 +10,7 @@ from src.enumerations import Economy
 class NeoclassicalEconomyModel:
 
     """
-    This module describes the neoclassical economic part of the JUSTICE model.
+    This class describes the neoclassical economic part of the JUSTICE model.
     """
 
     def __init__(
