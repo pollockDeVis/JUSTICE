@@ -114,6 +114,7 @@ class NeoclassicalEconomyModel:
             self.investment_tfp[:, 0] = (
                 savings_rate * self.gdp_dict[scenario][:, 0].flatten()
             )
+            # TODO need to do the calculation for timestep zero
         else:
             # Calculate the investment_tfp
             self.investment_tfp[:, timestep] = (
