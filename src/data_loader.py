@@ -56,3 +56,7 @@ class DataLoader:
         # Load the region list
         with open(os.path.join(data_file_path, "regions_list.pkl"), "rb") as f:
             self.REGION_LIST = pd.read_pickle(f)
+
+        # Load PPP2MER conversion factor
+        with open(os.path.join(data_file_path, "ppp2mer_arr.pkl"), "rb") as f:
+            self.PPP_TO_MER_CONVERSION_FACTOR = pd.read_pickle(f)
