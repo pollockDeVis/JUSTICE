@@ -90,9 +90,19 @@ class NeoclassicalEconomyModel:
         ) * self.capital_elasticity_in_production_function
 
         # Initializing the capital and TFP array
-        self.capital_tfp = np.zeros((len(self.region_list), self.model_time_horizon))
+        self.capital_tfp = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon))
+        )
         # Initializing the investment array
-        self.investment_tfp = np.zeros((len(self.region_list), self.model_time_horizon))
+        self.investment_tfp = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon))
+        )
+        # Initializing the TFP array
+        self.tfp = np.zeros((len(self.region_list), len(self.model_time_horizon)))
+
+        # Initializing the output array
+        self.output = np.zeros((len(self.region_list), len(self.model_time_horizon)))
+
         # Loading the initial capital values
         self.capital_tfp[:, 0] = (
             self.capital_init_arr.flatten() * self.mer_to_ppp[:, 0].flatten()
@@ -102,15 +112,20 @@ class NeoclassicalEconomyModel:
         # Run the calculation
         if timestep == 0:
             self.investment_tfp[:, 0] = (
+                savings_rate * self.gdp_dict[scenario][:, 0].flatten()
+            )
+        else:
+            # Calculate the investment_tfp
+            self.investment_tfp[:, timestep] = (
                 self.savings_rate_init_arr.flatten()
                 * self.gdp_dict[scenario][:, 0].flatten()
             )
-        else:
+
             # Calculate capital_tfp
 
             self.capital_tfp[:, timestep] = (
                 self.capital_tfp[:, timestep - 1]
-                * np.power((1 - self.depreciation_rate_capital, timestep))
+                * np.power((1 - self.depreciation_rate_capital), timestep)
                 + self.investment_tfp[:, timestep - 1] * timestep
             )
 
