@@ -60,3 +60,7 @@ class DataLoader:
         # Load PPP2MER conversion factor
         with open(os.path.join(data_file_path, "ppp2mer_arr.pkl"), "rb") as f:
             self.PPP_TO_MER_CONVERSION_FACTOR = pd.read_pickle(f)
+
+        # Load the emissions dictionary
+        with open(os.path.join(data_file_path, "emissions_dict.pickle"), "rb") as f:
+            self.EMISSIONS_DICT = pd.read_pickle(f)
