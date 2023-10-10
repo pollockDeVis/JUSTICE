@@ -1,3 +1,9 @@
+"""
+This helper script downloads the FAIR configuration files and Exogenous Emissions Data
+NOTE: This script is not used in the model. It is only used to download the data. The URLs might change in the future.
+
+"""
+
 import os
 import pooch
 
@@ -29,6 +35,7 @@ fair_configs = [
         "hash": "md5:4044106f55ca65b094670e7577eaf9b3",
     },
     {
+        # WARNING: This URL might change in the future
         "url": "https://raw.githubusercontent.com/OMS-NetZero/FAIR/03aac4fba28bb3c9bf8cf10898df7b7fbeea1359/examples/data/species_configs_properties_calibration1.2.0.csv",
         "name": "species_configs_properties_calibration.csv",
         "hash": "md5:92ed36d299e9b48c7a16acc8fd0f973a",
