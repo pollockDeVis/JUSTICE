@@ -76,8 +76,6 @@ class NeoclassicalEconomyModel:
             self._interpolate_population()
 
         # Calculate the Optimal long-run Savings Rate
-        # optimal_long_run_savings_rate = ((depriciation_rate_capital + elasticity_of_output_to_capital)/(depriciation_rate_capital + elasticity_of_output_to_capital*elasticity_of_marginal_utility_of_consumption + pure_rate_of_social_time_preference))*capital_elasticity_in_production_function
-
         # This will depend on the input paramters. This is also a upper limit of the savings rate
         self.optimal_long_run_savings_rate = (
             (self.depreciation_rate_capital + self.elasticity_of_output_to_capital)
@@ -103,23 +101,29 @@ class NeoclassicalEconomyModel:
         # Initializing the output array
         self.output = np.zeros((len(self.region_list), len(self.model_time_horizon)))
 
-        # Loading the initial capital values
-        self.capital_tfp[:, 0] = (
-            self.capital_init_arr.flatten() * self.mer_to_ppp[:, 0].flatten()
-        )
-
     def run(self, scenario, timestep, savings_rate, **kwargs):
         # Run the calculation
         if timestep == 0:
             self.investment_tfp[:, 0] = (
-                savings_rate * self.gdp_dict[scenario][:, 0].flatten()
+                self.savings_rate_init_arr.flatten()
+                * self.gdp_dict[scenario][:, 0].flatten()
             )
-            # TODO need to do the calculation for timestep zero
+
+            # Initalize capital tfp
+            self.capital_tfp[:, 0] = (
+                self.capital_init_arr.flatten() * self.mer_to_ppp[:, 0].flatten()
+            )
+
+            # Calculate the TFP
+            self._calcualte_tfp(timestep, scenario)
+
+            # Calculate the Output
+            self._calculate_output(timestep, scenario)
+
         else:
             # Calculate the investment_tfp
             self.investment_tfp[:, timestep] = (
-                self.savings_rate_init_arr.flatten()
-                * self.gdp_dict[scenario][:, 0].flatten()
+                savings_rate * self.gdp_dict[scenario][:, 0].flatten()
             )
 
             # Calculate capital_tfp
@@ -131,29 +135,10 @@ class NeoclassicalEconomyModel:
             )
 
             # Calculate the TFP
-            self.tfp[:, timestep] = self.gdp_dict[scenario][:, timestep] / (
-                np.power(
-                    (self.population_dict[scenario][:, timestep] / 1000),
-                    (1 - self.capital_elasticity_in_production_function),
-                )
-                * np.power(
-                    self.capital_tfp[:, timestep],
-                    self.capital_elasticity_in_production_function,
-                )
-            )
+            self._calcualte_tfp(timestep, scenario)
 
             # Calculate the Output based on gross output
-
-            self.output[:, timestep] = self.tfp[:, timestep] * (
-                np.power(
-                    self.capital_tfp[:, timestep],
-                    self.capital_elasticity_in_production_function,
-                )
-                * np.power(
-                    (self.population_dict[scenario][:, timestep] / 1000),
-                    (1 - self.capital_elasticity_in_production_function),
-                )
-            )
+            self._calculate_output(timestep, scenario)
 
             # Check if kwargs has abatement and damage function specified (damage starts from the 2nd time step /maybe abatement too)
             abatement = kwargs.get("abatement")
@@ -172,6 +157,33 @@ class NeoclassicalEconomyModel:
         This method returns the optimal long run savings rate.
         """
         return self.optimal_long_run_savings_rate
+
+    def _calcualte_tfp(self, timestep, scenario):
+        # Calculate the TFP
+        self.tfp[:, timestep] = self.gdp_dict[scenario][:, timestep] / (
+            np.power(
+                (self.population_dict[scenario][:, timestep] / 1000),
+                (1 - self.capital_elasticity_in_production_function),
+            )
+            * np.power(
+                self.capital_tfp[:, timestep],
+                self.capital_elasticity_in_production_function,
+            )
+        )
+
+    def _calculate_output(self, timestep, scenario):
+        # Calculate the Output based on gross output
+
+        self.output[:, timestep] = self.tfp[:, timestep] * (
+            np.power(
+                self.capital_tfp[:, timestep],
+                self.capital_elasticity_in_production_function,
+            )
+            * np.power(
+                (self.population_dict[scenario][:, timestep] / 1000),
+                (1 - self.capital_elasticity_in_production_function),
+            )
+        )
 
     def _interpolate_gdp(self):
         for keys in self.gdp_dict.keys():
