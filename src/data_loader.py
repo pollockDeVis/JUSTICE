@@ -21,15 +21,12 @@ class DataLoader:
         """
         # Get the current working directory
         current_directory = os.path.dirname(os.path.realpath(__file__))
-        print(current_directory)
-        # Go up to the root directory of the project (two levels up)
 
+        # Go up to the root directory of the project (two levels up)
         root_directory = os.path.dirname(current_directory)
-        print(root_directory)
 
         # Create the data file path
         data_file_path = os.path.join(root_directory, "data")
-        print(data_file_path)
 
         ###############################################################################
         # Load the Economic data in pickle format
