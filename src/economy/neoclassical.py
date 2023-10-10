@@ -4,6 +4,8 @@ This file contains the neoclassical economic part of the JUSTICE model.
 from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
+import copy
+
 
 from src.default_parameters import EconomyDefaults
 from src.enumerations import Economy
@@ -53,8 +55,8 @@ class NeoclassicalEconomyModel:
         )
 
         self.region_list = input_dataset.REGION_LIST
-        self.gdp_dict = input_dataset.GDP_DICT
-        self.population_dict = input_dataset.POPULATION_DICT
+        self.gdp_dict = copy.deepcopy(input_dataset.GDP_DICT)
+        self.population_dict = copy.deepcopy(input_dataset.POPULATION_DICT)
 
         self.capital_init_arr = input_dataset.CAPITAL_INIT_ARRAY
         self.savings_rate_init_arr = (

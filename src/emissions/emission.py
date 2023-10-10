@@ -4,6 +4,7 @@ This is the emissions module that converts the output into emissions.
 
 import numpy as np
 from scipy.interpolate import interp1d
+import copy
 
 
 class OutputToEmissions:
@@ -20,14 +21,14 @@ class OutputToEmissions:
         This method initializes the OutputToEmissions class.
         """
 
-        self.emissions_dict = input_dataset.EMISSIONS_DICT
-        self.gdp_dict = input_dataset.GDP_DICT
+        self.emissions_dict = copy.deepcopy(input_dataset.EMISSIONS_DICT)
+        self.gdp_dict = copy.deepcopy(input_dataset.GDP_DICT)
 
         self.carbon_intensity_dict = {}
 
         for scenarios in self.gdp_dict.keys():
             self.carbon_intensity_dict[scenarios] = (
-                self.emissions_dict[scenarios] / self.gdp_dict[scenarios]
+                np.array(self.emissions_dict[scenarios]) / self.gdp_dict[scenarios]
             )
 
         self.timestep = time_horizon.timestep
@@ -38,6 +39,8 @@ class OutputToEmissions:
         if self.timestep != self.data_timestep:
             # Interpolate Carbon Intensity Dictionary
             self._interpolate_carbon_intensity()
+            # # interpolate GDP Dictionary
+            # self._interpolate_gdp()
 
     def run_emissions(self, timestep, scenario, output, emission_control_rate):
         """
@@ -66,3 +69,14 @@ class OutputToEmissions:
                 interp_data[i, :] = f(self.model_time_horizon)
 
             self.carbon_intensity_dict[keys] = interp_data
+
+    # def _interpolate_gdp(self):
+    #     for keys in self.gdp_dict.keys():
+    #         gdp_SSP = self.gdp_dict[keys]
+    #         interp_data = np.zeros((len(gdp_SSP), len(self.model_time_horizon)))
+
+    #         for i in range(gdp_SSP.shape[0]):
+    #             f = interp1d(self.data_time_horizon, gdp_SSP[i, :], kind="linear")
+    #             interp_data[i, :] = f(self.model_time_horizon)
+
+    #         self.gdp_dict[keys] = interp_data
