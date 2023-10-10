@@ -23,6 +23,7 @@ class OutputToEmissions:
 
         self.emissions_dict = copy.deepcopy(input_dataset.EMISSIONS_DICT)
         self.gdp_dict = copy.deepcopy(input_dataset.GDP_DICT)
+        self.region_list = input_dataset.REGION_LIST
 
         self.carbon_intensity_dict = {}
 
@@ -42,18 +43,23 @@ class OutputToEmissions:
             # # interpolate GDP Dictionary
             # self._interpolate_gdp()
 
+        # Initializing the emissions array
+        self.emissions = np.zeros((len(self.region_list), len(self.model_time_horizon)))
+
     def run_emissions(self, timestep, scenario, output, emission_control_rate):
         """
         This method calculates the emissions for the economic output of a given scenario.
         """
 
-        emissions = (
+        self.emissions[:, timestep] = (
             self.carbon_intensity_dict[scenario][:, timestep]
             * output
-            * (1 - emission_control_rate)
+            * (
+                1 - emission_control_rate
+            )  # Emisison Control Rate is a lever and might have to take timestep
         )
 
-        return emissions
+        return self.emissions
 
     def _interpolate_carbon_intensity(self):
         for keys in self.carbon_intensity_dict.keys():
