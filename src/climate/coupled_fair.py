@@ -51,6 +51,7 @@ import warnings
 import os
 import copy
 from scipy.interpolate import interp1d
+import pooch
 
 # FaIR Model Constants
 fair_start_year = 1750
@@ -67,15 +68,7 @@ class CoupledFAIR(FAIR):
         #     True
         # )  # self.fair_justice_run_init(suppress_warnings)
 
-    def fair_justice_run_init(self, time_horizon, scenarios):
-        """Setup the stepwise run of the FaIR model with the JUSTICE IAM.
-
-        Parameters
-        ----------
-        suppress_warnings : bool
-            Hide warnings relating to covariance in energy balance matrix.
-        """
-
+    def fair_fill_data(self, time_horizon, scenarios):
         current_directory = os.path.dirname(os.path.realpath(__file__))
 
         # Go up to the root directory of the project (two levels up)
@@ -100,7 +93,8 @@ class CoupledFAIR(FAIR):
 
         self.define_species(species, properties)
         self.allocate()
-        self.fill_from_rcmip_local(data_file_path=data_file_path)
+        # self.fill_from_rcmip_local(data_file_path=data_file_path) palok
+        self.fill_from_rcmip()
 
         # Correction code as described in FaIR Examples #Can have a cleaner implementation
         df_emis = pd.read_csv(data_file_path + "/rcmip_emissions_annual.csv")
@@ -322,6 +316,20 @@ class CoupledFAIR(FAIR):
             fair_configs["co2_concentration_1750"].values.squeeze(),
             specie="CO2",
         )
+        initialise(self.concentration, self.species_configs["baseline_concentration"])
+        initialise(self.forcing, 0)
+        initialise(self.temperature, 0)
+        initialise(self.cumulative_emissions, 0)
+        initialise(self.airborne_emissions, 0)
+
+    def fair_justice_run_init(self):  # , time_horizon, scenarios
+        """Setup the stepwise run of the FaIR model with the JUSTICE IAM.
+
+        Parameters
+        ----------
+        suppress_warnings : bool
+            Hide warnings relating to covariance in energy balance matrix.
+        """
 
         # End of filling in configs
         self._check_properties()
@@ -529,7 +537,8 @@ class CoupledFAIR(FAIR):
                 self._aerosol_chemistry_from_emissions_indices,
                 self._aerosol_chemistry_from_concentration_indices,
             )
-
+        print(self.gas_partitions_array.shape)
+        print(self.airborne_emissions_array.shape)
         # 3. greenhouse emissions to concentrations; include methane from IIRF
         (
             self.concentration_array[
@@ -852,6 +861,7 @@ class CoupledFAIR(FAIR):
                     i_timepoint + 1 : i_timepoint + 2, ..., None
                 ],
             )
+            # print(self.cummins_state_array[i_timepoint + 1 : i_timepoint + 2, ...])
 
     def calculate_toa_ocean_airborne_fraction(self):
         """Calculate the fraction of airborne emissions that are taken up by the
@@ -903,6 +913,18 @@ class CoupledFAIR(FAIR):
 
     def get_temperature_array(self):
         return self.cummins_state_array[..., 1:]
+
+    def fill_emissions_from_economy_submodel(self, emissions_economy_submodule):
+        """Fill emissions from the economy submodule.
+        #TODO: Need to test this function. Maybe need to add a scenario argument?
+        """
+        fill(
+            self.emissions,
+            emissions_economy_submodule[
+                :, None, None
+            ],  # essentially reshaping the emissions into 3D shape used by FAIR
+            specie="CO2 FFI",
+        )  # scenario=scenario
 
     def fill_from_rcmip_local(self, data_file_path):
         """Fill emissions, concentrations and/or forcing from RCMIP scenarios."""
@@ -1117,3 +1139,272 @@ class CoupledFAIR(FAIR):
 
                     # fill FaIR xarray
                     fill(self.forcing, forc[:, None], specie=specie, scenario=scenario)
+
+    def test_init_fair(self, time_horizon, scenarios):
+        # Reading the Data
+        start_year_fair = fair_start_year
+        end_year_fair = time_horizon.end_year
+        timestep = (
+            time_horizon.timestep
+        )  # Using 1 year timesteps for testing purposes #this is the common timestep for all the submodels
+
+        self.define_time(start_year_fair, end_year_fair, timestep)
+
+        # scenarios = [
+        #     "ssp245"
+        # ]  # ssp119, "ssp126", "ssp245", "ssp370", "ssp434", "ssp460", "ssp534-over", "ssp585"]
+        self.define_scenarios(scenarios)
+
+        current_directory = os.path.dirname(os.path.realpath(__file__))
+
+        # Go up to the root directory of the project (two levels up)
+        root_directory = os.path.dirname(os.path.dirname(current_directory))
+
+        # Create the data file path
+        data_file_path = os.path.join(root_directory, "data")
+
+        df_configs = pd.read_csv(
+            data_file_path + "/calibrated_constrained_parameters.csv", index_col=0
+        )
+
+        # take only the first row from df_configs #this is to select one scenario
+        # df_configs = df_configs.iloc[0:1]
+
+        configs = df_configs.index  # this is used as a label for the "config" axis
+        # testdf = pd.DataFrame(df_configs)
+        self.define_configs(configs)
+
+        species, properties = read_properties(
+            filename=data_file_path + "/species_configs_properties_calibration.csv"
+        )
+
+        self.define_species(species, properties)
+
+        self.allocate()
+
+        self.fill_from_rcmip_local(data_file_path)
+
+        # rcmip_emissions_file = pooch.retrieve(
+        #     url="doi:10.5281/zenodo.4589756/rcmip-emissions-annual-means-v5-1-0.csv",
+        #     known_hash="md5:4044106f55ca65b094670e7577eaf9b3",
+        # )
+        df_emis = pd.read_csv(data_file_path + "/rcmip_emissions_annual.csv")
+        # df_emis = pd.read_csv(rcmip_emissions_file)
+        gfed_sectors = [
+            "Emissions|NOx|MAGICC AFOLU|Agricultural Waste Burning",
+            "Emissions|NOx|MAGICC AFOLU|Forest Burning",
+            "Emissions|NOx|MAGICC AFOLU|Grassland Burning",
+            "Emissions|NOx|MAGICC AFOLU|Peat Burning",
+        ]
+        for scenario in scenarios:
+            self.emissions.loc[dict(specie="NOx", scenario=scenario)] = (
+                df_emis.loc[
+                    (df_emis["Scenario"] == scenario)
+                    & (df_emis["Region"] == "World")
+                    & (df_emis["Variable"].isin(gfed_sectors)),
+                    str(start_year_fair) : str(end_year_fair),
+                ]
+                .interpolate(axis=1)
+                .values.squeeze()
+                .sum(axis=0)
+                * 46.006
+                / 30.006
+                + df_emis.loc[
+                    (df_emis["Scenario"] == scenario)
+                    & (df_emis["Region"] == "World")
+                    & (df_emis["Variable"] == "Emissions|NOx|MAGICC AFOLU|Agriculture"),
+                    str(start_year_fair) : str(end_year_fair),
+                ]
+                .interpolate(axis=1)
+                .values.squeeze()
+                + df_emis.loc[
+                    (df_emis["Scenario"] == scenario)
+                    & (df_emis["Region"] == "World")
+                    & (
+                        df_emis["Variable"]
+                        == "Emissions|NOx|MAGICC Fossil and Industrial"
+                    ),
+                    str(start_year_fair) : str(end_year_fair),
+                ]
+                .interpolate(axis=1)
+                .values.squeeze()
+            )[: self.emissions.shape[0], None]
+
+        fill(
+            self.climate_configs["ocean_heat_capacity"],
+            df_configs.loc[:, "c1":"c3"].values,
+        )
+        fill(
+            self.climate_configs["ocean_heat_transfer"],
+            df_configs.loc[:, "kappa1":"kappa3"].values,
+        )
+        fill(
+            self.climate_configs["deep_ocean_efficacy"],
+            df_configs["epsilon"].values.squeeze(),
+        )
+        fill(
+            self.climate_configs["gamma_autocorrelation"],
+            df_configs["gamma"].values.squeeze(),
+        )
+        fill(
+            self.climate_configs["sigma_eta"], df_configs["sigma_eta"].values.squeeze()
+        )
+        fill(self.climate_configs["sigma_xi"], df_configs["sigma_xi"].values.squeeze())
+        fill(self.climate_configs["seed"], df_configs["seed"])
+        fill(self.climate_configs["stochastic_run"], True)
+        fill(self.climate_configs["use_seed"], True)
+        fill(self.climate_configs["forcing_4co2"], df_configs["F_4xCO2"])
+
+        self.fill_species_configs(
+            filename=data_file_path + "/species_configs_properties_calibration.csv"
+        )
+
+        # carbon cycle
+        fill(
+            self.species_configs["iirf_0"],
+            df_configs["r0"].values.squeeze(),
+            specie="CO2",
+        )
+        fill(
+            self.species_configs["iirf_airborne"],
+            df_configs["rA"].values.squeeze(),
+            specie="CO2",
+        )
+        fill(
+            self.species_configs["iirf_uptake"],
+            df_configs["rU"].values.squeeze(),
+            specie="CO2",
+        )
+        fill(
+            self.species_configs["iirf_temperature"],
+            df_configs["rT"].values.squeeze(),
+            specie="CO2",
+        )
+
+        # aerosol indirect
+        fill(self.species_configs["aci_scale"], df_configs["beta"].values.squeeze())
+        fill(
+            self.species_configs["aci_shape"],
+            df_configs["shape Sulfur"].values.squeeze(),
+            specie="Sulfur",
+        )
+        fill(
+            self.species_configs["aci_shape"],
+            df_configs["shape BC"].values.squeeze(),
+            specie="BC",
+        )
+        fill(
+            self.species_configs["aci_shape"],
+            df_configs["shape OC"].values.squeeze(),
+            specie="OC",
+        )
+
+        # aerosol direct
+        for specie in [
+            "BC",
+            "CH4",
+            "N2O",
+            "NH3",
+            "NOx",
+            "OC",
+            "Sulfur",
+            "VOC",
+            "Equivalent effective stratospheric chlorine",
+        ]:
+            fill(
+                self.species_configs["erfari_radiative_efficiency"],
+                df_configs[f"ari {specie}"],
+                specie=specie,
+            )
+
+        # forcing scaling
+        for specie in [
+            "CO2",
+            "CH4",
+            "N2O",
+            "Stratospheric water vapour",
+            "Contrails",
+            "Light absorbing particles on snow and ice",
+            "Land use",
+        ]:
+            fill(
+                self.species_configs["forcing_scale"],
+                df_configs[f"scale {specie}"].values.squeeze(),
+                specie=specie,
+            )
+        # the halogenated gases all take the same scale factor
+        for specie in [
+            "CFC-11",
+            "CFC-12",
+            "CFC-113",
+            "CFC-114",
+            "CFC-115",
+            "HCFC-22",
+            "HCFC-141b",
+            "HCFC-142b",
+            "CCl4",
+            "CHCl3",
+            "CH2Cl2",
+            "CH3Cl",
+            "CH3CCl3",
+            "CH3Br",
+            "Halon-1211",
+            "Halon-1301",
+            "Halon-2402",
+            "CF4",
+            "C2F6",
+            "C3F8",
+            "c-C4F8",
+            "C4F10",
+            "C5F12",
+            "C6F14",
+            "C7F16",
+            "C8F18",
+            "NF3",
+            "SF6",
+            "SO2F2",
+            "HFC-125",
+            "HFC-134a",
+            "HFC-143a",
+            "HFC-152a",
+            "HFC-227ea",
+            "HFC-23",
+            "HFC-236fa",
+            "HFC-245fa",
+            "HFC-32",
+            "HFC-365mfc",
+            "HFC-4310mee",
+        ]:
+            fill(
+                self.species_configs["forcing_scale"],
+                df_configs["scale minorGHG"].values.squeeze(),
+                specie=specie,
+            )
+
+        # ozone
+        for specie in [
+            "CH4",
+            "N2O",
+            "Equivalent effective stratospheric chlorine",
+            "CO",
+            "VOC",
+            "NOx",
+        ]:
+            fill(
+                self.species_configs["ozone_radiative_efficiency"],
+                df_configs[f"o3 {specie}"],
+                specie=specie,
+            )
+
+        # initial value of CO2 concentration (but not baseline for forcing calculations)
+        fill(
+            self.species_configs["baseline_concentration"],
+            df_configs["co2_concentration_1750"].values.squeeze(),
+            specie="CO2",
+        )
+
+        initialise(self.concentration, self.species_configs["baseline_concentration"])
+        initialise(self.forcing, 0)
+        initialise(self.temperature, 0)
+        initialise(self.cumulative_emissions, 0)
+        initialise(self.airborne_emissions, 0)
