@@ -117,7 +117,7 @@ class NeoclassicalEconomyModel:
             )
 
             # Calculate the TFP
-            self._calcualte_tfp(timestep, scenario)
+            self._calculate_tfp(timestep, scenario)
 
             # Calculate the Output
             self._calculate_output(timestep, scenario)
@@ -137,7 +137,7 @@ class NeoclassicalEconomyModel:
             )
 
             # Calculate the TFP
-            self._calcualte_tfp(timestep, scenario)
+            self._calculate_tfp(timestep, scenario)
 
             # Calculate the Output based on gross output
             self._calculate_output(timestep, scenario)
@@ -160,7 +160,7 @@ class NeoclassicalEconomyModel:
         """
         return self.optimal_long_run_savings_rate
 
-    def _calcualte_tfp(self, timestep, scenario):
+    def _calculate_tfp(self, timestep, scenario):
         # Calculate the TFP
         self.tfp[:, timestep] = self.gdp_dict[scenario][:, timestep] / (
             np.power(
