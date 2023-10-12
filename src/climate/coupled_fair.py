@@ -51,6 +51,7 @@ import warnings
 import os
 import copy
 from scipy.interpolate import interp1d
+from typing import Any
 
 
 # FaIR Model Constants
@@ -72,264 +73,12 @@ data_file_path = os.path.join(root_directory, "data")
 class CoupledFAIR(FAIR):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Initialization of new/modified class attributes
-        # self.fair_justice_run_init(
-        #     True
-        # )  # self.fair_justice_run_init(suppress_warnings)
 
-    # def fair_fill_data(self, time_horizon, scenarios):
-    #     current_directory = os.path.dirname(os.path.realpath(__file__))
-
-    #     # Go up to the root directory of the project (two levels up)
-    #     root_directory = os.path.dirname(os.path.dirname(current_directory))
-
-    #     # Create the data file path
-    #     data_file_path = os.path.join(root_directory, "data")
-
-    #     self.define_time(
-    #         time_horizon.start_year, time_horizon.end_year, time_horizon.timestep
-    #     )
-    #     self.define_scenarios(scenarios)
-
-    #     fair_configs = pd.read_csv(
-    #         data_file_path + "/calibrated_constrained_parameters.csv", index_col=0
-    #     )
-    #     self.define_configs(fair_configs.index)
-
-    #     species, properties = read_properties(
-    #         filename=data_file_path + "/species_configs_properties_calibration.csv"
-    #     )
-
-    #     self.define_species(species, properties)
-    #     self.allocate()
-    #     # self.fill_from_rcmip_local(data_file_path=data_file_path) palok
-    #     self.fill_from_rcmip()
-
-    #     # Correction code as described in FaIR Examples #Can have a cleaner implementation
-    #     df_emis = pd.read_csv(data_file_path + "/rcmip_emissions_annual.csv")
-    #     gfed_sectors = [
-    #         "Emissions|NOx|MAGICC AFOLU|Agricultural Waste Burning",
-    #         "Emissions|NOx|MAGICC AFOLU|Forest Burning",
-    #         "Emissions|NOx|MAGICC AFOLU|Grassland Burning",
-    #         "Emissions|NOx|MAGICC AFOLU|Peat Burning",
-    #     ]
-    #     for scenario in scenarios:
-    #         self.emissions.loc[dict(specie="NOx", scenario=scenario)] = (
-    #             df_emis.loc[
-    #                 (df_emis["Scenario"] == scenario)
-    #                 & (df_emis["Region"] == "World")
-    #                 & (df_emis["Variable"].isin(gfed_sectors)),
-    #                 str(fair_start_year) : str(time_horizon.end_year),
-    #             ]
-    #             .interpolate(axis=1)
-    #             .values.squeeze()
-    #             .sum(axis=0)
-    #             * 46.006
-    #             / 30.006
-    #             + df_emis.loc[
-    #                 (df_emis["Scenario"] == scenario)
-    #                 & (df_emis["Region"] == "World")
-    #                 & (df_emis["Variable"] == "Emissions|NOx|MAGICC AFOLU|Agriculture"),
-    #                 str(fair_start_year) : str(time_horizon.end_year),
-    #             ]
-    #             .interpolate(axis=1)
-    #             .values.squeeze()
-    #             + df_emis.loc[
-    #                 (df_emis["Scenario"] == scenario)
-    #                 & (df_emis["Region"] == "World")
-    #                 & (
-    #                     df_emis["Variable"]
-    #                     == "Emissions|NOx|MAGICC Fossil and Industrial"
-    #                 ),
-    #                 str(fair_start_year) : str(time_horizon.end_year),
-    #             ]
-    #             .interpolate(axis=1)
-    #             .values.squeeze()
-    #         )[: self.emissions.shape[0], None]
-    #     # End of correction code
-
-    #     # Fill in the configs
-
-    #     fill(
-    #         self.climate_configs["ocean_heat_capacity"],
-    #         fair_configs.loc[:, "c1":"c3"].values,
-    #     )
-    #     fill(
-    #         self.climate_configs["ocean_heat_transfer"],
-    #         fair_configs.loc[:, "kappa1":"kappa3"].values,
-    #     )
-    #     fill(
-    #         self.climate_configs["deep_ocean_efficacy"],
-    #         fair_configs["epsilon"].values.squeeze(),
-    #     )
-    #     fill(
-    #         self.climate_configs["gamma_autocorrelation"],
-    #         fair_configs["gamma"].values.squeeze(),
-    #     )
-    #     fill(
-    #         self.climate_configs["sigma_eta"],
-    #         fair_configs["sigma_eta"].values.squeeze(),
-    #     )
-    #     fill(
-    #         self.climate_configs["sigma_xi"], fair_configs["sigma_xi"].values.squeeze()
-    #     )
-    #     fill(self.climate_configs["seed"], fair_configs["seed"])
-    #     fill(self.climate_configs["stochastic_run"], True)
-    #     fill(self.climate_configs["use_seed"], True)
-    #     fill(self.climate_configs["forcing_4co2"], fair_configs["F_4xCO2"])
-
-    #     self.fill_species_configs(
-    #         filename=data_file_path + "/species_configs_properties_calibration.csv"
-    #     )
-
-    #     # carbon cycle
-    #     fill(
-    #         self.species_configs["iirf_0"],
-    #         fair_configs["r0"].values.squeeze(),
-    #         specie="CO2",
-    #     )
-    #     fill(
-    #         self.species_configs["iirf_airborne"],
-    #         fair_configs["rA"].values.squeeze(),
-    #         specie="CO2",
-    #     )
-    #     fill(
-    #         self.species_configs["iirf_uptake"],
-    #         fair_configs["rU"].values.squeeze(),
-    #         specie="CO2",
-    #     )
-    #     fill(
-    #         self.species_configs["iirf_temperature"],
-    #         fair_configs["rT"].values.squeeze(),
-    #         specie="CO2",
-    #     )
-
-    #     # aerosol indirect
-    #     fill(self.species_configs["aci_scale"], fair_configs["beta"].values.squeeze())
-    #     fill(
-    #         self.species_configs["aci_shape"],
-    #         fair_configs["shape Sulfur"].values.squeeze(),
-    #         specie="Sulfur",
-    #     )
-    #     fill(
-    #         self.species_configs["aci_shape"],
-    #         fair_configs["shape BC"].values.squeeze(),
-    #         specie="BC",
-    #     )
-    #     fill(
-    #         self.species_configs["aci_shape"],
-    #         fair_configs["shape OC"].values.squeeze(),
-    #         specie="OC",
-    #     )
-
-    #     # aerosol direct
-    #     for specie in [
-    #         "BC",
-    #         "CH4",
-    #         "N2O",
-    #         "NH3",
-    #         "NOx",
-    #         "OC",
-    #         "Sulfur",
-    #         "VOC",
-    #         "Equivalent effective stratospheric chlorine",
-    #     ]:
-    #         fill(
-    #             self.species_configs["erfari_radiative_efficiency"],
-    #             fair_configs[f"ari {specie}"],
-    #             specie=specie,
-    #         )
-
-    #     # forcing scaling
-    #     for specie in [
-    #         "CO2",
-    #         "CH4",
-    #         "N2O",
-    #         "Stratospheric water vapour",
-    #         "Contrails",
-    #         "Light absorbing particles on snow and ice",
-    #         "Land use",
-    #     ]:
-    #         fill(
-    #             self.species_configs["forcing_scale"],
-    #             fair_configs[f"scale {specie}"].values.squeeze(),
-    #             specie=specie,
-    #         )
-    #     # the halogenated gases all take the same scale factor
-    #     for specie in [
-    #         "CFC-11",
-    #         "CFC-12",
-    #         "CFC-113",
-    #         "CFC-114",
-    #         "CFC-115",
-    #         "HCFC-22",
-    #         "HCFC-141b",
-    #         "HCFC-142b",
-    #         "CCl4",
-    #         "CHCl3",
-    #         "CH2Cl2",
-    #         "CH3Cl",
-    #         "CH3CCl3",
-    #         "CH3Br",
-    #         "Halon-1211",
-    #         "Halon-1301",
-    #         "Halon-2402",
-    #         "CF4",
-    #         "C2F6",
-    #         "C3F8",
-    #         "c-C4F8",
-    #         "C4F10",
-    #         "C5F12",
-    #         "C6F14",
-    #         "C7F16",
-    #         "C8F18",
-    #         "NF3",
-    #         "SF6",
-    #         "SO2F2",
-    #         "HFC-125",
-    #         "HFC-134a",
-    #         "HFC-143a",
-    #         "HFC-152a",
-    #         "HFC-227ea",
-    #         "HFC-23",
-    #         "HFC-236fa",
-    #         "HFC-245fa",
-    #         "HFC-32",
-    #         "HFC-365mfc",
-    #         "HFC-4310mee",
-    #     ]:
-    #         fill(
-    #             self.species_configs["forcing_scale"],
-    #             fair_configs["scale minorGHG"].values.squeeze(),
-    #             specie=specie,
-    #         )
-
-    #     # ozone
-    #     for specie in [
-    #         "CH4",
-    #         "N2O",
-    #         "Equivalent effective stratospheric chlorine",
-    #         "CO",
-    #         "VOC",
-    #         "NOx",
-    #     ]:
-    #         fill(
-    #             self.species_configs["ozone_radiative_efficiency"],
-    #             fair_configs[f"o3 {specie}"],
-    #             specie=specie,
-    #         )
-
-    #     # initial value of CO2 concentration (but not baseline for forcing calculations)
-    #     fill(
-    #         self.species_configs["baseline_concentration"],
-    #         fair_configs["co2_concentration_1750"].values.squeeze(),
-    #         specie="CO2",
-    #     )
-    #     initialise(self.concentration, self.species_configs["baseline_concentration"])
-    #     initialise(self.forcing, 0)
-    #     initialise(self.temperature, 0)
-    #     initialise(self.cumulative_emissions, 0)
-    #     initialise(self.airborne_emissions, 0)
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)
 
     def fair_justice_run_init(self, time_horizon, scenarios):
         """Setup the stepwise run of the FaIR model with the JUSTICE IAM.
@@ -339,8 +88,12 @@ class CoupledFAIR(FAIR):
         suppress_warnings : bool
             Hide warnings relating to covariance in energy balance matrix.
         """
+        self.start_year_fair = fair_start_year
+        self.start_year_justice = time_horizon.start_year
+        self.end_year_fair = time_horizon.end_year
+        self.timestep_justice = time_horizon.timestep
 
-        self.fair_fill_data(time_horizon, scenarios)
+        self.fair_fill_data(scenarios)
 
         # End of filling in configs
         self._check_properties()
@@ -506,7 +259,23 @@ class CoupledFAIR(FAIR):
                 self._minor_ghg_indices,
             )
 
-        # Do we also need to check Leach2021 and ozone forcing?
+        # Run the historical temperature computation
+
+        self.run_historical_temperature_calculation()
+
+    def run_historical_temperature_calculation(self):
+        fair_historical_years = np.arange(
+            fair_start_year, self.start_year_justice, self.timestep_justice
+        )
+        # justice_run_years = np.arange(
+        #     self.start_year_justice,
+        #     (self.end_year_fair + self.timestep_justice),
+        #     self.timestep_justice,
+        # )
+        self.fair_historical_timestep_run_count = len(fair_historical_years)
+
+        for i in range(0, len(fair_historical_years)):
+            self.stepwise_run(i)
 
     # #range(self._n_timepoints) 0 - 549 1750 - 2300 , we gotta run the loop from 1750 - JUSTICE start time first, and then do step by step/ just call this function within a loop
     def stepwise_run(self, i_timepoint):
@@ -1149,11 +918,10 @@ class CoupledFAIR(FAIR):
                     # fill FaIR xarray
                     fill(self.forcing, forc[:, None], specie=specie, scenario=scenario)
 
-    def fair_fill_data(self, time_horizon, scenarios):
-        start_year_fair = fair_start_year
-        end_year_fair = time_horizon.end_year
-        timestep = time_horizon.timestep
-        self.define_time(start_year_fair, end_year_fair, timestep)
+    def fair_fill_data(self, scenarios):
+        self.define_time(
+            self.start_year_fair, self.end_year_fair, self.timestep_justice
+        )
 
         # Set up scenarios and configs
         self.define_scenarios(scenarios)
@@ -1193,7 +961,7 @@ class CoupledFAIR(FAIR):
                     (df_emis["Scenario"] == scenario)
                     & (df_emis["Region"] == "World")
                     & (df_emis["Variable"].isin(gfed_sectors)),
-                    str(start_year_fair) : str(end_year_fair),
+                    str(self.start_year_fair) : str(self.end_year_fair),
                 ]
                 .interpolate(axis=1)
                 .values.squeeze()
@@ -1204,7 +972,7 @@ class CoupledFAIR(FAIR):
                     (df_emis["Scenario"] == scenario)
                     & (df_emis["Region"] == "World")
                     & (df_emis["Variable"] == "Emissions|NOx|MAGICC AFOLU|Agriculture"),
-                    str(start_year_fair) : str(end_year_fair),
+                    str(self.start_year_fair) : str(self.end_year_fair),
                 ]
                 .interpolate(axis=1)
                 .values.squeeze()
@@ -1215,7 +983,7 @@ class CoupledFAIR(FAIR):
                         df_emis["Variable"]
                         == "Emissions|NOx|MAGICC Fossil and Industrial"
                     ),
-                    str(start_year_fair) : str(end_year_fair),
+                    str(self.start_year_fair) : str(self.end_year_fair),
                 ]
                 .interpolate(axis=1)
                 .values.squeeze()
