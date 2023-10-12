@@ -259,9 +259,32 @@ class CoupledFAIR(FAIR):
                 self._minor_ghg_indices,
             )
 
+        # purge emissions
+        self.purge_emissions(scenarios)
+
         # Run the historical temperature computation
 
         self.run_historical_temperature_calculation()
+
+    def purge_emissions(self, scenario):
+        # Select data for "CO2 FFI" and scenario
+        rcmip_emission_array = self.emissions.sel(specie="CO2 FFI", scenario=scenario)
+        # Calculate justice start index
+        justice_start_index = self.start_year_justice - self.start_year_fair
+        # Create array with rcmip emissions before justice_start_index and zeros after
+        emissions_purge_array = np.concatenate(
+            [
+                rcmip_emission_array[0:justice_start_index].values,
+                np.full(
+                    (self.end_year_fair - self.start_year_justice,)
+                    + rcmip_emission_array.shape[1:],
+                    np.nan,
+                ),
+            ],
+            axis=0,
+        )
+
+        fill(self.emissions, emissions_purge_array, specie="CO2 FFI")
 
     def run_historical_temperature_calculation(self):
         fair_historical_years = np.arange(
