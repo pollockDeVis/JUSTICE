@@ -266,7 +266,36 @@ class CoupledFAIR(FAIR):
 
         self.run_historical_temperature_calculation()
 
+    def fill_emissions_timestep(self, timestep, new_emissions):
+        # UNTESTED #NEED TO REWRITE
+        """
+        Fill emissions for a given timestep with new emissions.
+        Args:
+        timestep (int): The timestep to fill emissions for.
+        new_emissions (numpy.ndarray): The new emissions data. Its shape should be (1, 1001).
+        """
+        if new_emissions.shape != (1, 1001):
+            raise ValueError("Shape of new emissions should be (1, 1001)")
+
+        # Check if the timestep is within the justice time period
+        if (
+            self.start_year_justice - self.start_year_fair
+            <= timestep
+            < self.end_year_fair - self.start_year_fair
+        ):
+            # Set emissions for the timestep
+            self.emissions_economy_submodule[timestep, 0, :] = new_emissions
+        else:
+            raise ValueError("Timestep is out of range")
+
     def purge_emissions(self, scenario):
+        """
+        This function purges the emissions after the justice start year.
+        This is because FAIR starts from 1750 and we want calculate all the historical temperatures
+        up until the start year of JUSTICE model.
+        JUSTICE uses the historical temperature and emissions and builds on top of it.
+        Only CO2 FFI is purged because  the other emissions are exogenous
+        """
         # Select data for "CO2 FFI" and scenario
         rcmip_emission_array = self.emissions.sel(specie="CO2 FFI", scenario=scenario)
         # Calculate justice start index
@@ -287,6 +316,10 @@ class CoupledFAIR(FAIR):
         fill(self.emissions, emissions_purge_array, specie="CO2 FFI")
 
     def run_historical_temperature_calculation(self):
+        """
+        This function calculates the historical temperature from 1750 to the start year of JUSTICE model.
+        The historical temperature is required for the FAIR model to project temperatures in the future using JUSTICE model.
+        """
         fair_historical_years = np.arange(
             fair_start_year, self.start_year_justice, self.timestep_justice
         )
@@ -956,9 +989,8 @@ class CoupledFAIR(FAIR):
         # take only the first row from df_configs #this is to select one scenario
         # df_configs = df_configs.iloc[0:1]
 
-        # configs =   # this is used as a label for the "config" axis
-        # testdf = pd.DataFrame(df_configs)
         self.define_configs(df_configs.index)
+        self.number_of_ensembles = len(df_configs.index)
 
         species, properties = read_properties(
             filename=data_file_path + "/species_configs_properties_calibration.csv"
