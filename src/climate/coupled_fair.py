@@ -266,27 +266,30 @@ class CoupledFAIR(FAIR):
 
         self.run_historical_temperature_calculation()
 
-    def fill_emissions_timestep(self, timestep, new_emissions):
-        # UNTESTED #NEED TO REWRITE
+    def compute_temperature_from_emission(self, timestep, emissions_data):
         """
-        Fill emissions for a given timestep with new emissions.
+        Fill emissions for a given timestep with new emissions and computes the temperature rise in celcius.
         Args:
         timestep (int): The timestep to fill emissions for.
-        new_emissions (numpy.ndarray): The new emissions data. Its shape should be (1, 1001).
+        emissions_data (numpy.ndarray): The new emissions data. Its shape should be (1, 1, 1001).
         """
-        if new_emissions.shape != (1, 1001):
-            raise ValueError("Shape of new emissions should be (1, 1001)")
+        # if emissions_data.shape != (1, 1001):
+        #     raise ValueError("Shape of new emissions should be (1, 1001)")
 
-        # Check if the timestep is within the justice time period
-        if (
-            self.start_year_justice - self.start_year_fair
-            <= timestep
-            < self.end_year_fair - self.start_year_fair
-        ):
-            # Set emissions for the timestep
-            self.emissions_economy_submodule[timestep, 0, :] = new_emissions
-        else:
-            raise ValueError("Timestep is out of range")
+        # Verify shape of emissions data
+        assert (
+            emissions_data.shape == (1,) + self.emissions_purge_array.shape[1:]
+        ), f"Emissions data shape: {emissions_data.shape}, expected shape {(1,) + self.emissions_purge_array.shape[1:]}"
+
+        fill_index = timestep + self.justice_start_index
+
+        # Replace the respective timestep with the emissions data
+        self.emissions_purge_array[fill_index] = emissions_data
+
+        # Fill the emissions array with the new emissions data
+        fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
+
+        self.stepwise_run(fill_index)
 
     def purge_emissions(self, scenario):
         """
@@ -299,11 +302,11 @@ class CoupledFAIR(FAIR):
         # Select data for "CO2 FFI" and scenario
         rcmip_emission_array = self.emissions.sel(specie="CO2 FFI", scenario=scenario)
         # Calculate justice start index
-        justice_start_index = self.start_year_justice - self.start_year_fair
+        self.justice_start_index = self.start_year_justice - self.start_year_fair
         # Create array with rcmip emissions before justice_start_index and zeros after
-        emissions_purge_array = np.concatenate(
+        self.emissions_purge_array = np.concatenate(
             [
-                rcmip_emission_array[0:justice_start_index].values,
+                rcmip_emission_array[0 : self.justice_start_index].values,
                 np.full(
                     (self.end_year_fair - self.start_year_justice,)
                     + rcmip_emission_array.shape[1:],
@@ -312,8 +315,9 @@ class CoupledFAIR(FAIR):
             ],
             axis=0,
         )
+        print("emissions_purge_array", self.emissions_purge_array.shape)
 
-        fill(self.emissions, emissions_purge_array, specie="CO2 FFI")
+        fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
     def run_historical_temperature_calculation(self):
         """
