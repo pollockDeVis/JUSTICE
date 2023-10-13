@@ -12,14 +12,12 @@ class OutputToEmissions:
     This class converts the output into emissions.
     """
 
-    def __init__(
-        self,
-        input_dataset,
-        time_horizon,
-    ):
+    def __init__(self, input_dataset, time_horizon, climate_ensembles):
         """
         This method initializes the OutputToEmissions class.
         """
+        # Saving the climate ensembles
+        self.NUM_OF_ENSEMBLES = climate_ensembles
 
         self.emissions_dict = copy.deepcopy(input_dataset.EMISSIONS_DICT)
         self.gdp_dict = copy.deepcopy(input_dataset.GDP_DICT)
@@ -27,7 +25,10 @@ class OutputToEmissions:
 
         self.carbon_intensity_dict = {}
 
-        for scenarios in self.gdp_dict.keys():
+        # List of scenarios
+        self.scenario_list = list(self.gdp_dict.keys())
+
+        for scenarios in self.scenario_list:  # self.gdp_dict.keys()
             self.carbon_intensity_dict[scenarios] = (
                 np.array(self.emissions_dict[scenarios]) / self.gdp_dict[scenarios]
             )
@@ -40,19 +41,40 @@ class OutputToEmissions:
         if self.timestep != self.data_timestep:
             # Interpolate Carbon Intensity Dictionary
             self._interpolate_carbon_intensity()
-            # # interpolate GDP Dictionary
-            # self._interpolate_gdp()
 
         # Initializing the emissions array
-        self.emissions = np.zeros((len(self.region_list), len(self.model_time_horizon)))
+        self.emissions = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        )
 
-    def run_emissions(self, timestep, scenario, output, emission_control_rate):
+        # Initialize 4D array for carbon intensity.
+        self.carbon_intensity = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.NUM_OF_ENSEMBLES,
+                len(self.scenario_list),
+            )
+        )
+
+        # Loop through the scenarios in carbon intensity dict to broadcast each one to the ensemble dimension.
+        for idx, scenario in enumerate(self.scenario_list):
+            self.carbon_intensity[:, :, :, idx] = np.broadcast_to(
+                self.carbon_intensity_dict[scenario][:, :, np.newaxis],
+                (
+                    self.carbon_intensity_dict[scenario].shape[0],
+                    self.carbon_intensity_dict[scenario].shape[1],
+                    self.NUM_OF_ENSEMBLES,
+                ),
+            )
+
+    def run_emissions(self, scenario, timestep, output, emission_control_rate):
         """
         This method calculates the emissions for the economic output of a given scenario.
         """
-
-        self.emissions[:, timestep] = (
-            self.carbon_intensity_dict[scenario][:, timestep]
+        # Calculate emissions
+        self.emissions[:, timestep, :] = (
+            self.carbon_intensity[:, timestep, :, scenario]
             * output
             * (
                 1 - emission_control_rate
