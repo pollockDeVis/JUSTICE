@@ -291,7 +291,9 @@ class CoupledFAIR(FAIR):
 
         self.stepwise_run(fill_index)
         global_temperature = self.get_temperature_array()
-        print(global_temperature.shape)
+        # Shape [timestep, scenario, ensemble, box/layer=0] # Layer 0 is used in FAIR example. The current code works only with one SSP-RCP scenario
+        global_temperature = global_temperature[timestep, 0, :, 0]
+        return global_temperature
 
     def purge_emissions(self, scenario):
         """
