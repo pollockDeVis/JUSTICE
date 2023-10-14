@@ -272,20 +272,19 @@ class CoupledFAIR(FAIR):
         Fill emissions for a given timestep with new emissions and computes the temperature rise in celcius.
         Args:
         timestep (int): The timestep to fill emissions for.
-        emissions_data (numpy.ndarray): The new emissions data. Its shape should be (1, 1, 1001).
+        emissions_data (numpy.ndarray): The new emissions data. Its shape should be (1001, ).
         """
-        # if emissions_data.shape != (1, 1001):
-        #     raise ValueError("Shape of new emissions should be (1, 1001)")
 
         # Verify shape of emissions data
+        expected_shape = (self.number_of_ensembles,)
         assert (
-            emissions_data.shape == (1,) + self.emissions_purge_array.shape[1:]
-        ), f"Emissions data shape: {emissions_data.shape}, expected shape {(1,) + self.emissions_purge_array.shape[1:]}"
+            emissions_data.shape == expected_shape
+        ), f"Emissions data shape: {emissions_data.shape}, expected shape {expected_shape}"
 
         fill_index = timestep + self.justice_start_index
 
         # Replace the respective timestep with the emissions data
-        self.emissions_purge_array[fill_index] = emissions_data
+        self.emissions_purge_array[fill_index, 0, :] = emissions_data
 
         # Fill the emissions array with the new emissions data
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
@@ -299,12 +298,14 @@ class CoupledFAIR(FAIR):
         up until the start year of JUSTICE model.
         JUSTICE uses the historical temperature and emissions and builds on top of it.
         Only CO2 FFI is purged because  the other emissions are exogenous
+        emissions_purge_array shape: (550, 1, 1001)
         """
         # Select data for "CO2 FFI" and scenario
         rcmip_emission_array = self.emissions.sel(specie="CO2 FFI", scenario=scenario)
         # Calculate justice start index
         self.justice_start_index = self.start_year_justice - self.start_year_fair
         # Create array with rcmip emissions before justice_start_index and zeros after
+
         self.emissions_purge_array = np.concatenate(
             [
                 rcmip_emission_array[0 : self.justice_start_index].values,
@@ -316,7 +317,6 @@ class CoupledFAIR(FAIR):
             ],
             axis=0,
         )
-        print("emissions_purge_array", self.emissions_purge_array.shape)
 
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
