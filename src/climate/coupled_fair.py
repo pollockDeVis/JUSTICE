@@ -290,6 +290,8 @@ class CoupledFAIR(FAIR):
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
         self.stepwise_run(fill_index)
+        global_temperature = self.get_temperature_array()
+        print(global_temperature.shape)
 
     def purge_emissions(self, scenario):
         """
