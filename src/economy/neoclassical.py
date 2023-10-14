@@ -209,7 +209,7 @@ class NeoclassicalEconomyModel:
                 )  # TODO: need to check if this is correct
 
         # Original shape (57, 286, 1001) but will return (57, 1001)
-        return self.output
+        return self.output[:, timestep, :]
 
     def get_optimal_long_run_savings_rate(self):
         """

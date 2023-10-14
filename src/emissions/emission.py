@@ -1,5 +1,6 @@
 """
 This is the emissions module that converts the output into emissions.
+#'CO2 emissions in [GtCO2/year]'
 """
 
 import numpy as np
@@ -81,7 +82,7 @@ class OutputToEmissions:
             )  # Emisison Control Rate is a lever and might have to take timestep
         )
 
-        return self.emissions
+        return self.emissions[:, timestep, :]
 
     def _interpolate_carbon_intensity(self):
         for keys in self.carbon_intensity_dict.keys():

@@ -260,6 +260,7 @@ class CoupledFAIR(FAIR):
             )
 
         # purge emissions
+
         self.purge_emissions(scenarios)
 
         # Run the historical temperature computation
