@@ -98,14 +98,3 @@ class OutputToEmissions:
                 interp_data[i, :] = f(self.model_time_horizon)
 
             self.carbon_intensity_dict[keys] = interp_data
-
-    # def _interpolate_gdp(self):
-    #     for keys in self.gdp_dict.keys():
-    #         gdp_SSP = self.gdp_dict[keys]
-    #         interp_data = np.zeros((len(gdp_SSP), len(self.model_time_horizon)))
-
-    #         for i in range(gdp_SSP.shape[0]):
-    #             f = interp1d(self.data_time_horizon, gdp_SSP[i, :], kind="linear")
-    #             interp_data[i, :] = f(self.model_time_horizon)
-
-    #         self.gdp_dict[keys] = interp_data
