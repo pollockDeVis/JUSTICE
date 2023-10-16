@@ -198,22 +198,6 @@ class NeoclassicalEconomyModel:
             # Calculate the Output based on gross output
             self._calculate_output(timestep, scenario)
 
-            # Check if kwargs has abatement and damage function specified (damage starts from the 2nd time step /maybe abatement too)
-            # abatement = kwargs.get("abatement")
-            # damage = kwargs.get("damage")
-
-            # if abatement is not None:
-            #     self.output[:, :, :, scenario] = (
-            #         self.output[:, :, :, scenario]
-            #         - abatement  # TODO: need to check if this is correct
-            #     )
-
-            # if damage is not None:
-            #     self.output[:, :, :, scenario] = (
-            #         self.output[:, :, :, scenario] - damage
-            #     )  # TODO: need to check if this is correct
-
-        # Original shape (57, 286, 1001) but will return (57, 1001)
         return self.output[:, timestep, :]
 
     def get_optimal_long_run_savings_rate(self):
@@ -259,27 +243,6 @@ class NeoclassicalEconomyModel:
         Damage calculated
         """
         self.damages[:, timestep, :] = damage
-        print("got damages", self.damages[:, timestep, :])
-        # damage_timestep = timestep + 1
-        # # print("Before")
-        # # print(self.output[25, damage_timestep, 0])
-
-        # new_output = self.output[:, damage_timestep, :] - damage
-        # # Print output before
-
-        # # print("After")
-        # # print(new_output[25, 0])
-        # self.output[:, damage_timestep, :] = new_output
-
-        # print(self.output[:, (timestep + 1) :].shape)
-        # print(timestep)
-        # damage = np.expand_dims(damage, axis=1)  # Expanding the dimensions of damage
-        # new_output = self.output[:, (timestep + 1) :] - damage
-        # print(new_output.shape)
-        # self.output[:, (timestep + 1) :] = new_output
-        # print(damage.shape)
-        # print(damage[:, 0, :])
-        # self.output[:, (timestep + 1) :] -= damage
 
     def _interpolate_gdp(self):
         for keys in self.gdp_dict.keys():
