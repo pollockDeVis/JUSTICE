@@ -61,3 +61,17 @@ class DataLoader:
         # Load the emissions dictionary
         with open(os.path.join(data_file_path, "emissions_dict.pickle"), "rb") as f:
             self.EMISSIONS_DICT = pd.read_pickle(f)
+
+        # Load the Temperature Downscaler Coefficients Alpha
+        with open(
+            os.path.join(data_file_path, "alpha_downscaler_coefficient.pickle"),
+            "rb",
+        ) as f:
+            self.TEMPERATURE_DOWNSCALER_COEFFICIENT_ALPHA = pd.read_pickle(f)
+
+        # Load the Temperature Downscaler Coefficients Beta
+        with open(
+            os.path.join(data_file_path, "beta_downscaler_coefficient.pickle"),
+            "rb",
+        ) as f:
+            self.TEMPERATURE_DOWNSCALER_COEFFICIENT_BETA = pd.read_pickle(f)

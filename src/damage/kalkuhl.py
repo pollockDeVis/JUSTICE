@@ -1,0 +1,140 @@
+"""
+Kalkuhl damage function taken from RICE50. It is a recursive function with the following parameters:
+
+1. kw_DT:  `short_run_temperature_change_coefficient`. 
+
+2. kw_DT_lag: `lagged_short_run_temperature_change_coefficient`. 
+
+3. kw_TDT: `interaction_term_temperature_change_coefficient`. 
+
+4. kw_TDT_lag:  `lagged_interaction_term_temperature_change_coefficient`. 
+
+5. kw_T:  `temperature_dependent_coefficient`.
+
+Kalkuhl Reference: https://www.sciencedirect.com/science/article/pii/S0095069620300838
+"""
+
+import numpy as np
+from src.default_parameters import DamageDefaults
+
+
+class DamageKalkuhl:
+    def __init__(self, input_dataset, time_horizon, climate_model):
+        self.region_list = input_dataset.REGION_LIST
+        self.timestep = time_horizon.timestep
+        self.data_timestep = time_horizon.data_timestep
+        self.data_time_horizon = time_horizon.data_time_horizon
+        self.model_time_horizon = time_horizon.model_time_horizon
+
+        damage_defaults = DamageDefaults().get_defaults("KALKUHL")
+
+        self.short_run_temp_change_coefficient = damage_defaults[
+            "short_run_temp_change_coefficient"
+        ]
+        self.lagged_short_run_temp_change_coefficient = damage_defaults[
+            "lagged_short_run_temp_change_coefficient"
+        ]
+        self.interaction_term_temp_change_coefficient = damage_defaults[
+            "interaction_term_temp_change_coefficient"
+        ]
+        self.lagged_interaction_term_temp_change_coefficient = damage_defaults[
+            "lagged_interaction_term_temp_change_coefficient"
+        ]
+        self.temperature_dependent_coefficient = damage_defaults[
+            "temperature_dependent_coefficient"
+        ]
+        self.damage_window = damage_defaults["damage_window"]
+
+        self.coefficient_a = (
+            self.short_run_temp_change_coefficient
+            + self.lagged_short_run_temp_change_coefficient
+        ) / self.data_timestep
+        self.coefficient_b = (
+            self.interaction_term_temp_change_coefficient
+            + self.lagged_interaction_term_temp_change_coefficient
+        ) / self.data_timestep
+
+        self.climate_timestep_index = climate_model.__getattribute__(
+            "justice_start_index"
+        )
+        self.climate_ensembles = climate_model.__getattribute__("number_of_ensembles")
+        # print(self.climate_timestep_index)
+
+        # Create an temperature array of shape (region_list, damage window, climate_ensembles)
+        self.temperature_array = np.zeros(
+            (len(self.region_list), self.damage_window, self.climate_ensembles)
+        )
+
+        # Create an damage array of shape (region_list, damage window, climate_ensembles)
+        # The window is of shape 2, to hold values for current and previous timestep
+        self.damage_coefficient = np.zeros(
+            (len(self.region_list), self.damage_window, self.climate_ensembles)
+        )
+
+        # Create economic damage factor array of shape (region_list, damage window, climate_ensembles)
+        self.economic_damage_factor = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.climate_ensembles,
+            )
+        )
+
+        # Fill the temperature array with the initial temperature data
+        # self.temperature_array[:, 0, :] = climate_model.get_temperature_array(
+        #     timestep=(self.climate_timestep_index - 1)
+        # )
+
+    def calculate_damage(self, temperature, timestep):
+        """
+        Returns the damage function value for the given temperature and time step.
+        """
+        # Assert that temperature is of shape (region_list, climate_ensembles)
+        assert temperature.shape == (
+            len(self.region_list),
+            self.climate_ensembles,
+        ), "Temperature array is not of shape (region_list, climate_ensembles)"
+
+        # print(f"temperature: {temperature[:, 0]}")
+
+        # DO a if else for the first timestep
+        if timestep == 0:
+            # Fill the temperature array with the current temperature data
+            self.temperature_array[:, 0, :] = temperature
+        else:
+            # Fill the temperature array with the current temperature data
+            self.temperature_array[:, 1, :] = temperature
+
+            # Calculate the temperature difference
+            temperature_difference = (
+                self.temperature_array[:, 1, :] - self.temperature_array[:, 0, :]
+            )
+
+            # print(f"temperature_difference: {temperature_difference[:, 0]}")
+
+            # Calculate the damage coefficient. Damage coefficient for current timestep is based on previous temperature
+            self.damage_coefficient[:, 1, :] = (
+                self.coefficient_a * temperature_difference
+                + self.coefficient_b
+                * temperature_difference
+                * self.temperature_array[:, 0, :]
+            )
+
+            # print(f"damage_coefficient: {self.damage_coefficient[:, 1, 0]}")
+
+            # Calculate economic_damage_factor for current timestep
+
+            np.divide(
+                (1 + (self.economic_damage_factor[:, timestep - 1, :])),
+                np.power((1 + self.damage_coefficient[:, 0, :]), self.data_timestep),
+                out=self.economic_damage_factor[:, timestep, :],
+            )
+            self.economic_damage_factor[
+                :, timestep, :
+            ] -= 1  # "subtract 1 from each element in the slice of `economic_damage_factor`
+
+            # Update the first column of the temperature array and damage coefficient array for the next timestep
+            self.temperature_array[:, 0, :] = self.temperature_array[:, 1, :]
+            self.damage_coefficient[:, 0, :] = self.damage_coefficient[:, 1, :]
+
+        return self.economic_damage_factor[:, timestep, :]

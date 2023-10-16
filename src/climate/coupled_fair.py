@@ -290,9 +290,9 @@ class CoupledFAIR(FAIR):
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
         self.stepwise_run(fill_index)
-        global_temperature = self.get_temperature_array()
+        global_temperature = self.get_temperature_array(timestep)
         # Shape [timestep, scenario, ensemble, box/layer=0] # Layer 0 is used in FAIR example. The current code works only with one SSP-RCP scenario
-        global_temperature = global_temperature[timestep, 0, :, 0]
+        # global_temperature = global_temperature[timestep, 0, :, 0]
         return global_temperature
 
     def purge_emissions(self, scenario):
@@ -754,8 +754,11 @@ class CoupledFAIR(FAIR):
         self.toa_imbalance.data = self.toa_imbalance_array
         self.stochastic_forcing.data = self.cummins_state_array[..., 0]
 
-    def get_temperature_array(self):
-        return self.cummins_state_array[..., 1:]
+    def get_temperature_array(self, timestep):
+        # Shape [timestep, scenario, ensemble, box/layer=0] # Layer 0 is used in FAIR example. The current code works only with one SSP-RCP scenario
+        temperature_array = self.cummins_state_array[..., 1:]
+        temperature_array = temperature_array[timestep, 0, :, 0]
+        return temperature_array
 
     def fill_emissions_from_economy_submodel(self, emissions_economy_submodule):
         """Fill emissions from the economy submodule.
