@@ -51,6 +51,8 @@ class DamageDefaults:
                 "lagged_interaction_term_temp_change_coefficient": -0.000718,
                 # Temperature dependent coefficient (originally kw_T in GAMS)
                 "temperature_dependent_coefficient": -0.00675,
+                # Damage Window - Buffer to hold older temperature and new temperature
+                "damage_window": 2,
             },
             "DICE": {},
             "BURKE": {},
