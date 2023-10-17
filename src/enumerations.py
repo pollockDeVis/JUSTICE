@@ -65,6 +65,15 @@ class Economy(Enum):
     POST_KEYNESIAN = 1
 
 
+class Abatement(Enum):
+    """
+    Abatement Types
+    """
+
+    ENERDATA = 0
+    DICE = 1
+
+
 class WelfareFunction(Enum):
     """
     Social Welfare Functions

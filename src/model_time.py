@@ -56,3 +56,17 @@ class TimeHorizon:
         )
 
         return self.model_time_horizon
+
+    def year_to_timestep(self, year, timestep):
+        """
+        This method converts a year to a timestep.
+        """
+        return int((year - self.start_year) / timestep)
+
+    # Method to convert timestep to year
+    def timestep_to_year(self, timestep_count, timestep):
+        """
+        This method converts a timestep to a year.
+        """
+
+        return timestep_count * timestep + self.start_year

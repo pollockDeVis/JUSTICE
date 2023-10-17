@@ -72,13 +72,15 @@ class OutputToEmissions:
     def run_emissions(self, scenario, timestep, output, emission_control_rate):
         """
         This method calculates the emissions for the economic output of a given scenario.
+        carbon intensity shape (57, 1001)
+        output shape (57, 1001)
         """
         # Calculate emissions
         self.emissions[:, timestep, :] = (
             self.carbon_intensity[:, timestep, :, scenario]
             * output
             * (
-                1 - emission_control_rate
+                1 - emission_control_rate[:, np.newaxis]
             )  # Emisison Control Rate is a lever and might have to take timestep
         )
 
@@ -98,14 +100,3 @@ class OutputToEmissions:
                 interp_data[i, :] = f(self.model_time_horizon)
 
             self.carbon_intensity_dict[keys] = interp_data
-
-    # def _interpolate_gdp(self):
-    #     for keys in self.gdp_dict.keys():
-    #         gdp_SSP = self.gdp_dict[keys]
-    #         interp_data = np.zeros((len(gdp_SSP), len(self.model_time_horizon)))
-
-    #         for i in range(gdp_SSP.shape[0]):
-    #             f = interp1d(self.data_time_horizon, gdp_SSP[i, :], kind="linear")
-    #             interp_data[i, :] = f(self.model_time_horizon)
-
-    #         self.gdp_dict[keys] = interp_data

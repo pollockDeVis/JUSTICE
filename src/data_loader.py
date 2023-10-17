@@ -75,3 +75,14 @@ class DataLoader:
             "rb",
         ) as f:
             self.TEMPERATURE_DOWNSCALER_COEFFICIENT_BETA = pd.read_pickle(f)
+
+        # Load Abatement Coefficients
+        with open(
+            os.path.join(data_file_path, "abatement_coefficient_a.pickle"), "rb"
+        ) as f:
+            self.ABATEMENT_COEFFICIENT_A = pd.read_pickle(f)
+
+        with open(
+            os.path.join(data_file_path, "abatement_coefficient_b.pickle"), "rb"
+        ) as f:
+            self.ABATEMENT_COEFFICIENT_B = pd.read_pickle(f)
