@@ -63,3 +63,34 @@ class DamageDefaults:
         Returns the default damage-related parameters as per the specified type.
         """
         return self.defaults[type]
+
+
+class AbatementDefaults:
+    """
+    Contains default abatement-related parameters.
+    """
+
+    def __init__(self):
+        self.defaults = {
+            "ENERDATA": {
+                # MxKali #calibrated correction multiplier starting value
+                "calibrated_correction_multiplier_starting_value": 0.492373,
+                # pback #Cost of backstop 2010$ per tCO2 in 2015 #DICE2013: 344     #DICE2016: 550
+                "backstop_cost": 550,
+                # gback #Initial cost decline backstop cost per period #DICE2013: 0.05    #DICE2016: 0.025
+                "backstop_cost_decline_rate_per_5_year": 0.025,
+                # tstart_pbtransition #first timestep without Enerdata projections
+                "transition_year_start": 2045,
+                # tend_pbtransition #time of full-convergence to backstop curve
+                "transition_year_end": 2125,
+                # klogistic
+                "logistic_transition_speed_per_5_year": 0.25,
+            },
+            "DICE": {},
+        }
+
+    def get_defaults(self, type):
+        """
+        Returns the default abatement-related parameters as per the specified type.
+        """
+        return self.defaults[type]

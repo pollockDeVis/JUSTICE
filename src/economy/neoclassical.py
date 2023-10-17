@@ -23,7 +23,7 @@ class NeoclassicalEconomyModel:
         time_horizon,
         climate_ensembles,
         **kwargs,  # variable keyword argument so that we can analyze uncertainty range of any parameters
-    ):
+    ):  # TODO maybe move the kwargs to the calculate economy
         # Create an instance of EconomyDefaults
         econ_defaults = EconomyDefaults()
 

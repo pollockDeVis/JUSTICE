@@ -13,16 +13,24 @@ from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
 
+from src.default_parameters import AbatementDefaults
+from src.enumerations import Abatement
+
 
 class AbatementEnerdata:
     """
     This class computes the abatement costs for the JUSTICE model.
     """
 
-    def __init__(self, input_dataset, time_horizon):
+    def __init__(
+        self, input_dataset, time_horizon, **kwargs
+    ):  # TODO maybe this has to move to the calculate abatement
         """
         This method initializes the Abatement class.
         """
+        # Create an instance of the AbatementDefaults class
+        abatement_defaults = AbatementDefaults()
+
         self.abatement_coefficient_a = input_dataset.ABATEMENT_COEFFICIENT_A
         self.abatement_coefficient_b = input_dataset.ABATEMENT_COEFFICIENT_B
         self.region_list = input_dataset.REGION_LIST
@@ -32,48 +40,110 @@ class AbatementEnerdata:
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
 
+        # Fetch the defaults for ENERDATA
+        abatement_enerdata_defaults = abatement_defaults.get_defaults(
+            Abatement.ENERDATA.name
+        )
+
+        # Assign the defaults to the class attributes
+        self.calibrated_correction_multiplier_starting_value = (
+            abatement_enerdata_defaults[
+                "calibrated_correction_multiplier_starting_value"
+            ]
+        )
+        self.backstop_cost = kwargs.get(
+            "backstop_cost", abatement_enerdata_defaults["backstop_cost"]
+        )
+        self.backstop_cost_decline_rate_per_5_year = kwargs.get(
+            "backstop_cost_decline_rate_per_5_year",
+            abatement_enerdata_defaults["backstop_cost_decline_rate_per_5_year"],
+        )
+        self.transition_year_start = kwargs.get(
+            "transition_year_start",
+            abatement_enerdata_defaults["transition_year_start"],
+        )
+        self.transition_year_end = kwargs.get(
+            "transition_year_end", abatement_enerdata_defaults["transition_year_end"]
+        )
+        self.logistic_transition_speed_per_5_year = kwargs.get(
+            "logistic_transition_speed_per_5_year",
+            abatement_enerdata_defaults["logistic_transition_speed_per_5_year"],
+        )
+
         if self.timestep != self.data_timestep:
             # Interpolate GDP
             self._interpolate_coefficients()
 
-    """
-                carbon_intensity_SSP = self.carbon_intensity_dict[keys]
-            interp_data = np.zeros(
-                (len(carbon_intensity_SSP), len(self.model_time_horizon))
+        # Start here
+
+        # Backstop Calculation
+
+        if self.timestep != self.data_timestep:
+            backstop_cost_decline_rate = np.power(
+                1 - self.backstop_cost_decline_rate_per_5_year, 1 / self.data_timestep
+            )
+        elif self.timestep == self.data_timestep:
+            backstop_cost_decline_rate = 1 - self.backstop_cost_decline_rate_per_5_year
+
+        # This is pbacktime in RICE50
+        global_backstop_cost_curve = np.zeros(len(self.model_time_horizon))
+
+        for i, _ in enumerate(self.model_time_horizon):
+            global_backstop_cost_curve[i] = self.backstop_cost * np.power(
+                backstop_cost_decline_rate, i
             )
 
-            for i in range(carbon_intensity_SSP.shape[0]):
-                f = interp1d(
-                    self.data_time_horizon, carbon_intensity_SSP[i, :], kind="linear"
+        # Calculate calibrated_correction_multiplier
+        calibrated_correction_multiplier = global_backstop_cost_curve[np.newaxis, :] / (
+            self.abatement_coefficient_a + self.abatement_coefficient_b
+        )
+
+        # Calculate multiplier_difference
+        calibrated_correction_multiplier_starting_value_arr = np.full(
+            (len(self.region_list), len(self.model_time_horizon)),
+            self.calibrated_correction_multiplier_starting_value,
+        )
+        multiplier_difference = np.maximum(
+            calibrated_correction_multiplier_starting_value_arr
+            - calibrated_correction_multiplier,
+            0,
+        )
+
+        # Backstop Transition Calculation
+
+        if self.timestep != self.data_timestep:  # If Timestep is not 1 year
+            logistic_transition_speed = (
+                self.logistic_transition_speed_per_5_year / self.data_timestep
+            )
+        elif self.timestep == self.data_timestep:
+            logistic_transition_speed = self.logistic_transition_speed_per_5_year
+
+        backstop_transition_period = time_horizon.year_to_timestep(
+            self.transition_year_start, self.timestep
+        ) + (
+            (
+                time_horizon.year_to_timestep(self.transition_year_end, self.timestep)
+                - time_horizon.year_to_timestep(
+                    self.transition_year_start, self.timestep
                 )
-                interp_data[i, :] = f(self.model_time_horizon)
+            )
+            / 2
+        )
 
-            self.carbon_intensity_dict[keys] = interp_data
-    """
+        # validated
+        transition_coefficient = np.zeros(
+            len(self.model_time_horizon)
+        )  # Named as alpha in RICE50
+        for i, _ in enumerate(self.model_time_horizon):
+            transition_coefficient[i] = 1 / (
+                1
+                + np.exp(-logistic_transition_speed * (i - backstop_transition_period))
+            )
 
-    # def _interpolate_coefficients(self):
-    #     interp_data = np.zeros((len(self.region_list), len(self.model_time_horizon)))
-    #     print(interp_data.shape)
-    #     print(self.model_time_horizon)
-
-    #     for i in range(len(self.region_list)):
-    #         f = interp1d(
-    #             self.data_time_horizon,
-    #             self.abatement_coefficient_a[i, :],
-    #             kind="linear",
-    #         )
-    #         interp_data[i, :] = f(self.model_time_horizon)
-
-    #     self.abatement_coefficient_a = interp_data
-
-    #     for i in range(len(self.region_list)):
-    #         f = interp1d(
-    #             self.data_time_horizon,
-    #             self.abatement_coefficient_b[i, :],
-    #             kind="linear",
-    #         )
-    #         interp_data[i, :] = f(self.model_time_horizon)
-    #     self.abatement_coefficient_b = interp_data
+        self.coefficient_multiplier = (
+            calibrated_correction_multiplier_starting_value_arr
+            - multiplier_difference * transition_coefficient
+        )
 
     def _interpolate_coefficients(self):
         interp_data_a = np.zeros((len(self.region_list), len(self.model_time_horizon)))
