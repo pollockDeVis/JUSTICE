@@ -122,6 +122,12 @@ class NeoclassicalEconomyModel:
         self.damages = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
+
+        # Initializing the abatement array
+        self.abatement = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        )
+
         # Initial 4D array for gdp and population.
         self.gdp = np.zeros(
             (
@@ -237,12 +243,23 @@ class NeoclassicalEconomyModel:
             self.output[:, timestep, :] - self.damages[:, timestep, :]
         )
 
+        # Subtract abatement from output
+        self.output[:, timestep, :] = (
+            self.output[:, timestep, :] - self.abatement[:, timestep, :]
+        )
+
     def apply_damage_to_output(self, timestep, damage):
         """
         This method applies damage to the output.
         Damage calculated
         """
         self.damages[:, timestep, :] = damage
+
+    def apply_abatement_to_output(self, timestep, abatement):
+        """
+        This method applies abatement to the output.
+        """
+        self.abatement[:, timestep, :] = abatement
 
     def _interpolate_gdp(self):
         for keys in self.gdp_dict.keys():
