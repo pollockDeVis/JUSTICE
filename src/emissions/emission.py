@@ -72,13 +72,15 @@ class OutputToEmissions:
     def run_emissions(self, scenario, timestep, output, emission_control_rate):
         """
         This method calculates the emissions for the economic output of a given scenario.
+        carbon intensity shape (57, 1001)
+        output shape (57, 1001)
         """
         # Calculate emissions
         self.emissions[:, timestep, :] = (
             self.carbon_intensity[:, timestep, :, scenario]
             * output
             * (
-                1 - emission_control_rate
+                1 - emission_control_rate[:, np.newaxis]
             )  # Emisison Control Rate is a lever and might have to take timestep
         )
 

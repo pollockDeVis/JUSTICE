@@ -85,6 +85,8 @@ class AbatementDefaults:
                 "transition_year_end": 2125,
                 # klogistic
                 "logistic_transition_speed_per_5_year": 0.25,
+                # expcost2 #Exponent of control cost function
+                "exponential_control_cost_function": 2.8,
             },
             "DICE": {},
         }

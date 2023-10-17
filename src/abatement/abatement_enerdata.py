@@ -51,6 +51,9 @@ class AbatementEnerdata:
                 "calibrated_correction_multiplier_starting_value"
             ]
         )
+        # self.exponential_control_cost_function = abatement_enerdata_defaults[
+        #     "exponential_control_cost_function"
+        # ] #TODO this is used for another abatement calculation - need to check later
         self.backstop_cost = kwargs.get(
             "backstop_cost", abatement_enerdata_defaults["backstop_cost"]
         )
@@ -140,6 +143,48 @@ class AbatementEnerdata:
             calibrated_correction_multiplier_starting_value_arr
             - multiplier_difference * transition_coefficient
         )
+
+    def calculate_abatement(self, timestep, emissions, emission_control_rate):
+        """
+        This method calculates the abatement for the emissions of a given timestep.
+        * y ~ ax + bx^4   --with multiplier-->   y ~ mx (ax + bx^4)
+        * with constraints (R-colf optim package) avoiding negative costs
+
+        * Abatement Cost ::   mx * (a(x^2)/2 + b(x^5)/5) * bau   :: [$/tCO2]x[GtCO2] ->  [ G$ ]
+        Shape of coefficient_multiplier:  (57,)
+        Shape of abatement_coefficient_a:  (57,)
+        Shape of abatement_coefficient_b:  (57,)
+        Shape of emission_control_rate:  (57,)
+        Shape of emissions:  (57, 1001)
+        """
+        # Calculate abatement
+        abatement = (
+            self.coefficient_multiplier[:, timestep, np.newaxis]
+            * (
+                self.abatement_coefficient_a[:, timestep, np.newaxis]
+                * ((np.power(emission_control_rate[:, np.newaxis], 2)) / 2)
+                + self.abatement_coefficient_b[:, timestep, np.newaxis]
+                * ((np.power(emission_control_rate[:, np.newaxis], 5)) / 5)
+            )
+            * (emissions / 1000)  #   Conversion:  [ G$ ] / 1000 -> [Trill $]
+        )
+        return abatement
+
+    def calculate_carbon_price(self, timestep, emission_control_rate):
+        """
+        This method calculates the carbon price (Carbon Price Enerdata) for the emissions of a given timestep.
+        * Carbon Price ::   y ~ mx (ax + bx^4)
+        * CPrice will result in [$/tCO2] by construction
+        """
+
+        # Calculate carbon price
+        carbon_price = self.coefficient_multiplier[:, timestep] * (
+            self.abatement_coefficient_a[:, timestep] * (emission_control_rate)
+            + self.abatement_coefficient_b[:, timestep]
+            * (np.power(emission_control_rate, 4))
+        )
+
+        return carbon_price
 
     def _interpolate_coefficients(self):
         interp_data_a = np.zeros((len(self.region_list), len(self.model_time_horizon)))
