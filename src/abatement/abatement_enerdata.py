@@ -82,16 +82,13 @@ class AbatementEnerdata:
             backstop_cost_decline_rate = np.power(
                 1 - self.backstop_cost_decline_rate_per_5_year, 1 / self.data_timestep
             )
-        elif self.timestep == self.data_timestep:
+        else:
             backstop_cost_decline_rate = 1 - self.backstop_cost_decline_rate_per_5_year
 
         # This is pbacktime in RICE50
-        global_backstop_cost_curve = np.zeros(len(self.model_time_horizon))
-
-        for i, _ in enumerate(self.model_time_horizon):
-            global_backstop_cost_curve[i] = self.backstop_cost * np.power(
-                backstop_cost_decline_rate, i
-            )
+        global_backstop_cost_curve = self.backstop_cost * np.power(
+            backstop_cost_decline_rate, np.arange(len(self.model_time_horizon))
+        )
 
         # Calculate calibrated_correction_multiplier
         calibrated_correction_multiplier = global_backstop_cost_curve[np.newaxis, :] / (
@@ -115,7 +112,7 @@ class AbatementEnerdata:
             logistic_transition_speed = (
                 self.logistic_transition_speed_per_5_year / self.data_timestep
             )
-        elif self.timestep == self.data_timestep:
+        else:
             logistic_transition_speed = self.logistic_transition_speed_per_5_year
 
         backstop_transition_period = time_horizon.year_to_timestep(
@@ -131,14 +128,13 @@ class AbatementEnerdata:
         )
 
         # validated
-        transition_coefficient = np.zeros(
-            len(self.model_time_horizon)
-        )  # Named as alpha in RICE50
-        for i, _ in enumerate(self.model_time_horizon):
-            transition_coefficient[i] = 1 / (
-                1
-                + np.exp(-logistic_transition_speed * (i - backstop_transition_period))
+        transition_coefficient = 1 / (
+            1
+            + np.exp(
+                -logistic_transition_speed
+                * (np.arange(len(self.model_time_horizon)) - backstop_transition_period)
             )
+        )
 
         self.coefficient_multiplier = (
             calibrated_correction_multiplier_starting_value_arr
