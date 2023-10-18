@@ -275,11 +275,14 @@ class CoupledFAIR(FAIR):
         emissions_data (numpy.ndarray): The new emissions data. Its shape should be (1001, ).
         """
 
-        # Verify shape of emissions data
-        expected_shape = (self.number_of_ensembles,)
-        assert (
-            emissions_data.shape == expected_shape
-        ), f"Emissions data shape: {emissions_data.shape}, expected shape {expected_shape}"
+        # Verify shape of emissions data #TODO: Later
+        # expected_shape = ( self.number_of_ensembles,)
+        # assert (
+        #     emissions_data.shape == expected_shape
+        # ), f"Emissions data shape: {emissions_data.shape}, expected shape {expected_shape}"
+
+        # Sum all the regions
+        emissions_data = np.sum(emissions_data, axis=0)
 
         fill_index = timestep + self.justice_start_index
 
