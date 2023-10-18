@@ -15,22 +15,19 @@ The following is the repository structure. JUSTICE is modular and each module is
 ┃    ┗ 📜 main.yml         # GitHub Actions for CI/CD workflows
 ┣ 📂 src
 ┃ ┣ 📂 economy
+┃ ┃  ┗ 📜 neoclassical.py
 ┃ ┣ 📂 emissions
+┃ ┃  ┗ 📜 emission.py
 ┃ ┣ 📂 climate
+┃ ┃  ┗ 📜 coupled_fair.py
+┃ ┃  ┗ 📜 climate.py
 ┃ ┣ 📂 damage
 ┃ └ 📂 welfare
 ┣ 📂 data
 ┃ ┣ 📂 input
-┃ └ 📂 output
+┃ ┗ 📂 output
 ┣ 📂 docs                  # Documentation using sphinx/read-the-docs
 ┃ ┗ 📂 source
-┃    ┣ 📜 conf.py          # Sphinx config
-┃    ┣ 📜 index.rst        # Documentation home page
-┃    ┣ 📜 economy.rst      # Documentation for economy module
-┃    ┣ 📜 emissions.rst    # Documentation for emissions module
-┃    ┣ 📜 climate.rst      # Documentation for climate module
-┃    ┣ 📜 damage.rst    # Documentation for damage module
-┃    └ 📜 welfare.rst   # Documentation for welfare module
 ┣ 📂 tests                     # Unit tests 
 ┃   ┣ 📜 test_economy.py
 ┃   ┣ 📜 test_emissions.py 
