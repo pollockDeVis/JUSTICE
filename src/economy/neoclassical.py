@@ -59,8 +59,8 @@ class NeoclassicalEconomyModel:
         )
 
         self.region_list = input_dataset.REGION_LIST
-        self.gdp_dict = copy.deepcopy(input_dataset.GDP_DICT)
-        self.population_dict = copy.deepcopy(input_dataset.POPULATION_DICT)
+        self.gdp_array = copy.deepcopy(input_dataset.GDP_ARRAY)
+        self.population_arr = copy.deepcopy(input_dataset.POPULATION_ARRAY)
 
         self.capital_init_arr = input_dataset.CAPITAL_INIT_ARRAY
         self.savings_rate_init_arr = (
@@ -83,9 +83,6 @@ class NeoclassicalEconomyModel:
             # Interpolate GDP
             self._interpolate_gdp()
             self._interpolate_population()
-
-        # List of scenarios
-        self.scenario_list = list(self.gdp_dict.keys())
 
         # Calculate the Optimal long-run Savings Rate
         # This will depend on the input paramters. This is also a upper limit of the savings rate
@@ -134,7 +131,7 @@ class NeoclassicalEconomyModel:
                 len(self.region_list),
                 len(self.model_time_horizon),
                 self.NUM_OF_ENSEMBLES,
-                len(self.scenario_list),
+                self.gdp_array.shape[2],
             )
         )
         self.population = np.zeros(
@@ -142,25 +139,30 @@ class NeoclassicalEconomyModel:
                 len(self.region_list),
                 len(self.model_time_horizon),
                 self.NUM_OF_ENSEMBLES,
-                len(self.scenario_list),
+                self.population_arr.shape[2],
             )
         )
 
+        # Assert that the number of scenarios in GDP and Population are the same.
+        assert (
+            self.gdp_array.shape[2] == self.population_arr.shape[2]
+        ), "Number of scenarios in GDP and Population are not the same."
+
         # Loop through the scenarios to broadcast each one to the ensemble dimension.
-        for idx, scenario in enumerate(self.scenario_list):
+        for idx in range(self.gdp_array.shape[2]):
             self.gdp[:, :, :, idx] = np.broadcast_to(
-                self.gdp_dict[scenario][:, :, np.newaxis],
+                self.gdp_array[:, :, idx, np.newaxis],
                 (
-                    self.gdp_dict[scenario].shape[0],
-                    self.gdp_dict[scenario].shape[1],
+                    self.gdp_array.shape[0],
+                    self.gdp_array.shape[1],
                     self.NUM_OF_ENSEMBLES,
                 ),
             )
             self.population[:, :, :, idx] = np.broadcast_to(
-                self.population_dict[scenario][:, :, np.newaxis],
+                self.population_arr[:, :, idx, np.newaxis],
                 (
-                    self.population_dict[scenario].shape[0],
-                    self.population_dict[scenario].shape[1],
+                    self.population_arr.shape[0],
+                    self.population_arr.shape[1],
                     self.NUM_OF_ENSEMBLES,
                 ),
             )
@@ -262,28 +264,40 @@ class NeoclassicalEconomyModel:
         self.abatement[:, timestep, :] = abatement
 
     def _interpolate_gdp(self):
-        for keys in self.gdp_dict.keys():
-            gdp_SSP = self.gdp_dict[keys]
-            interp_data = np.zeros((len(gdp_SSP), len(self.model_time_horizon)))
+        interp_data = np.zeros(
+            (
+                self.gdp_array.shape[0],
+                len(self.model_time_horizon),
+                self.gdp_array.shape[2],
+            )
+        )
 
-            for i in range(gdp_SSP.shape[0]):
-                f = interp1d(self.data_time_horizon, gdp_SSP[i, :], kind="linear")
-                interp_data[i, :] = f(self.model_time_horizon)
+        for i in range(self.gdp_array.shape[0]):
+            for j in range(self.gdp_array.shape[2]):
+                f = interp1d(
+                    self.data_time_horizon, self.gdp_array[i, :, j], kind="linear"
+                )
+                interp_data[i, :, j] = f(self.model_time_horizon)
 
-            self.gdp_dict[keys] = interp_data
+        self.gdp_array = interp_data
 
     def _interpolate_population(self):
-        for keys in self.population_dict.keys():
-            population_SSP = self.population_dict[keys]
-            interp_data = np.zeros((len(population_SSP), len(self.model_time_horizon)))
+        interp_data = np.zeros(
+            (
+                self.population_arr.shape[0],
+                len(self.model_time_horizon),
+                self.population_arr.shape[2],
+            )
+        )
 
-            for i in range(population_SSP.shape[0]):
+        for i in range(self.population_arr.shape[0]):
+            for j in range(self.population_arr.shape[2]):
                 f = interp1d(
-                    self.data_time_horizon, population_SSP[i, :], kind="linear"
+                    self.data_time_horizon, self.population_arr[i, :, j], kind="linear"
                 )
-                interp_data[i, :] = f(self.model_time_horizon)
+                interp_data[i, :, j] = f(self.model_time_horizon)
 
-            self.population_dict[keys] = interp_data
+        self.population_arr = interp_data
 
     def __getattribute__(self, __name: str) -> Any:
         """

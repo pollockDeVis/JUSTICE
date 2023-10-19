@@ -2,7 +2,7 @@
 This is the emissions module that converts the output into emissions.
 #'CO2 emissions in [GtCO2/year]'
 """
-
+from typing import Any
 import numpy as np
 from scipy.interpolate import interp1d
 import copy
@@ -20,24 +20,28 @@ class OutputToEmissions:
         # Saving the climate ensembles
         self.NUM_OF_ENSEMBLES = climate_ensembles
 
-        self.emissions_dict = copy.deepcopy(input_dataset.EMISSIONS_DICT)
-        self.gdp_dict = copy.deepcopy(input_dataset.GDP_DICT)
+        self.emissions_array = copy.deepcopy(input_dataset.EMISSIONS_ARRAY)
+        self.gdp_array = copy.deepcopy(input_dataset.GDP_ARRAY)
         self.region_list = input_dataset.REGION_LIST
-
-        self.carbon_intensity_dict = {}
-
-        # List of scenarios
-        self.scenario_list = list(self.gdp_dict.keys())
-
-        for scenarios in self.scenario_list:  # self.gdp_dict.keys()
-            self.carbon_intensity_dict[scenarios] = (
-                np.array(self.emissions_dict[scenarios]) / self.gdp_dict[scenarios]
-            )
 
         self.timestep = time_horizon.timestep
         self.data_timestep = time_horizon.data_timestep
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
+
+        # Initializing the carbon intensity 3D array
+        self.carbon_intensity_array = np.zeros(
+            (
+                len(self.region_list),
+                len(self.data_time_horizon),
+                self.gdp_array.shape[2],
+            )
+        )
+
+        for idx in range(self.gdp_array.shape[2]):
+            self.carbon_intensity_array[:, :, idx] = (
+                self.emissions_array[:, :, idx] / self.gdp_array[:, :, idx]
+            )
 
         if self.timestep != self.data_timestep:
             # Interpolate Carbon Intensity Dictionary
@@ -54,17 +58,17 @@ class OutputToEmissions:
                 len(self.region_list),
                 len(self.model_time_horizon),
                 self.NUM_OF_ENSEMBLES,
-                len(self.scenario_list),
+                self.carbon_intensity_array.shape[2],
             )
         )
 
-        # Loop through the scenarios in carbon intensity dict to broadcast each one to the ensemble dimension.
-        for idx, scenario in enumerate(self.scenario_list):
+        # Loop through the scenarios in carbon intensity array to broadcast each one to the ensemble dimension.
+        for idx in range(self.carbon_intensity_array.shape[2]):
             self.carbon_intensity[:, :, :, idx] = np.broadcast_to(
-                self.carbon_intensity_dict[scenario][:, :, np.newaxis],
+                self.carbon_intensity_array[:, :, idx, np.newaxis],
                 (
-                    self.carbon_intensity_dict[scenario].shape[0],
-                    self.carbon_intensity_dict[scenario].shape[1],
+                    self.carbon_intensity_array.shape[0],
+                    self.carbon_intensity_array.shape[1],
                     self.NUM_OF_ENSEMBLES,
                 ),
             )
@@ -87,16 +91,27 @@ class OutputToEmissions:
         return self.emissions[:, timestep, :]
 
     def _interpolate_carbon_intensity(self):
-        for keys in self.carbon_intensity_dict.keys():
-            carbon_intensity_SSP = self.carbon_intensity_dict[keys]
-            interp_data = np.zeros(
-                (len(carbon_intensity_SSP), len(self.model_time_horizon))
+        interp_data = np.zeros(
+            (
+                self.carbon_intensity_array.shape[0],
+                len(self.model_time_horizon),
+                self.carbon_intensity_array.shape[2],
             )
+        )
 
-            for i in range(carbon_intensity_SSP.shape[0]):
+        for i in range(self.carbon_intensity_array.shape[0]):
+            for j in range(self.carbon_intensity_array.shape[2]):
                 f = interp1d(
-                    self.data_time_horizon, carbon_intensity_SSP[i, :], kind="linear"
+                    self.data_time_horizon,
+                    self.carbon_intensity_array[i, :, j],
+                    kind="linear",
                 )
-                interp_data[i, :] = f(self.model_time_horizon)
+                interp_data[i, :, j] = f(self.model_time_horizon)
 
-            self.carbon_intensity_dict[keys] = interp_data
+        self.carbon_intensity_array = interp_data
+
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)

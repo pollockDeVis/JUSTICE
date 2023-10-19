@@ -5,6 +5,7 @@ This file contains the DataLoader class for the JUSTICE model.
 import os
 import pandas as pd
 import numpy as np
+import h5py
 
 
 class DataLoader:
@@ -26,63 +27,65 @@ class DataLoader:
         root_directory = os.path.dirname(current_directory)
 
         # Create the data file path
-        data_file_path = os.path.join(root_directory, "data")
+        data_file_path = os.path.join(root_directory, "data/input")
 
         ###############################################################################
-        # Load the Economic data in pickle format
+        # Load the Economic data in hdf5 format
         ###############################################################################
 
         # Load GDP
-        with open(os.path.join(data_file_path, "gdp_dict.pickle"), "rb") as f:
-            self.GDP_DICT = pd.read_pickle(f)
+        with h5py.File(os.path.join(data_file_path, "gdp_array.hdf5"), "r") as f:
+            self.GDP_ARRAY = f["gdp"][:]
 
         # Load the population
-        with open(os.path.join(data_file_path, "population_dict.pickle"), "rb") as f:
-            self.POPULATION_DICT = pd.read_pickle(f)
-
-        # Load the capital stock initial values
-        with open(os.path.join(data_file_path, "capital_init_arr.pickle"), "rb") as f:
-            self.CAPITAL_INIT_ARRAY = pd.read_pickle(f)
-
-        # Load the Saving Rate initial values
-        with open(
-            os.path.join(data_file_path, "savings_rate_init_arr.pickle"), "rb"
-        ) as f:
-            self.SAVING_RATE_INIT_ARRAY = pd.read_pickle(f)
-
-        # Load the region list
-        with open(os.path.join(data_file_path, "regions_list.pkl"), "rb") as f:
-            self.REGION_LIST = pd.read_pickle(f)
-
-        # Load PPP2MER conversion factor
-        with open(os.path.join(data_file_path, "ppp2mer_arr.pkl"), "rb") as f:
-            self.PPP_TO_MER_CONVERSION_FACTOR = pd.read_pickle(f)
+        with h5py.File(os.path.join(data_file_path, "population_array.hdf5"), "r") as f:
+            self.POPULATION_ARRAY = f["population"][:]
 
         # Load the emissions dictionary
-        with open(os.path.join(data_file_path, "emissions_dict.pickle"), "rb") as f:
-            self.EMISSIONS_DICT = pd.read_pickle(f)
+        with h5py.File(os.path.join(data_file_path, "emissions_array.hdf5"), "r") as f:
+            self.EMISSIONS_ARRAY = f["emissions"][:]
+
+        # Load the capital stock initial values
+        with h5py.File(os.path.join(data_file_path, "capital_init.hdf5"), "r") as f:
+            self.CAPITAL_INIT_ARRAY = f["capital_init"][:]
+
+        # Load the Saving Rate initial values
+        with h5py.File(
+            os.path.join(data_file_path, "savings_rate_init.hdf5"), "r"
+        ) as f:
+            self.SAVING_RATE_INIT_ARRAY = f["savings_rate_init"][:]
+
+        # Load the region list
+        with h5py.File(os.path.join(data_file_path, "region_list.hdf5"), "r") as f:
+            self.REGION_LIST = f["region_list"][:]
+
+        # Load PPP2MER conversion factor
+        with h5py.File(os.path.join(data_file_path, "ppp2mer.hdf5"), "r") as f:
+            self.PPP_TO_MER_CONVERSION_FACTOR = f["ppp2mer"][:]
 
         # Load the Temperature Downscaler Coefficients Alpha
-        with open(
-            os.path.join(data_file_path, "alpha_downscaler_coefficient.pickle"),
-            "rb",
+        with h5py.File(
+            os.path.join(data_file_path, "alpha_downscaler_coefficient.hdf5"), "r"
         ) as f:
-            self.TEMPERATURE_DOWNSCALER_COEFFICIENT_ALPHA = pd.read_pickle(f)
+            self.TEMPERATURE_DOWNSCALER_COEFFICIENT_ALPHA = f[
+                "alpha_downscaler_coefficient"
+            ][:]
 
         # Load the Temperature Downscaler Coefficients Beta
-        with open(
-            os.path.join(data_file_path, "beta_downscaler_coefficient.pickle"),
-            "rb",
+        with h5py.File(
+            os.path.join(data_file_path, "beta_downscaler_coefficient.hdf5"), "r"
         ) as f:
-            self.TEMPERATURE_DOWNSCALER_COEFFICIENT_BETA = pd.read_pickle(f)
+            self.TEMPERATURE_DOWNSCALER_COEFFICIENT_BETA = f[
+                "beta_downscaler_coefficient"
+            ][:]
 
         # Load Abatement Coefficients
-        with open(
-            os.path.join(data_file_path, "abatement_coefficient_a.pickle"), "rb"
+        with h5py.File(
+            os.path.join(data_file_path, "abatement_coefficient_a.hdf5"), "r"
         ) as f:
-            self.ABATEMENT_COEFFICIENT_A = pd.read_pickle(f)
+            self.ABATEMENT_COEFFICIENT_A = f["abatement_coefficient_a"][:]
 
-        with open(
-            os.path.join(data_file_path, "abatement_coefficient_b.pickle"), "rb"
+        with h5py.File(
+            os.path.join(data_file_path, "abatement_coefficient_b.hdf5"), "r"
         ) as f:
-            self.ABATEMENT_COEFFICIENT_B = pd.read_pickle(f)
+            self.ABATEMENT_COEFFICIENT_B = f["abatement_coefficient_b"][:]
