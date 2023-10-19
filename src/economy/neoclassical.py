@@ -143,6 +143,15 @@ class NeoclassicalEconomyModel:
             )
         )
 
+        # Initializing the 4D array for baseline per capita growth
+        self.baseline_per_capita_growth = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.NUM_OF_ENSEMBLES,
+                self.population_arr.shape[2],
+            )
+        )
         # Assert that the number of scenarios in GDP and Population are the same.
         assert (
             self.gdp_array.shape[2] == self.population_arr.shape[2]
@@ -166,6 +175,9 @@ class NeoclassicalEconomyModel:
                     self.NUM_OF_ENSEMBLES,
                 ),
             )
+
+        # Calculate the baseline per capita growth
+        self._calculate_baseline_per_capita_growth()
 
     def run(self, scenario, timestep, savings_rate):  # **kwargs
         # Reshaping savings rate
@@ -298,6 +310,24 @@ class NeoclassicalEconomyModel:
                 interp_data[i, :, j] = f(self.model_time_horizon)
 
         self.population_arr = interp_data
+
+    def _calculate_baseline_per_capita_growth(self):
+        """
+        This method calculates the baseline per capita growth.
+        """
+        # Calculate the baseline per capita growth
+        self.baseline_per_capita_growth = self.gdp / self.population
+
+        # Divide all t+1 timestep by preceding timestep
+        self.baseline_per_capita_growth[:, 1:, :, :] /= self.baseline_per_capita_growth[
+            :, :-1, :, :
+        ]
+        # Take the power of 1/timestep and subtract 1
+        self.baseline_per_capita_growth **= 1 / self.timestep
+        self.baseline_per_capita_growth -= 1
+
+        # Set the first timestep to zero
+        self.baseline_per_capita_growth[:, 0, :, :] = 0
 
     def __getattribute__(self, __name: str) -> Any:
         """
