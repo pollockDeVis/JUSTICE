@@ -20,20 +20,18 @@ The following is the repository structure. JUSTICE is modular and each module is
 ┃ ┃  ┗ 📜 emission.py
 ┃ ┣ 📂 climate
 ┃ ┃  ┗ 📜 coupled_fair.py
-┃ ┃  ┗ 📜 climate.py
+┃ ┃  ┗ 📜 temperature_downscaler.py
+┃ ┃  ┗ 📜 download_fair_configurations.py
 ┃ ┣ 📂 damage
+┃ ┃  ┗ 📜 kalkuhl.py
 ┃ └ 📂 welfare
+┃   ┣ 📜 utilitarian.py
 ┣ 📂 data
 ┃ ┣ 📂 input
 ┃ ┗ 📂 output
 ┣ 📂 docs                  # Documentation using sphinx/read-the-docs
 ┃ ┗ 📂 source
 ┣ 📂 tests                     # Unit tests 
-┃   ┣ 📜 test_economy.py
-┃   ┣ 📜 test_emissions.py 
-┃   ┣ 📜 test_climate.py
-┃   ┣ 📜 test_damage.py
-┃   └ 📜 test_welfare.py
 ┣ 📜 .gitignore                
 ┣ 📜 README.md                 
 ┗ 📜 LICENSE.md                
@@ -71,6 +69,7 @@ L(t) = L(t - 1)[1 + g_{L}(t)]
 $$
 
 Growth rate of population (calibrated to a value of 13.4% per 5 years so that population equals UN projection for 2050)
+
 $$
 g_{L}(t) = g_{L}{(t - 1)}/(1 + \delta_{L})
 $$
