@@ -24,6 +24,24 @@ class Scenario(Enum):
     SSP585 = (7, SSP.SSP5, "ssp585")  # SSP5-RCP8.5
 
 
+def get_climate_scenario(index):
+    scenarios = list(Scenario)
+    if index < 0 or index >= len(scenarios):
+        raise ValueError(
+            "Index out of range. It should be between 0 and " + str(len(scenarios) - 1)
+        )
+    return scenarios[index].value[2]
+
+
+def get_economic_scenario(index):
+    scenarios = list(Scenario)
+    if index < 0 or index >= len(scenarios):
+        raise ValueError(
+            "Index out of range. It should be between 0 and " + str(len(scenarios) - 1)
+        )
+    return scenarios[index].value[1].value
+
+
 class ModelRunSpec(Enum):
     """
     Model Specifications
