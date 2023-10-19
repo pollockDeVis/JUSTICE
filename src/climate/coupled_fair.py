@@ -65,7 +65,7 @@ current_directory = os.path.dirname(os.path.realpath(__file__))
 root_directory = os.path.dirname(os.path.dirname(current_directory))
 
 # Create the data file path
-data_file_path = os.path.join(root_directory, "data")
+data_file_path = os.path.join(root_directory, "data/input")
 
 # Modified version of FAIR where class is inherited from FAIR and new methods are added
 
