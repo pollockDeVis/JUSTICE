@@ -93,6 +93,8 @@ class CoupledFAIR(FAIR):
         self.end_year_fair = time_horizon.end_year
         self.timestep_justice = time_horizon.timestep
 
+        scenarios = [scenarios]  # Converting into a list
+
         self.fair_fill_data(scenarios)
 
         # End of filling in configs

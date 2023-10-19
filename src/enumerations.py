@@ -2,39 +2,26 @@
 This file contains all custom-made enumerations for JUSTICE model.
 """
 
-from enum import Enum
+from enum import Enum, IntEnum
 
 
-class SSP(Enum):
-    SSP1 = "SSP1"
-    SSP2 = "SSP2"
-    SSP3 = "SSP3"
-    SSP4 = "SSP4"
-    SSP5 = "SSP5"
+class SSP(IntEnum):
+    SSP1 = 0
+    SSP2 = 1
+    SSP3 = 2
+    SSP4 = 3
+    SSP5 = 4
 
 
-class RCP(Enum):
-    RCP19 = "ssp119"  # SSP1-1.9
-    RCP26 = "ssp126"  # SSP1-2.6
-    RCP45 = "ssp245"  # SSP2-4.5
-    RCP70 = "ssp370"  # SSP3-7.0
-    RCP34 = "ssp434"  # SSP4-3.4
-    RCP60 = "ssp460"  # SSP4-6.0
-    RCP34_OVER = "ssp534-over"  # SSP5-3.4-overshoot
-    RCP85 = "ssp585"  # SSP5-8.5
-
-
-# Mapping Dictionary for SSP to RCP
-
-ssp_to_rcp = {
-    SSP.SSP1: RCP.RCP19,
-    SSP.SSP2: RCP.RCP26,
-    SSP.SSP3: RCP.RCP70,
-    SSP.SSP4: RCP.RCP34,
-    SSP.SSP4: RCP.RCP60,
-    SSP.SSP5: RCP.RCP34_OVER,
-    SSP.SSP5: RCP.RCP85,
-}
+class Scenario(Enum):
+    SSP119 = (0, SSP.SSP1, "ssp119")  # SSP1-RCP1.9
+    SSP126 = (1, SSP.SSP1, "ssp126")  # SSP1-RCP2.6
+    SSP245 = (2, SSP.SSP2, "ssp245")  # SSP2-RCP4.5
+    SSP370 = (3, SSP.SSP3, "ssp370")  # SSP3-RCP7.0
+    SSP434 = (4, SSP.SSP4, "ssp434")  # SSP4-RCP3.4
+    SSP460 = (5, SSP.SSP4, "ssp460")  # SSP4-RCP6.0
+    SSP534 = (6, SSP.SSP5, "ssp534-over")  # SSP5-RCP3.4-overshoot
+    SSP585 = (7, SSP.SSP5, "ssp585")  # SSP5-RCP8.5
 
 
 class ModelRunSpec(Enum):
