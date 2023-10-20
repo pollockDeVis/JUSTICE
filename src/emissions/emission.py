@@ -90,6 +90,47 @@ class OutputToEmissions:
 
         return self.emissions[:, timestep, :]
 
+    def emission_downscaler(self, aggregated_emissions):
+        """
+        This method downscales total emissions per timestep to regional emissions.
+        """
+        emissions_sum = np.sum(self.emissions, axis=0)
+
+        # Check if emissions sum is zero anywhere
+        if np.any(emissions_sum == 0):
+            # If so, raise a warning
+            print(
+                "Warning: Emissions sum is zero for some timesteps. This will result in NaN values."
+            )
+        # Calculate the ratio of emissions per region
+        emissions_ratio = self.emissions / emissions_sum[np.newaxis, :, :]
+        # emissions_ratio = np.divide(
+        #     self.emissions,
+        #     emissions_sum[None, :, :],
+        #     where=emissions_sum[None, :, :] != 0,
+        # )
+
+        # Multiply the aggregated emissions by the ratio
+        downscaled_emissions = emissions_ratio * aggregated_emissions
+
+        return downscaled_emissions
+
+    def get_fossil_and_land_use_emissions(self, land_use_emissions):
+        """
+        This method calculates the total CO2 fossil fuel and CO2 Land Use emissions.
+        """
+        print("Land use before", land_use_emissions[0, 0])
+        # Get downscaled land use emissions
+        land_use_emissions = self.emission_downscaler(land_use_emissions)
+        print("Land use after", (land_use_emissions.sum(axis=0))[0, 0])
+
+        # Sum CO2 fossil fuel and CO2 Land Use emissions
+        fossil_and_land_use_emissions = self.emissions + land_use_emissions
+        print("Emission before", self.emissions[0, 0, 0])
+        print("Emission after", fossil_and_land_use_emissions[0, 0, 0])
+
+        return fossil_and_land_use_emissions
+
     def _interpolate_carbon_intensity(self):
         interp_data = np.zeros(
             (

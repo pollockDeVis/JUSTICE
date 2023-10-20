@@ -711,6 +711,30 @@ class CoupledFAIR(FAIR):
                 ],
             )
 
+    def get_exogenous_land_use_emissions(self, fair_scenario):
+        """Get the exogenous land use emissions for a given scenario.
+
+        Parameters
+        ----------
+        scenario : str
+            The name of the scenario to get the emissions for.
+
+        Returns
+        -------
+        land_use_emissions : np.ndarray
+            The land use emissions for the given scenario for the whole world.
+        """
+
+        land_use_emissions = self.emissions.sel(
+            specie="CO2 AFOLU", scenario=[fair_scenario]
+        )
+
+        land_use_emissions = (land_use_emissions.values)[
+            (self.justice_start_index - self.timestep_justice) :, 0, :
+        ] / 1e3  # Converting to GtCO2 from MtCO2
+
+        return land_use_emissions
+
     def calculate_toa_ocean_airborne_fraction(self):
         """Calculate the fraction of airborne emissions that are taken up by the
         ocean.

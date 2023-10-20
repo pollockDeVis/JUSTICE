@@ -45,6 +45,12 @@ class NeoclassicalEconomyModel:
             "depreciation_rate_capital",
             econ_neoclassical_defaults["depreciation_rate_capital"],
         )
+
+        self.elasticity_of_output_to_capital = kwargs.get(
+            "elasticity_of_output_to_capital",
+            econ_neoclassical_defaults["elasticity_of_output_to_capital"],
+        )
+
         self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
             "elasticity_of_marginal_utility_of_consumption",
             econ_neoclassical_defaults["elasticity_of_marginal_utility_of_consumption"],
@@ -53,9 +59,8 @@ class NeoclassicalEconomyModel:
             "pure_rate_of_social_time_preference",
             econ_neoclassical_defaults["pure_rate_of_social_time_preference"],
         )
-        self.elasticity_of_output_to_capital = kwargs.get(
-            "elasticity_of_output_to_capital",
-            econ_neoclassical_defaults["elasticity_of_output_to_capital"],
+        self.inequality_aversion = kwargs.get(
+            "inequality_aversion", econ_neoclassical_defaults["inequality_aversion"]
         )
 
         self.region_list = input_dataset.REGION_LIST
@@ -176,8 +181,8 @@ class NeoclassicalEconomyModel:
                 ),
             )
 
-        # Calculate the baseline per capita growth
-        self._calculate_baseline_per_capita_growth()
+        # Calculate the baseline per capita growth #TODO to be used in the complex version of Damage Function
+        self.calculate_baseline_per_capita_growth()
 
     def run(self, scenario, timestep, savings_rate):  # **kwargs
         # Reshaping savings rate
@@ -275,6 +280,105 @@ class NeoclassicalEconomyModel:
         """
         self.abatement[:, timestep, :] = abatement
 
+    def calculate_social_cost_of_carbon(
+        self, fossil_and_land_use_emissions, savings_rate, cooperation=False
+    ):
+        """
+        This method calculates the social cost of carbon.
+        """
+        # emissions = emissions.sum(axis=0)
+        # fair_scenario = get_climate_scenario(scenario)
+
+        # total_emissions = emissions + land_use_emissions
+        print("Total Emissions", fossil_and_land_use_emissions.shape)
+
+        savings_rate = savings_rate[:, :, np.newaxis]
+        investment = savings_rate * self.output
+        consumption = self.output - investment
+        print("consumption", consumption.shape)
+
+        social_cost_of_carbon = 0
+        # # Calculate the social cost of carbon
+        # social_cost_of_carbon = (
+        #     climate_model.calculate_temperature_change(emissions=emissions)
+        #     * self.inequality_aversion
+        #     * self.output
+        # )
+
+        # if cooperation:
+        #     social_cost_of_carbon = social_cost_of_carbon / self.NUM_OF_ENSEMBLES
+
+        return social_cost_of_carbon
+
+    def get_consumption_per_capita(self, scenario, savings_rate):
+        # Assert if scenario is not within the range of 0 - 4
+        assert (
+            scenario >= 0 and scenario < self.gdp.shape[3]
+        ), "Scenario is not within the range of 0 - 4"
+        # Reshape savings rate from 2D to 3D
+
+        savings_rate = savings_rate[:, :, np.newaxis]
+
+        investment = savings_rate * self.output
+        print(investment.shape)
+        consumption = self.output - investment
+        consumption_per_capita = 1e3 * consumption / self.population[:, :, :, scenario]
+
+        return consumption_per_capita
+
+    def get_capital_stock(self, scenario, savings_rate):
+        """
+        This method returns the capital stock.
+        """
+        # Assert if scenario is not within the range of 0 - 4
+        assert (
+            scenario >= 0 and scenario < self.gdp.shape[3]
+        ), "Scenario is not within the range of 0 - 4"
+
+        # Reshape savings rate from 2D to 3D
+        savings_rate = savings_rate[:, :, np.newaxis]
+
+        investment = savings_rate * self.output
+        capital_stock = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.NUM_OF_ENSEMBLES,
+            )
+        )
+
+        # Setting the initial capital stock
+        capital_stock[:, 1, :] = self.capital_tfp[:, 0, :]
+        print(capital_stock[0, 1, 0])
+
+        for t in range(2, len(self.model_time_horizon)):
+            capital_stock[:, t, :] = (
+                capital_stock[:, t - 1, :]
+                * (
+                    (1 - (self.depreciation_rate_capital / self.data_timestep))
+                    ** self.data_timestep
+                )
+            ) + (investment[:, t - 1, :] * self.timestep)
+
+        return capital_stock
+
+    def get_interest_rate(self, scenario, savings_rate):
+        """
+        This method returns the interest rate.
+        """
+
+        consumption_per_capita = self.get_consumption_per_capita(
+            scenario=scenario, savings_rate=savings_rate
+        )
+
+        interest_rate = (
+            (1 + self.pure_rate_of_social_time_preference)
+            * (consumption_per_capita[:, 1:, :] / consumption_per_capita[:, :-1, :])
+            ** (self.elasticity_of_marginal_utility_of_consumption / self.timestep)
+        ) - 1
+
+        return interest_rate
+
     def _interpolate_gdp(self):
         interp_data = np.zeros(
             (
@@ -311,7 +415,7 @@ class NeoclassicalEconomyModel:
 
         self.population_arr = interp_data
 
-    def _calculate_baseline_per_capita_growth(self):
+    def calculate_baseline_per_capita_growth(self):
         """
         This method calculates the baseline per capita growth.
         """

@@ -16,12 +16,15 @@ class EconomyDefaults:
                 "capital_elasticity_in_production_function": 0.3,
                 # The annual depreciation rate on capital. #abbreviated to dk
                 "depreciation_rate_capital": 0.1,
+                # The Elasticity of Output with respect to Capital. #Zeta in paper, not named in code (hardcoded)
+                "elasticity_of_output_to_capital": 0.004,
+                # Normative Parameters
                 # Specifies the elasticity of the marginal utility of consumption. #elasmu in the code or eta in the paper
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
                 # The discount rate, a.k.a the initial rate of social time preference. #prstp in code
                 "pure_rate_of_social_time_preference": 0.015,
-                # The Elasticity of Output with respect to Capital. #Zeta in paper, not named in code (hardcoded)
-                "elasticity_of_output_to_capital": 0.004,
+                # Inequality aversion parameter. #labelled gamma #Range: [0,1.5]; good options: | 0 | 0.5 | 1.45 | 2 |
+                "inequality_aversion": 0.5,
             },
             "POST_KEYNESIAN": {"capital_elasticity_in_production_function": 0.1},
         }
