@@ -351,7 +351,7 @@ class CoupledFAIR(FAIR):
         Step wise run of the FAIR model. Historical Runs from 0 - 264
         JUSTICE Runs from 265 - 549
         """
-        print(f"i_timepoint: {i_timepoint}")
+        # print(f"i_timepoint: {i_timepoint}")
         if self._routine_flags["ghg"]:
             # 1. alpha scaling
             self.alpha_lifetime_array[
@@ -714,7 +714,7 @@ class CoupledFAIR(FAIR):
                 ],
             )
 
-    def get_exogenous_land_use_emissions(self, fair_scenario):
+    def get_exogenous_land_use_emissions(self, scenarios):
         """Get the exogenous land use emissions for a given scenario.
 
         Parameters
@@ -727,6 +727,8 @@ class CoupledFAIR(FAIR):
         land_use_emissions : np.ndarray
             The land use emissions for the given scenario for the whole world.
         """
+
+        fair_scenario = get_climate_scenario(scenarios)
 
         land_use_emissions = self.emissions.sel(
             specie="CO2 AFOLU", scenario=[fair_scenario]

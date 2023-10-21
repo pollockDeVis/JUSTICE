@@ -258,11 +258,19 @@ class NeoclassicalEconomyModel:
                 (1 - self.capital_elasticity_in_production_function),
             )
         )
-        # Subtract damages from output
-        self.output[:, timestep, :] = (
-            self.output[:, timestep, :] - self.damages[:, timestep, :]
-        )
+        # Apply damages to output
+        # Check if the timestep is not zero
+        # Check if timestep is 0 or 1
 
+        if timestep == 0 or timestep == 1:  # Damage is zero in the first timestep
+            self.output[:, timestep, :] = self.output[:, timestep, :]
+        else:
+            self.output[:, timestep, :] = (
+                self.output[:, timestep, :]
+                * self.damages[
+                    :, timestep, :
+                ]  # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
+            )
         # Subtract abatement from output
         self.output[:, timestep, :] = (
             self.output[:, timestep, :] - self.abatement[:, timestep, :]
