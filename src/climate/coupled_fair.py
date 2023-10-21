@@ -271,6 +271,8 @@ class CoupledFAIR(FAIR):
 
         self.run_historical_temperature_calculation()
 
+        return self.number_of_ensembles
+
     def compute_temperature_from_emission(self, timestep, emissions_data):
         """
         Fill emissions for a given timestep with new emissions and computes the temperature rise in celcius.
