@@ -8,7 +8,7 @@ import copy
 
 
 from src.default_parameters import EconomyDefaults
-from src.enumerations import Economy
+from src.enumerations import Economy, get_economic_scenario
 
 
 class NeoclassicalEconomyModel:
@@ -185,6 +185,7 @@ class NeoclassicalEconomyModel:
         self.calculate_baseline_per_capita_growth()
 
     def run(self, scenario, timestep, savings_rate):  # **kwargs
+        scenario = get_economic_scenario(scenario)
         # Reshaping savings rate
         if len(savings_rate.shape) == 1:
             savings_rate = savings_rate.reshape(-1, 1)

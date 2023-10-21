@@ -52,6 +52,7 @@ import os
 import copy
 from scipy.interpolate import interp1d
 from typing import Any
+from src.enumerations import get_climate_scenario
 
 
 # FaIR Model Constants
@@ -93,6 +94,7 @@ class CoupledFAIR(FAIR):
         self.end_year_fair = time_horizon.end_year
         self.timestep_justice = time_horizon.timestep
 
+        scenarios = get_climate_scenario(scenarios)
         scenarios = [scenarios]  # Converting into a list
 
         self.fair_fill_data(scenarios)

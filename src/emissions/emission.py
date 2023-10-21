@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 from scipy.interpolate import interp1d
 import copy
+from src.enumerations import get_economic_scenario
 
 
 class OutputToEmissions:
@@ -79,6 +80,8 @@ class OutputToEmissions:
         carbon intensity shape (57, 1001)
         output shape (57, 1001)
         """
+
+        scenario = get_economic_scenario(scenario)
         # Calculate emissions
         self.emissions[:, timestep, :] = (
             self.carbon_intensity[:, timestep, :, scenario]
