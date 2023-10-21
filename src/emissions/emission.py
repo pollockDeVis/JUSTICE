@@ -96,19 +96,13 @@ class OutputToEmissions:
         """
         emissions_sum = np.sum(self.emissions, axis=0)
 
-        # Check if emissions sum is zero anywhere
-        if np.any(emissions_sum == 0):
-            # If so, raise a warning
-            print(
-                "Warning: Emissions sum is zero for some timesteps. This will result in NaN values."
+        with np.errstate(divide="ignore", invalid="ignore"):
+            emissions_ratio = np.divide(
+                self.emissions,
+                emissions_sum[None, :, :],
+                out=np.zeros_like(self.emissions),
+                where=emissions_sum[None, :, :] != 0,
             )
-        # Calculate the ratio of emissions per region
-        emissions_ratio = self.emissions / emissions_sum[np.newaxis, :, :]
-        # emissions_ratio = np.divide(
-        #     self.emissions,
-        #     emissions_sum[None, :, :],
-        #     where=emissions_sum[None, :, :] != 0,
-        # )
 
         # Multiply the aggregated emissions by the ratio
         downscaled_emissions = emissions_ratio * aggregated_emissions

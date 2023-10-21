@@ -6,5 +6,67 @@ Derived from RICE50 model which is based on Berger et al. (2020).
 """
 import numpy as np
 import pandas as pd
+from src.enumerations import get_economic_scenario
 
-from src.default_parameters import EconomyDefaults
+
+def calculate_utilitarian_welfare(economy, time_horizon, scenario, savings_rate):
+    scenario = get_economic_scenario(scenario)
+
+    timestep_list = np.arange(
+        0, len(time_horizon.model_time_horizon), time_horizon.timestep
+    )
+
+    # Calculate the discount rate
+    discount_rate = 1 / (
+        np.power(
+            (1 + economy.pure_rate_of_social_time_preference),
+            (time_horizon.timestep * (timestep_list)),
+        )
+    )
+    # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1)
+    discount_rate = discount_rate[:, np.newaxis]
+
+    # Calculate the total population for each timestep
+    total_population = np.sum(economy.population[:, :, :, scenario], axis=0)
+
+    # Calculate the population ratio for each timestep
+    population_ratio = economy.population[:, :, :, scenario] / total_population
+
+    # Fetch Consumption per Capita
+    consumption_per_capita = economy.get_consumption_per_capita(scenario, savings_rate)
+
+    # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
+    consumption_per_capita_inequality_aversion = np.power(
+        consumption_per_capita, 1 - economy.inequality_aversion
+    )
+
+    # Calculate the population weighted consumption per capita
+    population_weighted_consumption_per_capita = (
+        population_ratio * consumption_per_capita_inequality_aversion
+    )
+
+    # Calculate the disentangled utility
+    disentangled_utility = np.sum(population_weighted_consumption_per_capita, axis=0)
+
+    disentangled_utility_powered = np.power(
+        disentangled_utility,
+        (
+            (1 - economy.elasticity_of_marginal_utility_of_consumption)
+            / (1 - economy.inequality_aversion)
+        ),
+    )
+
+    discount_rate = np.tile(discount_rate, 1001)
+    welfare_utilitarian = np.sum(
+        (
+            (
+                disentangled_utility_powered
+                / (1 - economy.elasticity_of_marginal_utility_of_consumption)
+            )
+            - 1
+        )
+        * discount_rate,
+        axis=0,
+    )
+
+    return disentangled_utility, welfare_utilitarian

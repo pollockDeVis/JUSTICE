@@ -280,33 +280,42 @@ class NeoclassicalEconomyModel:
         """
         self.abatement[:, timestep, :] = abatement
 
+    def calculate_consumption(self, savings_rate):  # Validated
+        """
+        This method calculates the consumption.
+        """
+        # Reshape savings rate from 2D to 3D
+        savings_rate = savings_rate[:, :, np.newaxis]
+
+        investment = savings_rate * self.output
+        consumption = self.output - investment
+
+        return consumption
+
     def calculate_social_cost_of_carbon(
-        self, fossil_and_land_use_emissions, savings_rate, cooperation=False
+        self, fossil_and_land_use_emissions, savings_rate, regional=True
     ):
         """
         This method calculates the social cost of carbon.
         """
-        # emissions = emissions.sum(axis=0)
-        # fair_scenario = get_climate_scenario(scenario)
+        # TODO: Calculations are currently not correct. Need to fix it.
 
         # total_emissions = emissions + land_use_emissions
         print("Total Emissions", fossil_and_land_use_emissions.shape)
 
-        savings_rate = savings_rate[:, :, np.newaxis]
-        investment = savings_rate * self.output
-        consumption = self.output - investment
+        consumption = self.calculate_consumption(savings_rate)
         print("consumption", consumption.shape)
 
-        social_cost_of_carbon = 0
-        # # Calculate the social cost of carbon
-        # social_cost_of_carbon = (
-        #     climate_model.calculate_temperature_change(emissions=emissions)
-        #     * self.inequality_aversion
-        #     * self.output
-        # )
+        # Calculate the social cost of carbon
+        #  scc[t, n] = (-1000 * eq_E[t, n]) / eq_cc[t, n]
 
-        # if cooperation:
-        #     social_cost_of_carbon = social_cost_of_carbon / self.NUM_OF_ENSEMBLES
+        emissions_marginal = np.diff(fossil_and_land_use_emissions, axis=1)
+        consumption_marginal = np.diff(consumption, axis=1)
+
+        print("emissions_marginal", emissions_marginal[0, 0, 0])
+        print("consumption_marginal", consumption_marginal[0, 0, 0])
+
+        social_cost_of_carbon = (emissions_marginal / consumption_marginal) * -1000
 
         return social_cost_of_carbon
 
@@ -315,13 +324,8 @@ class NeoclassicalEconomyModel:
         assert (
             scenario >= 0 and scenario < self.gdp.shape[3]
         ), "Scenario is not within the range of 0 - 4"
-        # Reshape savings rate from 2D to 3D
 
-        savings_rate = savings_rate[:, :, np.newaxis]
-
-        investment = savings_rate * self.output
-        print(investment.shape)
-        consumption = self.output - investment
+        consumption = self.calculate_consumption(savings_rate)
         consumption_per_capita = 1e3 * consumption / self.population[:, :, :, scenario]
 
         return consumption_per_capita
