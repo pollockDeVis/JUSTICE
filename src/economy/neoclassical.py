@@ -335,11 +335,8 @@ class NeoclassicalEconomyModel:
         """
         This method returns the capital stock.
         """
-        # Assert if scenario is not within the range of 0 - 4
-        assert (
-            scenario >= 0 and scenario < self.gdp.shape[3]
-        ), "Scenario is not within the range of 0 - 4"
 
+        scenario = get_economic_scenario(scenario)
         # Reshape savings rate from 2D to 3D
         savings_rate = savings_rate[:, :, np.newaxis]
 

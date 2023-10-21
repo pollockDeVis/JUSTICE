@@ -15,6 +15,7 @@ Kalkuhl Reference: https://www.sciencedirect.com/science/article/pii/S0095069620
 """
 
 import numpy as np
+from typing import Any
 from src.default_parameters import DamageDefaults
 
 
@@ -138,3 +139,9 @@ class DamageKalkuhl:
             self.damage_coefficient[:, 0, :] = self.damage_coefficient[:, 1, :]
 
         return self.economic_damage_factor[:, timestep, :]
+
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)

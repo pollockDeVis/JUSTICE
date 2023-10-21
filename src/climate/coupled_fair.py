@@ -297,7 +297,7 @@ class CoupledFAIR(FAIR):
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
         self.stepwise_run(fill_index)
-        global_temperature = self.get_temperature_array(timestep)
+        global_temperature = self.get_temperature_array(fill_index)
         # Shape [timestep, scenario, ensemble, box/layer=0] # Layer 0 is used in FAIR example. The current code works only with one SSP-RCP scenario
         # global_temperature = global_temperature[timestep, 0, :, 0]
         return global_temperature
@@ -339,11 +339,7 @@ class CoupledFAIR(FAIR):
         fair_historical_years = np.arange(
             fair_start_year, self.start_year_justice, self.timestep_justice
         )
-        # justice_run_years = np.arange(
-        #     self.start_year_justice,
-        #     (self.end_year_fair + self.timestep_justice),
-        #     self.timestep_justice,
-        # )
+
         self.fair_historical_timestep_run_count = len(fair_historical_years)
 
         for i in range(0, len(fair_historical_years)):
@@ -351,6 +347,11 @@ class CoupledFAIR(FAIR):
 
     # #range(self._n_timepoints) 0 - 549 1750 - 2300 , we gotta run the loop from 1750 - JUSTICE start time first, and then do step by step/ just call this function within a loop
     def stepwise_run(self, i_timepoint):
+        """
+        Step wise run of the FAIR model. Historical Runs from 0 - 264
+        JUSTICE Runs from 265 - 549
+        """
+        print(f"i_timepoint: {i_timepoint}")
         if self._routine_flags["ghg"]:
             # 1. alpha scaling
             self.alpha_lifetime_array[
