@@ -15,11 +15,14 @@ Kalkuhl Reference: https://www.sciencedirect.com/science/article/pii/S0095069620
 """
 
 import numpy as np
+
+# from scipy.special import erfc
+from typing import Any
 from src.default_parameters import DamageDefaults
 
 
 class DamageKalkuhl:
-    def __init__(self, input_dataset, time_horizon, climate_model):
+    def __init__(self, input_dataset, time_horizon, climate_ensembles):
         self.region_list = input_dataset.REGION_LIST
         self.timestep = time_horizon.timestep
         self.data_timestep = time_horizon.data_timestep
@@ -45,6 +48,23 @@ class DamageKalkuhl:
         ]
         self.damage_window = damage_defaults["damage_window"]
 
+        self.damage_gdp_ratio_with_threshold = damage_defaults[
+            "damage_gdp_ratio_with_threshold"
+        ]
+        self.temperature_threshold_for_damage = damage_defaults[
+            "temperature_threshold_for_damage"
+        ]
+        self.temperature_threshold_variation = damage_defaults[
+            "temperature_threshold_variation"
+        ]
+        self.damage_gdp_ratio_with_gradient = damage_defaults[
+            "damage_gdp_ratio_with_gradient"
+        ]
+        self.temperature_difference_scaling_factor = damage_defaults[
+            "temperature_difference_scaling_factor"
+        ]
+        self.damage_growth_rate = damage_defaults["damage_growth_rate"]
+
         self.coefficient_a = (
             self.short_run_temp_change_coefficient
             + self.lagged_short_run_temp_change_coefficient
@@ -54,10 +74,11 @@ class DamageKalkuhl:
             + self.lagged_interaction_term_temp_change_coefficient
         ) / self.data_timestep
 
-        self.climate_timestep_index = climate_model.__getattribute__(
-            "justice_start_index"
-        )
-        self.climate_ensembles = climate_model.__getattribute__("number_of_ensembles")
+        # self.climate_timestep_index = climate_model.__getattribute__(
+        #     "justice_start_index"
+        # )
+        self.climate_ensembles = climate_ensembles
+        # climate_model.__getattribute__("number_of_ensembles")
         # print(self.climate_timestep_index)
 
         # Create an temperature array of shape (region_list, damage window, climate_ensembles)
@@ -80,10 +101,10 @@ class DamageKalkuhl:
             )
         )
 
-        # Fill the temperature array with the initial temperature data
-        # self.temperature_array[:, 0, :] = climate_model.get_temperature_array(
-        #     timestep=(self.climate_timestep_index - 1)
-        # )
+        # Create damage to output array of shape (region_list, climate_ensembles)
+        self.damage_to_output = np.zeros(
+            (len(self.region_list), self.climate_ensembles)
+        )
 
     def calculate_damage(self, temperature, timestep):
         """
@@ -104,6 +125,7 @@ class DamageKalkuhl:
         else:
             # Fill the temperature array with the current temperature data
             self.temperature_array[:, 1, :] = temperature
+            # print(f"temperature_array: {self.temperature_array[:, 1, :].shape}")
 
             # Calculate the temperature difference
             temperature_difference = (
@@ -133,8 +155,43 @@ class DamageKalkuhl:
                 :, timestep, :
             ] -= 1  # "subtract 1 from each element in the slice of `economic_damage_factor`
 
+            unbounded_damage_fraction = 1 - (
+                np.divide(1, (1 + self.economic_damage_factor[:, timestep, :]))
+            )
+
+            # Threshold Damage (57,1001)
+            # threshold_damage_fraction = self.damage_gdp_ratio_with_threshold * erfc(
+            #     np.divide(
+            #         (
+            #             self.temperature_array[:, 1, :]
+            #             - self.temperature_threshold_for_damage
+            #         ),
+            #         self.temperature_threshold_variation,
+            #     )
+            # )
+
+            # Gradient Damage (57,1001)
+            gradient_damage_fraction = self.damage_gdp_ratio_with_gradient * np.power(
+                np.abs(
+                    np.divide(
+                        temperature_difference,
+                        self.temperature_difference_scaling_factor,
+                    )
+                ),
+                self.damage_growth_rate,
+            )
+
+            total_damage_fraction = unbounded_damage_fraction + gradient_damage_fraction
+            self.damage_to_output = 1 - total_damage_fraction
+
             # Update the first column of the temperature array and damage coefficient array for the next timestep
             self.temperature_array[:, 0, :] = self.temperature_array[:, 1, :]
             self.damage_coefficient[:, 0, :] = self.damage_coefficient[:, 1, :]
 
-        return self.economic_damage_factor[:, timestep, :]
+        return self.damage_to_output  # self.economic_damage_factor[:, timestep, :]
+
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)

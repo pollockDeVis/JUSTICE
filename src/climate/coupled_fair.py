@@ -52,6 +52,7 @@ import os
 import copy
 from scipy.interpolate import interp1d
 from typing import Any
+from src.enumerations import get_climate_scenario
 
 
 # FaIR Model Constants
@@ -93,6 +94,7 @@ class CoupledFAIR(FAIR):
         self.end_year_fair = time_horizon.end_year
         self.timestep_justice = time_horizon.timestep
 
+        scenarios = get_climate_scenario(scenarios)
         scenarios = [scenarios]  # Converting into a list
 
         self.fair_fill_data(scenarios)
@@ -295,7 +297,7 @@ class CoupledFAIR(FAIR):
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
         self.stepwise_run(fill_index)
-        global_temperature = self.get_temperature_array(timestep)
+        global_temperature = self.get_temperature_array(fill_index)
         # Shape [timestep, scenario, ensemble, box/layer=0] # Layer 0 is used in FAIR example. The current code works only with one SSP-RCP scenario
         # global_temperature = global_temperature[timestep, 0, :, 0]
         return global_temperature
@@ -337,11 +339,7 @@ class CoupledFAIR(FAIR):
         fair_historical_years = np.arange(
             fair_start_year, self.start_year_justice, self.timestep_justice
         )
-        # justice_run_years = np.arange(
-        #     self.start_year_justice,
-        #     (self.end_year_fair + self.timestep_justice),
-        #     self.timestep_justice,
-        # )
+
         self.fair_historical_timestep_run_count = len(fair_historical_years)
 
         for i in range(0, len(fair_historical_years)):
@@ -349,6 +347,11 @@ class CoupledFAIR(FAIR):
 
     # #range(self._n_timepoints) 0 - 549 1750 - 2300 , we gotta run the loop from 1750 - JUSTICE start time first, and then do step by step/ just call this function within a loop
     def stepwise_run(self, i_timepoint):
+        """
+        Step wise run of the FAIR model. Historical Runs from 0 - 264
+        JUSTICE Runs from 265 - 549
+        """
+        # print(f"i_timepoint: {i_timepoint}")
         if self._routine_flags["ghg"]:
             # 1. alpha scaling
             self.alpha_lifetime_array[
@@ -710,6 +713,32 @@ class CoupledFAIR(FAIR):
                     i_timepoint + 1 : i_timepoint + 2, ..., None
                 ],
             )
+
+    def get_exogenous_land_use_emissions(self, scenarios):
+        """Get the exogenous land use emissions for a given scenario.
+
+        Parameters
+        ----------
+        scenario : str
+            The name of the scenario to get the emissions for.
+
+        Returns
+        -------
+        land_use_emissions : np.ndarray
+            The land use emissions for the given scenario for the whole world.
+        """
+
+        fair_scenario = get_climate_scenario(scenarios)
+
+        land_use_emissions = self.emissions.sel(
+            specie="CO2 AFOLU", scenario=[fair_scenario]
+        )
+
+        land_use_emissions = (land_use_emissions.values)[
+            (self.justice_start_index - self.timestep_justice) :, 0, :
+        ] / 1e3  # Converting to GtCO2 from MtCO2
+
+        return land_use_emissions
 
     def calculate_toa_ocean_airborne_fraction(self):
         """Calculate the fraction of airborne emissions that are taken up by the

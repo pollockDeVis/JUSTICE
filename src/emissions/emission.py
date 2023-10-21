@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 from scipy.interpolate import interp1d
 import copy
+from src.enumerations import get_economic_scenario
 
 
 class OutputToEmissions:
@@ -79,6 +80,8 @@ class OutputToEmissions:
         carbon intensity shape (57, 1001)
         output shape (57, 1001)
         """
+
+        scenario = get_economic_scenario(scenario)
         # Calculate emissions
         self.emissions[:, timestep, :] = (
             self.carbon_intensity[:, timestep, :, scenario]
@@ -89,6 +92,41 @@ class OutputToEmissions:
         )
 
         return self.emissions[:, timestep, :]
+
+    def emission_downscaler(self, aggregated_emissions):
+        """
+        This method downscales total emissions per timestep to regional emissions.
+        """
+        emissions_sum = np.sum(self.emissions, axis=0)
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            emissions_ratio = np.divide(
+                self.emissions,
+                emissions_sum[None, :, :],
+                out=np.zeros_like(self.emissions),
+                where=emissions_sum[None, :, :] != 0,
+            )
+
+        # Multiply the aggregated emissions by the ratio
+        downscaled_emissions = emissions_ratio * aggregated_emissions
+
+        return downscaled_emissions
+
+    def get_fossil_and_land_use_emissions(self, land_use_emissions):
+        """
+        This method calculates the total CO2 fossil fuel and CO2 Land Use emissions.
+        """
+        print("Land use before", land_use_emissions[0, 0])
+        # Get downscaled land use emissions
+        land_use_emissions = self.emission_downscaler(land_use_emissions)
+        print("Land use after", (land_use_emissions.sum(axis=0))[0, 0])
+
+        # Sum CO2 fossil fuel and CO2 Land Use emissions
+        fossil_and_land_use_emissions = self.emissions + land_use_emissions
+        print("Emission before", self.emissions[0, 0, 0])
+        print("Emission after", fossil_and_land_use_emissions[0, 0, 0])
+
+        return fossil_and_land_use_emissions
 
     def _interpolate_carbon_intensity(self):
         interp_data = np.zeros(

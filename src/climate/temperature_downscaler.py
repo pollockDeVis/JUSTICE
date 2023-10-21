@@ -11,6 +11,7 @@ Coefficients p and q determine the local temperature T. T = p + q*Global_Tempera
 """
 
 import numpy as np
+from typing import Any
 
 
 class TemperatureDownscaler:
@@ -39,3 +40,9 @@ class TemperatureDownscaler:
 
         # Return the regional temperature
         return regional_temperature
+
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)
