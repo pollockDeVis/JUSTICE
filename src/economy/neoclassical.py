@@ -120,8 +120,15 @@ class NeoclassicalEconomyModel:
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initializing the damages array
+        # TODO: Create a Gross Output array instead of damage fraction array
+
+        # Initializing the damage fraction array # TODO: Need to remove this
         self.damage_fraction = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        )
+
+        # Initializing the damage array
+        self.damage = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
@@ -265,9 +272,12 @@ class NeoclassicalEconomyModel:
         if timestep == 0 or timestep == 1:  # Damage is zero in the first timestep
             self.output[:, timestep, :] = self.output[:, timestep, :]
         else:
+            self.damage[:, timestep, :] = (
+                self.output[:, timestep, :] * self.damage_fraction[:, timestep, :]
+            )
             # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
             self.output[:, timestep, :] = (
-                self.output[:, timestep, :] * self.damage_fraction[:, timestep, :]
+                self.output[:, timestep, :] - self.damage[:, timestep, :]
             )
         # Subtract abatement from output
         self.output[:, timestep, :] = (
@@ -333,7 +343,7 @@ class NeoclassicalEconomyModel:
         return self.abatement
 
     def get_damages(self):
-        return self.damage_fraction
+        return self.damage
 
     def get_consumption_per_capita(self, scenario, savings_rate):
         # Assert if scenario is not within the range of 0 - 4
