@@ -346,11 +346,7 @@ class NeoclassicalEconomyModel:
         return self.damage
 
     def get_consumption_per_capita(self, scenario, savings_rate):
-        # Assert if scenario is not within the range of 0 - 4
-        assert (
-            scenario >= 0 and scenario < self.gdp.shape[3]
-        ), "Scenario is not within the range of 0 - 4"
-
+        scenario = get_economic_scenario(scenario)
         consumption = self.calculate_consumption(savings_rate)
         consumption_per_capita = 1e3 * consumption / self.population[:, :, :, scenario]
 
