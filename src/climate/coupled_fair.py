@@ -271,6 +271,8 @@ class CoupledFAIR(FAIR):
 
         self.run_historical_temperature_calculation()
 
+        return self.number_of_ensembles
+
     def compute_temperature_from_emission(self, timestep, emissions_data):
         """
         Fill emissions for a given timestep with new emissions and computes the temperature rise in celcius.
@@ -297,7 +299,7 @@ class CoupledFAIR(FAIR):
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
         self.stepwise_run(fill_index)
-        global_temperature = self.get_temperature_array(fill_index)
+        global_temperature = self.get_justice_temperature_array_by_timestep(fill_index)
         # Shape [timestep, scenario, ensemble, box/layer=0] # Layer 0 is used in FAIR example. The current code works only with one SSP-RCP scenario
         # global_temperature = global_temperature[timestep, 0, :, 0]
         return global_temperature
@@ -788,7 +790,13 @@ class CoupledFAIR(FAIR):
         self.toa_imbalance.data = self.toa_imbalance_array
         self.stochastic_forcing.data = self.cummins_state_array[..., 0]
 
-    def get_temperature_array(self, timestep):
+    def get_justice_temperature_array(self):
+        # Shape [timestep, scenario, ensemble, box/layer=0] # Layer 0 is used in FAIR example. The current code works only with one SSP-RCP scenario
+        temperature_array = self.cummins_state_array[..., 1:]
+        temperature_array = temperature_array[self.justice_start_index :, 0, :, 0]
+        return temperature_array
+
+    def get_justice_temperature_array_by_timestep(self, timestep):
         # Shape [timestep, scenario, ensemble, box/layer=0] # Layer 0 is used in FAIR example. The current code works only with one SSP-RCP scenario
         temperature_array = self.cummins_state_array[..., 1:]
         temperature_array = temperature_array[timestep, 0, :, 0]

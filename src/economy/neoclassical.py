@@ -120,8 +120,15 @@ class NeoclassicalEconomyModel:
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initializing the damages array
-        self.damages = np.zeros(
+        # TODO: Create a Gross Output array instead of damage fraction array
+
+        # Initializing the damage fraction array # TODO: Need to remove this
+        self.damage_fraction = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        )
+
+        # Initializing the damage array
+        self.damage = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
@@ -265,11 +272,12 @@ class NeoclassicalEconomyModel:
         if timestep == 0 or timestep == 1:  # Damage is zero in the first timestep
             self.output[:, timestep, :] = self.output[:, timestep, :]
         else:
+            self.damage[:, timestep, :] = (
+                self.output[:, timestep, :] * self.damage_fraction[:, timestep, :]
+            )
+            # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
             self.output[:, timestep, :] = (
-                self.output[:, timestep, :]
-                * self.damages[
-                    :, timestep, :
-                ]  # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
+                self.output[:, timestep, :] - self.damage[:, timestep, :]
             )
         # Subtract abatement from output
         self.output[:, timestep, :] = (
@@ -281,7 +289,7 @@ class NeoclassicalEconomyModel:
         This method applies damage to the output.
         Damage calculated
         """
-        self.damages[:, timestep, :] = damage
+        self.damage_fraction[:, timestep, :] = damage
 
     def apply_abatement_to_output(self, timestep, abatement):
         """
@@ -328,12 +336,17 @@ class NeoclassicalEconomyModel:
 
         return social_cost_of_carbon
 
-    def get_consumption_per_capita(self, scenario, savings_rate):
-        # Assert if scenario is not within the range of 0 - 4
-        assert (
-            scenario >= 0 and scenario < self.gdp.shape[3]
-        ), "Scenario is not within the range of 0 - 4"
+    def get_net_output(self):
+        return self.output
 
+    def get_abatement(self):
+        return self.abatement
+
+    def get_damages(self):
+        return self.damage
+
+    def get_consumption_per_capita(self, scenario, savings_rate):
+        scenario = get_economic_scenario(scenario)
         consumption = self.calculate_consumption(savings_rate)
         consumption_per_capita = 1e3 * consumption / self.population[:, :, :, scenario]
 

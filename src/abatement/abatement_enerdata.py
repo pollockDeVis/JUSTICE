@@ -156,6 +156,8 @@ class AbatementEnerdata:
         Shape of abatement_coefficient_b:  (57,)
         Shape of emission_control_rate:  (57,)
         Shape of emissions:  (57, 1001)
+
+        @return: abatement [Trill 2005 USD / year]
         """
         # Calculate abatement
         abatement = (
@@ -175,6 +177,7 @@ class AbatementEnerdata:
         This method calculates the carbon price (Carbon Price Enerdata) for the emissions of a given timestep.
         * Carbon Price ::   y ~ mx (ax + bx^4)
         * CPrice will result in [$/tCO2] by construction
+        * Carbon Price [ 2005 USD $/tCO2 ]
         """
 
         # Calculate carbon price
