@@ -103,12 +103,17 @@ class DamageKalkuhl:
 
         # Create damage to output array of shape (region_list, climate_ensembles)
         self.damage_to_output = np.zeros(
-            (len(self.region_list), self.climate_ensembles)
+            (
+                len(self.region_list),
+                self.climate_ensembles,
+            )
         )
 
     def calculate_damage(self, temperature, timestep):
         """
-        Returns the damage function value for the given temperature and time step.
+        Returns the damage as a percentage for the given temperature and time step.
+        Damages [Trill 2005 USD / year]
+        Damages can be calculated using output - (original) output * damage_to_output
         """
         # Assert that temperature is of shape (region_list, climate_ensembles)
         assert temperature.shape == (
@@ -159,6 +164,7 @@ class DamageKalkuhl:
                 np.divide(1, (1 + self.economic_damage_factor[:, timestep, :]))
             )
 
+            # TODO: implement this later. Current calculations are not working
             # Threshold Damage (57,1001)
             # threshold_damage_fraction = self.damage_gdp_ratio_with_threshold * erfc(
             #     np.divide(
@@ -188,7 +194,7 @@ class DamageKalkuhl:
             self.temperature_array[:, 0, :] = self.temperature_array[:, 1, :]
             self.damage_coefficient[:, 0, :] = self.damage_coefficient[:, 1, :]
 
-        return self.damage_to_output  # self.economic_damage_factor[:, timestep, :]
+        return self.damage_to_output
 
     def __getattribute__(self, __name: str) -> Any:
         """

@@ -148,6 +148,12 @@ class OutputToEmissions:
 
         self.carbon_intensity_array = interp_data
 
+    def get_emissions(self):
+        """
+        This method returns the emissions.
+        """
+        return self.emissions
+
     def __getattribute__(self, __name: str) -> Any:
         """
         This method returns the value of the attribute of the class.

@@ -121,7 +121,7 @@ class NeoclassicalEconomyModel:
         )
 
         # Initializing the damages array
-        self.damages = np.zeros(
+        self.damage_fraction = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
@@ -265,11 +265,9 @@ class NeoclassicalEconomyModel:
         if timestep == 0 or timestep == 1:  # Damage is zero in the first timestep
             self.output[:, timestep, :] = self.output[:, timestep, :]
         else:
+            # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
             self.output[:, timestep, :] = (
-                self.output[:, timestep, :]
-                * self.damages[
-                    :, timestep, :
-                ]  # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
+                self.output[:, timestep, :] * self.damage_fraction[:, timestep, :]
             )
         # Subtract abatement from output
         self.output[:, timestep, :] = (
@@ -281,7 +279,7 @@ class NeoclassicalEconomyModel:
         This method applies damage to the output.
         Damage calculated
         """
-        self.damages[:, timestep, :] = damage
+        self.damage_fraction[:, timestep, :] = damage
 
     def apply_abatement_to_output(self, timestep, abatement):
         """
@@ -327,6 +325,15 @@ class NeoclassicalEconomyModel:
         social_cost_of_carbon = (emissions_marginal / consumption_marginal) * -1000
 
         return social_cost_of_carbon
+
+    def get_net_output(self):
+        return self.output
+
+    def get_abatement(self):
+        return self.abatement
+
+    def get_damages(self):
+        return self.damage_fraction
 
     def get_consumption_per_capita(self, scenario, savings_rate):
         # Assert if scenario is not within the range of 0 - 4
