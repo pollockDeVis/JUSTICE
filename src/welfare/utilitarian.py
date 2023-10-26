@@ -10,7 +10,14 @@ from src.enumerations import get_economic_scenario
 
 
 def calculate_utilitarian_welfare(
-    economy, time_horizon, region_list, scenario, savings_rate
+    time_horizon,
+    region_list,
+    scenario,
+    population,
+    consumption_per_capita,
+    elasticity_of_marginal_utility_of_consumption,
+    pure_rate_of_social_time_preference,
+    inequality_aversion,
 ):
     scenario = get_economic_scenario(scenario)
 
@@ -21,7 +28,7 @@ def calculate_utilitarian_welfare(
     # Calculate the discount rate
     discount_rate = 1 / (
         np.power(
-            (1 + economy.pure_rate_of_social_time_preference),
+            (1 + pure_rate_of_social_time_preference),
             (time_horizon.timestep * (timestep_list)),
         )
     )
@@ -30,17 +37,17 @@ def calculate_utilitarian_welfare(
     discount_rate = discount_rate[:, :, np.newaxis]
 
     # Calculate the total population for each timestep
-    total_population = np.sum(economy.population[:, :, :, scenario], axis=0)
+    total_population = np.sum(population, axis=0)
 
     # Calculate the population ratio for each timestep
-    population_ratio = economy.population[:, :, :, scenario] / total_population
+    population_ratio = population / total_population
 
     # Fetch Consumption per Capita
-    consumption_per_capita = economy.get_consumption_per_capita(scenario, savings_rate)
+    # consumption_per_capita = economy.get_consumption_per_capita(scenario, savings_rate)
 
     # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
     consumption_per_capita_inequality_aversion = np.power(
-        consumption_per_capita, 1 - economy.inequality_aversion
+        consumption_per_capita, 1 - inequality_aversion
     )
 
     # Calculate the population weighted consumption per capita
@@ -57,8 +64,8 @@ def calculate_utilitarian_welfare(
     disentangled_utility_powered = np.power(
         disentangled_utility,
         (
-            (1 - economy.elasticity_of_marginal_utility_of_consumption)
-            / (1 - economy.inequality_aversion)
+            (1 - elasticity_of_marginal_utility_of_consumption)
+            / (1 - inequality_aversion)
         ),
     )
     print("discount_rate.shape", discount_rate.shape)
@@ -67,7 +74,7 @@ def calculate_utilitarian_welfare(
         (
             (
                 disentangled_utility_powered
-                / (1 - economy.elasticity_of_marginal_utility_of_consumption)
+                / (1 - elasticity_of_marginal_utility_of_consumption)
             )
             - 1
         )

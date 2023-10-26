@@ -58,13 +58,13 @@ uncertainties:
   UTILITARIAN:
     # Specifies the elasticity of the marginal utility of consumption. #elasmu in the code or eta in the paper
     elasticity_of_marginal_utility_of_consumption:
-      min: 1.0
+      min: 0.0
       max: 2.0
       default: 1.45
     # The discount rate, a.k.a the initial rate of social time preference. #prstp in code
     pure_rate_of_social_time_preference:
       min: 0.00
-      max: 0.15
+      max: 0.02
       default: 0.015
     # RICE50 Inequality aversion parameter. #labelled gamma #Range: [0,1.5]; good options: | 0 | 0.5 | 1.45 | 2 |
     inequality_aversion:
