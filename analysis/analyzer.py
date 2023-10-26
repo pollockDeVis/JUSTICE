@@ -58,7 +58,9 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
     # Speicify uncertainties
     model.uncertainties = [
-        CategoricalParameter("scenario", (0, 1, 2, 3, 4, 5, 6, 7)),
+        CategoricalParameter(
+            "scenario", (0, 1, 2, 3, 4, 5, 6, 7)
+        ),  # 8 SSP-RCP scenario combinations
         RealParameter("elasticity_of_marginal_utility_of_consumption", 0.0, 2.0),
         RealParameter("pure_rate_of_social_time_preference", 0.0, 0.020),
         RealParameter("inequality_aversion", 0.0, 2.0),
