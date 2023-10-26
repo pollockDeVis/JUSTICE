@@ -19,12 +19,13 @@ class EconomyDefaults:
                 # The Elasticity of Output with respect to Capital. #Zeta in paper, not named in code (hardcoded)
                 "elasticity_of_output_to_capital": 0.004,
                 # Normative Parameters
-                # Specifies the elasticity of the marginal utility of consumption. #elasmu in the code or eta in the paper
-                "elasticity_of_marginal_utility_of_consumption": 1.45,
-                # The discount rate, a.k.a the initial rate of social time preference. #prstp in code
-                "pure_rate_of_social_time_preference": 0.015,
-                # Inequality aversion parameter. #labelled gamma #Range: [0,1.5]; good options: | 0 | 0.5 | 1.45 | 2 |
-                "inequality_aversion": 0.5,
+                # Specifies the elasticity of the marginal utility of consumption. #elasmu in the code or eta in the paper (Stern range: 1-2)
+                # Dietz, S., & Stern, N. (2008). Why economic analysis supports strong action on climate change: a response to the Stern Review's critics. Review of Environmental Economics and Policy.
+                # "elasticity_of_marginal_utility_of_consumption": 1.45,
+                # # The discount rate, a.k.a the initial rate of social time preference. #prstp in code
+                # "pure_rate_of_social_time_preference": 0.015,
+                # # Inequality aversion parameter. #labelled gamma #Range: [0,1.5]; good options: | 0 | 0.5 | 1.45 | 2 |
+                # "inequality_aversion": 0.5,
             },
             "POST_KEYNESIAN": {"capital_elasticity_in_production_function": 0.1},
         }
@@ -90,7 +91,7 @@ class AbatementDefaults:
             "ENERDATA": {
                 # MxKali #calibrated correction multiplier starting value
                 "calibrated_correction_multiplier_starting_value": 0.492373,
-                # pback #Cost of backstop 2010$ per tCO2 in 2015 #DICE2013: 344     #DICE2016: 550
+                # pback #Cost of backstop 2010$ per tCO2 in 2015 #DICE2013: 344     #DICE2016: 550 515
                 "backstop_cost": 550,
                 # gback #Initial cost decline backstop cost per period #DICE2013: 0.05    #DICE2016: 0.025
                 "backstop_cost_decline_rate_per_5_year": 0.025,
