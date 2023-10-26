@@ -62,6 +62,7 @@ class JUSTICE:
         self.no_of_ensembles = self.climate.fair_justice_run_init(
             time_horizon=self.time_horizon, scenarios=self.scenario
         )
+        self.region_list = self.data_loader.REGION_LIST
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
         # TODO: Incomplete Implementation
         if self.damage_function_type == DamageFunction.KALKUHL:
@@ -92,6 +93,13 @@ class JUSTICE:
         # Create a data dictionary to store the data
         self.data = {
             "net_economic_output": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "consumption": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
@@ -214,30 +222,47 @@ class JUSTICE:
                     timestep=timestep + 1, abatement=abatement_cost
                 )
 
-    def evaluate(self, welfare_function=WelfareFunction.UTILITARIAN):
+    def evaluate(
+        self,
+        elasticity_of_marginal_utility_of_consumption,
+        pure_rate_of_social_time_preference,
+        inequality_aversion,
+        welfare_function=WelfareFunction.UTILITARIAN,
+    ):
         """
         Evaluate the model.
         """
         # Fill the data dictionary
         self.data["net_economic_output"] = self.economy.get_net_output()
+        self.data["consumption"] = self.economy.calculate_consumption(
+            savings_rate=self.savings_rate
+        )
         self.data["consumption_per_capita"] = self.economy.get_consumption_per_capita(
             scenario=self.scenario,
             savings_rate=self.savings_rate,
         )
+
         self.data["emissions"] = self.emissions.get_emissions()
         self.data["economic_damage"] = self.economy.get_damages()
         self.data["abatement_cost"] = self.economy.get_abatement()
         self.data["global_temperature"] = self.climate.get_justice_temperature_array()
+
+        population = self.economy.get_population(scenario=self.scenario)
 
         if welfare_function == WelfareFunction.UTILITARIAN:
             (
                 self.data["disentangled_utility"],
                 self.data["welfare_utilitarian"],
             ) = calculate_utilitarian_welfare(
-                economy=self.economy,
                 time_horizon=self.time_horizon,
+                region_list=self.region_list,
                 scenario=self.scenario,
-                savings_rate=self.savings_rate,
+                # savings_rate=self.savings_rate,
+                population=population,
+                consumption_per_capita=self.data["consumption_per_capita"],
+                elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
+                pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+                inequality_aversion=inequality_aversion,
             )
         return self.data
 

@@ -1,0 +1,81 @@
+# --------------------------------- Constants -------------------------------- #
+constants:
+  ECONOMY:
+    NEOCLASSICAL:
+      # Defines the capital elasticity in the production function. #also named gamma and alpha
+      capital_elasticity_in_production_function: 0.3
+      # The annual depreciation rate on capital. #abbreviated to dk
+      depreciation_rate_capital: 0.1
+      # The Elasticity of Output with respect to Capital. #Zeta in paper, not named in code (hardcoded)
+      elasticity_of_output_to_capital: 0.004
+
+  DAMAGE:
+    KALKUHL:
+      # Short run temperature change coefficient (originally kw_DT in GAMS)
+      short_run_temp_change_coefficient: 0.00641
+      # Lagged short run temperature change coefficient (originally kw_DT_lag in GAMS)
+      lagged_short_run_temp_change_coefficient: 0.00345
+      # Interaction term temperature change coefficient (originally kw_TDT in GAMS)
+      interaction_term_temp_change_coefficient: -0.00105
+      # Lagged interaction term temperature change coefficient (originally kw_TDT_lag in GAMS)
+      lagged_interaction_term_temp_change_coefficient: -0.000718
+      # Temperature dependent coefficient (originally kw_T in GAMS)
+      temperature_dependent_coefficient: -0.00675
+      # Damage Window - Buffer to hold older temperature and new temperature
+      damage_window: 2
+      # threshold_d in RICE50  # % of GDP for damage when a temperature threshold is reached
+      damage_gdp_ratio_with_threshold: 0.2
+      # threshold_temp in RICE50 # The temperature threshold after which damage occurs
+      temperature_threshold_for_damage: 3.0
+      # threshold_sigma in RICE50 # Variation for the temperature threshold
+      temperature_threshold_variation: 0.05
+      # gradient_d in RICE50 # % of GDP for damage based on temperature change rate
+      damage_gdp_ratio_with_gradient: 0.01
+      # Hardcoded in RICE50 # Essentially a scaling factor for the temperature difference
+      temperature_difference_scaling_factor: 0.35
+      # Hardcoded in RICE50 # Essentially an exponent that acts as the Growth rate of damage
+      damage_growth_rate: 4
+
+  ABATEMENT:
+    ENERDATA:
+      # MxKali #calibrated correction multiplier starting value
+      calibrated_correction_multiplier_starting_value: 0.492373
+      # pback #Cost of backstop 2010$ per tCO2 in 2015 #DICE2013: 344     #DICE2016: 550 515
+      backstop_cost: 550
+      # gback #Initial cost decline backstop cost per period #DICE2013: 0.05    #DICE2016: 0.025
+      backstop_cost_decline_rate_per_5_year: 0.025
+      # tstart_pbtransition #first timestep without Enerdata projections
+      transition_year_start: 2045
+      # tend_pbtransition #time of full-convergence to backstop curve
+      transition_year_end: 2125
+      # klogistic in RICE50 code. This is the speed of the logistic transition
+      logistic_transition_speed_per_5_year: 0.25
+      # expcost2 #Exponent of control cost function
+      exponential_control_cost_function: 2.8
+
+# ------------------------------- Policy levers ------------------------------ #
+levers:
+  savings_rate:
+    min: 0.05
+    max: 0.50
+  emission_control_rate:
+    min: 0.00
+    max: 1.00
+
+# ------------------------------- Uncertainties ------------------------------ #
+uncertainties:
+  # Specifies the elasticity of the marginal utility of consumption. #elasmu in the code or eta in the paper
+  elasticity_of_marginal_utility_of_consumption:
+    min: 0.0
+    max: 2.0
+    default: 1.45
+  # The discount rate, a.k.a the initial rate of social time preference. #prstp in code
+  pure_rate_of_social_time_preference:
+    min: 0.00
+    max: 0.02
+    default: 0.015
+  # RICE50 Inequality aversion parameter. #labelled gamma #Range: [0,1.5]; good options: | 0 | 0.5 | 1.45 | 2 |
+  inequality_aversion:
+    min: 0.0
+    max: 2.0
+    default: 0.5

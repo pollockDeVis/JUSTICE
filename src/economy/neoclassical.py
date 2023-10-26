@@ -50,18 +50,18 @@ class NeoclassicalEconomyModel:
             "elasticity_of_output_to_capital",
             econ_neoclassical_defaults["elasticity_of_output_to_capital"],
         )
-
-        self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
-            "elasticity_of_marginal_utility_of_consumption",
-            econ_neoclassical_defaults["elasticity_of_marginal_utility_of_consumption"],
-        )
-        self.pure_rate_of_social_time_preference = kwargs.get(
-            "pure_rate_of_social_time_preference",
-            econ_neoclassical_defaults["pure_rate_of_social_time_preference"],
-        )
-        self.inequality_aversion = kwargs.get(
-            "inequality_aversion", econ_neoclassical_defaults["inequality_aversion"]
-        )
+        # TODO: Remove later. This is only used in the Welfare Functions to Compute Utility
+        # self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
+        #     "elasticity_of_marginal_utility_of_consumption",
+        #     econ_neoclassical_defaults["elasticity_of_marginal_utility_of_consumption"],
+        # )
+        # self.pure_rate_of_social_time_preference = kwargs.get(
+        #     "pure_rate_of_social_time_preference",
+        #     econ_neoclassical_defaults["pure_rate_of_social_time_preference"],
+        # )
+        # self.inequality_aversion = kwargs.get(
+        #     "inequality_aversion", econ_neoclassical_defaults["inequality_aversion"]
+        # )
 
         self.region_list = input_dataset.REGION_LIST
         self.gdp_array = copy.deepcopy(input_dataset.GDP_ARRAY)
@@ -88,18 +88,6 @@ class NeoclassicalEconomyModel:
             # Interpolate GDP
             self._interpolate_gdp()
             self._interpolate_population()
-
-        # Calculate the Optimal long-run Savings Rate
-        # This will depend on the input paramters. This is also a upper limit of the savings rate
-        self.optimal_long_run_savings_rate = (
-            (self.depreciation_rate_capital + self.elasticity_of_output_to_capital)
-            / (
-                self.depreciation_rate_capital
-                + self.elasticity_of_output_to_capital
-                * self.elasticity_of_marginal_utility_of_consumption
-                + self.pure_rate_of_social_time_preference
-            )
-        ) * self.capital_elasticity_in_production_function
 
         # Initializing the capital and TFP array
         self.capital_tfp = np.zeros(
@@ -233,10 +221,26 @@ class NeoclassicalEconomyModel:
 
         return self.output[:, timestep, :]
 
-    def get_optimal_long_run_savings_rate(self):
+    def get_optimal_long_run_savings_rate(
+        self,
+        elasticity_of_marginal_utility_of_consumption,
+        pure_rate_of_social_time_preference,
+    ):
         """
         This method returns the optimal long run savings rate.
         """
+        # Calculate the Optimal long-run Savings Rate
+        # This will depend on the input paramters. This is also a upper limit of the savings rate
+        self.optimal_long_run_savings_rate = (
+            (self.depreciation_rate_capital + self.elasticity_of_output_to_capital)
+            / (
+                self.depreciation_rate_capital
+                + self.elasticity_of_output_to_capital
+                * elasticity_of_marginal_utility_of_consumption
+                + pure_rate_of_social_time_preference
+            )
+        ) * self.capital_elasticity_in_production_function
+
         return self.optimal_long_run_savings_rate
 
     def _calculate_tfp(self, timestep, scenario):
@@ -345,6 +349,10 @@ class NeoclassicalEconomyModel:
     def get_damages(self):
         return self.damage
 
+    def get_population(self, scenario):
+        scenario = get_economic_scenario(scenario)
+        return self.population[:, :, :, scenario]
+
     def get_consumption_per_capita(self, scenario, savings_rate):
         scenario = get_economic_scenario(scenario)
         consumption = self.calculate_consumption(savings_rate)
@@ -385,7 +393,13 @@ class NeoclassicalEconomyModel:
 
         return capital_stock
 
-    def get_interest_rate(self, scenario, savings_rate):
+    def get_interest_rate(
+        self,
+        scenario,
+        savings_rate,
+        pure_rate_of_social_time_preference,
+        elasticity_of_marginal_utility_of_consumption,
+    ):
         """
         This method returns the interest rate.
         """
@@ -395,9 +409,9 @@ class NeoclassicalEconomyModel:
         )
 
         interest_rate = (
-            (1 + self.pure_rate_of_social_time_preference)
+            (1 + pure_rate_of_social_time_preference)
             * (consumption_per_capita[:, 1:, :] / consumption_per_capita[:, :-1, :])
-            ** (self.elasticity_of_marginal_utility_of_consumption / self.timestep)
+            ** (elasticity_of_marginal_utility_of_consumption / self.timestep)
         ) - 1
 
         return interest_rate
