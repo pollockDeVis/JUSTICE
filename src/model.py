@@ -62,6 +62,7 @@ class JUSTICE:
         self.no_of_ensembles = self.climate.fair_justice_run_init(
             time_horizon=self.time_horizon, scenarios=self.scenario
         )
+        self.region_list = self.data_loader.REGION_LIST
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
         # TODO: Incomplete Implementation
         if self.damage_function_type == DamageFunction.KALKUHL:
@@ -236,6 +237,7 @@ class JUSTICE:
             ) = calculate_utilitarian_welfare(
                 economy=self.economy,
                 time_horizon=self.time_horizon,
+                region_list=self.region_list,
                 scenario=self.scenario,
                 savings_rate=self.savings_rate,
             )

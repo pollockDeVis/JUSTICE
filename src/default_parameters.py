@@ -21,11 +21,11 @@ class EconomyDefaults:
                 # Normative Parameters
                 # Specifies the elasticity of the marginal utility of consumption. #elasmu in the code or eta in the paper (Stern range: 1-2)
                 # Dietz, S., & Stern, N. (2008). Why economic analysis supports strong action on climate change: a response to the Stern Review's critics. Review of Environmental Economics and Policy.
-                # "elasticity_of_marginal_utility_of_consumption": 1.45,
-                # # The discount rate, a.k.a the initial rate of social time preference. #prstp in code
-                # "pure_rate_of_social_time_preference": 0.015,
-                # # Inequality aversion parameter. #labelled gamma #Range: [0,1.5]; good options: | 0 | 0.5 | 1.45 | 2 |
-                # "inequality_aversion": 0.5,
+                "elasticity_of_marginal_utility_of_consumption": 1.45,
+                # The discount rate, a.k.a the initial rate of social time preference. #prstp in code
+                "pure_rate_of_social_time_preference": 0.015,
+                # Inequality aversion parameter. #labelled gamma #Range: [0,1.5]; good options: | 0 | 0.5 | 1.45 | 2 |
+                "inequality_aversion": 0.5,
             },
             "POST_KEYNESIAN": {"capital_elasticity_in_production_function": 0.1},
         }

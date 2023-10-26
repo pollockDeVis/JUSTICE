@@ -9,7 +9,9 @@ import pandas as pd
 from src.enumerations import get_economic_scenario
 
 
-def calculate_utilitarian_welfare(economy, time_horizon, scenario, savings_rate):
+def calculate_utilitarian_welfare(
+    economy, time_horizon, region_list, scenario, savings_rate
+):
     scenario = get_economic_scenario(scenario)
 
     timestep_list = np.arange(
@@ -23,8 +25,9 @@ def calculate_utilitarian_welfare(economy, time_horizon, scenario, savings_rate)
             (time_horizon.timestep * (timestep_list)),
         )
     )
+    discount_rate = np.tile(discount_rate, (len(region_list), 1))
     # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1)
-    discount_rate = discount_rate[:, np.newaxis]
+    discount_rate = discount_rate[:, :, np.newaxis]
 
     # Calculate the total population for each timestep
     total_population = np.sum(economy.population[:, :, :, scenario], axis=0)
@@ -44,9 +47,12 @@ def calculate_utilitarian_welfare(economy, time_horizon, scenario, savings_rate)
     population_weighted_consumption_per_capita = (
         population_ratio * consumption_per_capita_inequality_aversion
     )
-
+    print(population_weighted_consumption_per_capita.shape)
     # Calculate the disentangled utility
-    disentangled_utility = np.sum(population_weighted_consumption_per_capita, axis=0)
+
+    # disentangled_utility = np.sum(population_weighted_consumption_per_capita, axis=0)
+
+    disentangled_utility = population_weighted_consumption_per_capita
 
     disentangled_utility_powered = np.power(
         disentangled_utility,
@@ -55,8 +61,8 @@ def calculate_utilitarian_welfare(economy, time_horizon, scenario, savings_rate)
             / (1 - economy.inequality_aversion)
         ),
     )
-
-    discount_rate = np.tile(discount_rate, 1001)
+    print("discount_rate.shape", discount_rate.shape)
+    # discount_rate = np.tile(discount_rate, 1001)
     welfare_utilitarian = np.sum(
         (
             (
