@@ -99,6 +99,13 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
+            "consumption": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
             "consumption_per_capita": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
@@ -221,6 +228,9 @@ class JUSTICE:
         """
         # Fill the data dictionary
         self.data["net_economic_output"] = self.economy.get_net_output()
+        self.data["consumption"] = self.economy.calculate_consumption(
+            savings_rate=self.savings_rate
+        )
         self.data["consumption_per_capita"] = self.economy.get_consumption_per_capita(
             scenario=self.scenario,
             savings_rate=self.savings_rate,
