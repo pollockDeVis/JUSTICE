@@ -13,6 +13,8 @@ from ema_workbench import (
     Policy,
     ema_logging,
     MultiprocessingEvaluator,
+    SequentialEvaluator,
+    Constant
 )
 from ema_workbench.util.utilities import save_results, load_results
 
@@ -55,11 +57,13 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
     # Instantiate the model
     model = Model("JUSTICE", function=model_wrapper)
+    model.constants = [Constant("n_regions", len(data_loader.REGION_LIST)),
+                       Constant("n_timesteps", len(time_horizon.model_time_horizon))]
 
     # Speicify uncertainties
     model.uncertainties = [
         CategoricalParameter(
-            "scenario", (0, 1, 2, 3, 4, 5, 6, 7)
+            "ssp_rcp_scenario", (0, 1, 2, 3, 4, 5, 6, 7)
         ),  # 8 SSP-RCP scenario combinations
         RealParameter("elasticity_of_marginal_utility_of_consumption", 0.0, 2.0),
         RealParameter("pure_rate_of_social_time_preference", 0.0, 0.020),
@@ -67,21 +71,14 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
     ]
 
     # Set model levers - has to be 2D array of shape (57, 286) 57 regions and 286 timesteps
-    model.levers = [
-        [
-            RealParameter("savings_rate", 0.05, 0.5)
-            for _ in range(len(data_loader.REGION_LIST))
-        ]
-        for _ in range(len(time_horizon.model_time_horizon))
-    ]
+    sr_levers = []
+    ecr_levers = []
+    for i in range(len(data_loader.REGION_LIST)):
+        for j in range(len(time_horizon.model_time_horizon)):
+            sr_levers.append(RealParameter(f"savings_rate {i} {j}", 0.05, 0.5))
+            ecr_levers.append(RealParameter(f"emissions_control_rate {i} {j}", 0.00, 1.0))
 
-    model.levers = [
-        [
-            RealParameter("emissions_control_rate", 0.00, 1.0)
-            for _ in range(len(data_loader.REGION_LIST))
-        ]
-        for _ in range(len(time_horizon.model_time_horizon))
-    ]
+    model.levers = sr_levers + ecr_levers
 
     # Specify outcomes
     model.outcomes = [
@@ -95,9 +92,9 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         ArrayOutcome("disentangled_utility"),
     ]
 
-    with MultiprocessingEvaluator(model) as evaluator:
+    with SequentialEvaluator(model) as evaluator:
         results = evaluator.perform_experiments(
-            number_of_experiments, reporting_frequency=100
+            number_of_experiments, policies=2, reporting_frequency=100
         )
 
         if filename != None:

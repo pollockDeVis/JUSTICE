@@ -1,23 +1,33 @@
 """
 This module wraps the model for uncertainty analysis experiments using EMA.
 """
+import numpy as np
 
 from src.model import JUSTICE
 from src.enumerations import *
 
 
-def model_wrapper(
-    scenario,
-    savings_rate,
-    emissions_control_rate,
-    elasticity_of_marginal_utility_of_consumption,
-    pure_rate_of_social_time_preference,
-    inequality_aversion,
-    economy_type=Economy.NEOCLASSICAL,
-    damage_function_type=DamageFunction.KALKUHL,
-    abatement_type=Abatement.ENERDATA,
-    welfare_function=WelfareFunction.UTILITARIAN,
-):
+def model_wrapper(**kwargs):
+
+    scenario = kwargs.pop("ssp_rcp_scenario")
+    elasticity_of_marginal_utility_of_consumption = kwargs.pop("elasticity_of_marginal_utility_of_consumption")
+    pure_rate_of_social_time_preference = kwargs.pop("pure_rate_of_social_time_preference")
+    inequality_aversion = kwargs.pop("inequality_aversion")
+    economy_type = Economy.NEOCLASSICAL,
+    damage_function_type = DamageFunction.KALKUHL,
+    abatement_type = Abatement.ENERDATA,
+    welfare_function = WelfareFunction.UTILITARIAN,
+
+    n_regions = kwargs.pop("n_regions")
+    n_timesteps = kwargs.pop("n_timesteps")
+
+    savings_rate = np.zeros((n_regions, n_timesteps))
+    emissions_control_rate = np.zeros((n_regions, n_timesteps))
+    for i in range(n_regions):
+        for j in range(n_timesteps):
+            savings_rate[i, j] = kwargs.pop(f"savings_rate {i} {j}")
+            emissions_control_rate[i, j] = kwargs.pop(f"emissions_control_rate {i} {j}")
+
     model = JUSTICE(
         start_year=2015,
         end_year=2300,
