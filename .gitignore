@@ -9,6 +9,9 @@ __pycache__/
 #VS Code
 JUSTICE.code-workspace
 
+# JUSTICE
+data/output/*
+
 #Mac
 .DS_Store
 

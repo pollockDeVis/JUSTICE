@@ -106,9 +106,9 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         ArrayOutcome("disentangled_utility", function=get_mean),
     ]
 
-    with SequentialEvaluator(model) as evaluator:
+    with MultiprocessingEvaluator(model) as evaluator:
         results = evaluator.perform_experiments(
-            number_of_experiments, policies=2, reporting_frequency=100
+            scenarios=number_of_experiments, policies=2, reporting_frequency=100
         )
 
         if filename is None:
@@ -116,9 +116,11 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
         if folder is None:
             target_directory = os.path.join(os.getcwd(), "data/output", file_name)
+        else:
+            target_directory = os.path.join(folder, file_name)
 
-        # Create directories if not already existing
-        os.makedirs(os.path.dirname(target_directory), exist_ok=True)
+        # Create directory if not already existing
+        # os.makedirs(target_directory, exist_ok=True)
 
         save_results(results, file_name=target_directory)
 
