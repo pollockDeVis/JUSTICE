@@ -96,13 +96,13 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
     # Specify outcomes #All outcomes have shape (57, 286, 1001) except global_temperature which has shape (286, 1001)
     model.outcomes = [
-        # ArrayOutcome("net_economic_output", function=get_mean),
+        ArrayOutcome("net_economic_output", function=get_mean),
         # ArrayOutcome("consumption", function=get_mean),
         ArrayOutcome("consumption_per_capita", function=get_mean),
-        # ArrayOutcome("emissions", function=get_mean),
+        ArrayOutcome("emissions", function=get_mean),
         ArrayOutcome("global_temperature", function=get_mean),  # (286, 1001)
         ArrayOutcome("economic_damage", function=get_mean),
-        # ArrayOutcome("abatement_cost", function=get_mean),
+        ArrayOutcome("abatement_cost", function=get_mean),
         ArrayOutcome("disentangled_utility", function=get_mean),
     ]
 
