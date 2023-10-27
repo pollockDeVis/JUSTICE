@@ -65,24 +65,24 @@ class JUSTICE:
         self.region_list = self.data_loader.REGION_LIST
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
         # TODO: Incomplete Implementation
-        if self.damage_function_type == DamageFunction.KALKUHL:
-            self.damage_function = DamageKalkuhl(
-                input_dataset=self.data_loader,
-                time_horizon=self.time_horizon,
-                climate_ensembles=self.no_of_ensembles,
-            )
+        # if self.damage_function_type == DamageFunction.KALKUHL:
+        self.damage_function = DamageKalkuhl(
+            input_dataset=self.data_loader,
+            time_horizon=self.time_horizon,
+            climate_ensembles=self.no_of_ensembles,
+        )
         # TODO: Incomplete Implementation
-        if self.abatement_type == Abatement.ENERDATA:
-            self.abatement = AbatementEnerdata(
-                input_dataset=self.data_loader, time_horizon=self.time_horizon
-            )
+        # if self.abatement_type == Abatement.ENERDATA:
+        self.abatement = AbatementEnerdata(
+            input_dataset=self.data_loader, time_horizon=self.time_horizon
+        )
         # TODO: Incomplete Implementation
-        if self.economy_type == Economy.NEOCLASSICAL:
-            self.economy = NeoclassicalEconomyModel(
-                input_dataset=self.data_loader,
-                time_horizon=self.time_horizon,
-                climate_ensembles=self.no_of_ensembles,
-            )
+        # if self.economy_type == Economy.NEOCLASSICAL:
+        self.economy = NeoclassicalEconomyModel(
+            input_dataset=self.data_loader,
+            time_horizon=self.time_horizon,
+            climate_ensembles=self.no_of_ensembles,
+        )
 
         self.emissions = OutputToEmissions(
             input_dataset=self.data_loader,

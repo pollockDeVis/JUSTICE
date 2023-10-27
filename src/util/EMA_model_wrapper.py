@@ -8,15 +8,18 @@ from src.enumerations import *
 
 
 def model_wrapper(**kwargs):
-
     scenario = kwargs.pop("ssp_rcp_scenario")
-    elasticity_of_marginal_utility_of_consumption = kwargs.pop("elasticity_of_marginal_utility_of_consumption")
-    pure_rate_of_social_time_preference = kwargs.pop("pure_rate_of_social_time_preference")
+    elasticity_of_marginal_utility_of_consumption = kwargs.pop(
+        "elasticity_of_marginal_utility_of_consumption"
+    )
+    pure_rate_of_social_time_preference = kwargs.pop(
+        "pure_rate_of_social_time_preference"
+    )
     inequality_aversion = kwargs.pop("inequality_aversion")
-    economy_type = Economy.NEOCLASSICAL,
-    damage_function_type = DamageFunction.KALKUHL,
-    abatement_type = Abatement.ENERDATA,
-    welfare_function = WelfareFunction.UTILITARIAN,
+    economy_type = (Economy.NEOCLASSICAL,)
+    damage_function_type = (DamageFunction.KALKUHL,)
+    abatement_type = (Abatement.ENERDATA,)
+    welfare_function = (WelfareFunction.UTILITARIAN,)
 
     n_regions = kwargs.pop("n_regions")
     n_timesteps = kwargs.pop("n_timesteps")
@@ -25,8 +28,14 @@ def model_wrapper(**kwargs):
     emissions_control_rate = np.zeros((n_regions, n_timesteps))
     for i in range(n_regions):
         for j in range(n_timesteps):
+            # savings_rate[i, j] = kwargs.get(f"savings_rate_{i}_{j}", 0)
+            # emissions_control_rate[i, j] = kwargs.get(
+            #     f"emissions_control_rate_{i}_{j}", 0
+            # )
             savings_rate[i, j] = kwargs.pop(f"savings_rate {i} {j}")
             emissions_control_rate[i, j] = kwargs.pop(f"emissions_control_rate {i} {j}")
+
+    # print(savings_rate)
 
     model = JUSTICE(
         start_year=2015,

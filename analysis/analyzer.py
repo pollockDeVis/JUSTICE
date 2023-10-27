@@ -14,7 +14,7 @@ from ema_workbench import (
     ema_logging,
     MultiprocessingEvaluator,
     SequentialEvaluator,
-    Constant
+    Constant,
 )
 from ema_workbench.util.utilities import save_results, load_results
 
@@ -47,6 +47,10 @@ def get_mean_median_5th_95th(results):
     ]
 
 
+def get_mean(results):
+    return np.mean(results, axis=2)
+
+
 def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None):
     # scenario,
     # savings_rate,
@@ -57,8 +61,10 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
     # Instantiate the model
     model = Model("JUSTICE", function=model_wrapper)
-    model.constants = [Constant("n_regions", len(data_loader.REGION_LIST)),
-                       Constant("n_timesteps", len(time_horizon.model_time_horizon))]
+    model.constants = [
+        Constant("n_regions", len(data_loader.REGION_LIST)),
+        Constant("n_timesteps", len(time_horizon.model_time_horizon)),
+    ]
 
     # Speicify uncertainties
     model.uncertainties = [
@@ -76,20 +82,22 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
     for i in range(len(data_loader.REGION_LIST)):
         for j in range(len(time_horizon.model_time_horizon)):
             sr_levers.append(RealParameter(f"savings_rate {i} {j}", 0.05, 0.5))
-            ecr_levers.append(RealParameter(f"emissions_control_rate {i} {j}", 0.00, 1.0))
+            ecr_levers.append(
+                RealParameter(f"emissions_control_rate {i} {j}", 0.00, 1.0)
+            )
 
     model.levers = sr_levers + ecr_levers
 
     # Specify outcomes
     model.outcomes = [
-        ArrayOutcome("net_economic_output"),
-        ArrayOutcome("consumption"),
-        ArrayOutcome("consumption_per_capita"),
-        ArrayOutcome("emissions"),
-        ArrayOutcome("global_temperature"),
-        ArrayOutcome("economic_damage"),
-        ArrayOutcome("abatement_cost"),
-        ArrayOutcome("disentangled_utility"),
+        ArrayOutcome("net_economic_output", function=get_mean),
+        # ArrayOutcome("consumption", function=get_mean),
+        # ArrayOutcome("consumption_per_capita", function=get_mean),
+        # ArrayOutcome("emissions", function=get_mean),
+        # ArrayOutcome("global_temperature", function=get_mean),
+        ArrayOutcome("economic_damage", function=get_mean),
+        # ArrayOutcome("abatement_cost", function=get_mean),
+        # ArrayOutcome("disentangled_utility", function=get_mean),
     ]
 
     with SequentialEvaluator(model) as evaluator:
@@ -97,11 +105,14 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
             number_of_experiments, policies=2, reporting_frequency=100
         )
 
-        if filename != None:
+        if filename is None:
             file_name = f"results_open_exploration_{number_of_experiments}"
 
         if folder is None:
             target_directory = os.path.join(os.getcwd(), "data/output", file_name)
+
+        # Create directories if not already existing
+        os.makedirs(os.path.dirname(target_directory), exist_ok=True)
 
         save_results(results, file_name=target_directory)
 
