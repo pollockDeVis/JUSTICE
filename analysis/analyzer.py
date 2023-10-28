@@ -9,6 +9,7 @@ from ema_workbench import (
     Model,
     RealParameter,
     ArrayOutcome,
+    TimeSeriesOutcome,
     CategoricalParameter,
     Policy,
     ema_logging,
@@ -47,7 +48,7 @@ def get_mean_median_5th_95th(results):
     ]
 
 
-def get_mean(results):
+def get_mean_3D(results):
     # Check if results is a 3D array or a 2D array
     if len(results.shape) == 3:
         # Return mean of results
@@ -57,14 +58,15 @@ def get_mean(results):
         return np.mean(results, axis=1)
 
 
-def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None):
-    # scenario,
-    # savings_rate,
-    # emissions_control_rate,
-    # elasticity_of_marginal_utility_of_consumption,
-    # pure_rate_of_social_time_preference,
-    # inequality_aversion,
+def get_mean_2D(results):
+    if len(results.shape) == 2:
+        # Return mean of results
+        return np.mean(results, axis=1)
+    elif len(results.shape) == 1:
+        return np.mean(results)
 
+
+def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None):
     # Instantiate the model
     model = Model("JUSTICE", function=model_wrapper)
     model.constants = [
@@ -96,14 +98,14 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
     # Specify outcomes #All outcomes have shape (57, 286, 1001) except global_temperature which has shape (286, 1001)
     model.outcomes = [
-        ArrayOutcome("net_economic_output", function=get_mean),
+        # ArrayOutcome("net_economic_output", function=get_mean),
         # ArrayOutcome("consumption", function=get_mean),
-        ArrayOutcome("consumption_per_capita", function=get_mean),
-        ArrayOutcome("emissions", function=get_mean),
-        ArrayOutcome("global_temperature", function=get_mean),  # (286, 1001)
-        ArrayOutcome("economic_damage", function=get_mean),
-        ArrayOutcome("abatement_cost", function=get_mean),
-        ArrayOutcome("disentangled_utility", function=get_mean),
+        ArrayOutcome("consumption_per_capita", function=get_mean_3D),
+        ArrayOutcome("emissions", function=get_mean_3D),
+        TimeSeriesOutcome("global_temperature", function=get_mean_2D),  # (286, 1001)
+        ArrayOutcome("economic_damage", function=get_mean_3D),
+        ArrayOutcome("abatement_cost", function=get_mean_3D),
+        ArrayOutcome("disentangled_utility", function=get_mean_3D),
     ]
 
     with MultiprocessingEvaluator(model) as evaluator:

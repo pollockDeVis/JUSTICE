@@ -28,10 +28,6 @@ def model_wrapper(**kwargs):
     emissions_control_rate = np.zeros((n_regions, n_timesteps))
     for i in range(n_regions):
         for j in range(n_timesteps):
-            # savings_rate[i, j] = kwargs.get(f"savings_rate_{i}_{j}", 0)
-            # emissions_control_rate[i, j] = kwargs.get(
-            #     f"emissions_control_rate_{i}_{j}", 0
-            # )
             savings_rate[i, j] = kwargs.pop(f"savings_rate {i} {j}")
             emissions_control_rate[i, j] = kwargs.pop(f"emissions_control_rate {i} {j}")
 
@@ -54,8 +50,9 @@ def model_wrapper(**kwargs):
         pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
         inequality_aversion=inequality_aversion,
     )
-    net_economic_output = datasets["net_economic_output"]
-    consumption = datasets["consumption"]
+
+    # net_economic_output = datasets["net_economic_output"]
+    # consumption = datasets["consumption"]
     consumption_per_capita = datasets["consumption_per_capita"]
     emissions = datasets["emissions"]
     global_temperature = datasets["global_temperature"]
@@ -64,8 +61,8 @@ def model_wrapper(**kwargs):
     disentangled_utility = datasets["disentangled_utility"]
 
     return (
-        net_economic_output,
-        consumption,
+        # net_economic_output,
+        # consumption,
         consumption_per_capita,
         emissions,
         global_temperature,
@@ -73,3 +70,15 @@ def model_wrapper(**kwargs):
         abatement_cost,
         disentangled_utility,
     )
+
+
+def get_outcome_names():
+    return [
+        "net_economic_output",
+        "consumption_per_capita",
+        "emissions",
+        "global_temperature",
+        "economic_damage",
+        "abatement_cost",
+        "disentangled_utility",
+    ]
