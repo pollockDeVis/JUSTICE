@@ -1,12 +1,12 @@
 #!/bin/bash -l                                                                                                       
 
-#SBATCH --job-name="EAGG03"                                                                                     
-#SBATCH --time=24:00:00                                                                                              
-#SBATCH --partition=compute 
+#SBATCH --job-name="Test10_95"                                                                                     
+#SBATCH --time=10:00:00
+#SBATCH --partition=compute
 
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=48
-#SBATCH --mem=0                                                                                                  
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=0                                                                                               
                                                                                      
 
 #SBATCH --account=research-tpm-mas                                                                                   

@@ -249,21 +249,22 @@ class JUSTICE:
 
         population = self.economy.get_population(scenario=self.scenario)
 
-        if welfare_function == WelfareFunction.UTILITARIAN:
-            (
-                self.data["disentangled_utility"],
-                self.data["welfare_utilitarian"],
-            ) = calculate_utilitarian_welfare(
-                time_horizon=self.time_horizon,
-                region_list=self.region_list,
-                scenario=self.scenario,
-                # savings_rate=self.savings_rate,
-                population=population,
-                consumption_per_capita=self.data["consumption_per_capita"],
-                elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
-                pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
-                inequality_aversion=inequality_aversion,
-            )
+        # TODO: to be implemented later. Checking the enums doesn't work well with EMA
+        # if welfare_function == WelfareFunction.UTILITARIAN:
+        (
+            self.data["disentangled_utility"],
+            self.data["welfare_utilitarian"],
+        ) = calculate_utilitarian_welfare(
+            time_horizon=self.time_horizon,
+            region_list=self.region_list,
+            scenario=self.scenario,
+            # savings_rate=self.savings_rate,
+            population=population,
+            consumption_per_capita=self.data["consumption_per_capita"],
+            elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
+            pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+            inequality_aversion=inequality_aversion,
+        )
         return self.data
 
     def get_outcome_names(self):

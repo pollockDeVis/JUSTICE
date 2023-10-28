@@ -322,10 +322,10 @@ class NeoclassicalEconomyModel:
         # TODO: Calculations are currently not correct. Need to fix it.
 
         # total_emissions = emissions + land_use_emissions
-        print("Total Emissions", fossil_and_land_use_emissions.shape)
+        # print("Total Emissions", fossil_and_land_use_emissions.shape)
 
         consumption = self.calculate_consumption(savings_rate)
-        print("consumption", consumption.shape)
+        # print("consumption", consumption.shape)
 
         # Calculate the social cost of carbon
         #  scc[t, n] = (-1000 * eq_E[t, n]) / eq_cc[t, n]
@@ -333,8 +333,8 @@ class NeoclassicalEconomyModel:
         emissions_marginal = np.diff(fossil_and_land_use_emissions, axis=1)
         consumption_marginal = np.diff(consumption, axis=1)
 
-        print("emissions_marginal", emissions_marginal[0, 0, 0])
-        print("consumption_marginal", consumption_marginal[0, 0, 0])
+        # print("emissions_marginal", emissions_marginal[0, 0, 0])
+        # print("consumption_marginal", consumption_marginal[0, 0, 0])
 
         social_cost_of_carbon = (emissions_marginal / consumption_marginal) * -1000
 
@@ -380,7 +380,7 @@ class NeoclassicalEconomyModel:
 
         # Setting the initial capital stock
         capital_stock[:, 1, :] = self.capital_tfp[:, 0, :]
-        print(capital_stock[0, 1, 0])
+        # print(capital_stock[0, 1, 0])
 
         for t in range(2, len(self.model_time_horizon)):
             capital_stock[:, t, :] = (

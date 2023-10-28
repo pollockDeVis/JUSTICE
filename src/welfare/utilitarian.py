@@ -54,10 +54,6 @@ def calculate_utilitarian_welfare(
     population_weighted_consumption_per_capita = (
         population_ratio * consumption_per_capita_inequality_aversion
     )
-    print(population_weighted_consumption_per_capita.shape)
-    # Calculate the disentangled utility
-
-    # disentangled_utility =
 
     disentangled_utility = population_weighted_consumption_per_capita
 
