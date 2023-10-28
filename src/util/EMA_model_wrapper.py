@@ -53,6 +53,7 @@ def model_wrapper(**kwargs):
 
     # net_economic_output = datasets["net_economic_output"]
     # consumption = datasets["consumption"]
+    # welfare = datasets["welfare_utilitarian"]
     consumption_per_capita = datasets["consumption_per_capita"]
     emissions = datasets["emissions"]
     global_temperature = datasets["global_temperature"]
@@ -63,6 +64,7 @@ def model_wrapper(**kwargs):
     return (
         # net_economic_output,
         # consumption,
+        # welfare,
         consumption_per_capita,
         emissions,
         global_temperature,

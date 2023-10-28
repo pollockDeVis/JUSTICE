@@ -11,10 +11,8 @@ from ema_workbench import (
     ArrayOutcome,
     TimeSeriesOutcome,
     CategoricalParameter,
-    Policy,
     ema_logging,
     MultiprocessingEvaluator,
-    SequentialEvaluator,
     Constant,
 )
 from ema_workbench.util.utilities import save_results, load_results
@@ -100,6 +98,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
     model.outcomes = [
         # ArrayOutcome("net_economic_output", function=get_mean),
         # ArrayOutcome("consumption", function=get_mean),
+        # ßArrayOutcome("welfare_utilitarian"),  # (286, 1001) #, function=get_mean_2D
         ArrayOutcome("consumption_per_capita", function=get_mean_3D),
         ArrayOutcome("emissions", function=get_mean_3D),
         TimeSeriesOutcome("global_temperature", function=get_mean_2D),  # (286, 1001)

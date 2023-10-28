@@ -57,19 +57,22 @@ def calculate_utilitarian_welfare(
     print(population_weighted_consumption_per_capita.shape)
     # Calculate the disentangled utility
 
-    # disentangled_utility = np.sum(population_weighted_consumption_per_capita, axis=0)
+    # disentangled_utility =
 
     disentangled_utility = population_weighted_consumption_per_capita
 
+    disentangled_utility_summed = np.sum(
+        population_weighted_consumption_per_capita, axis=0
+    )
+
     disentangled_utility_powered = np.power(
-        disentangled_utility,
+        disentangled_utility_summed,
         (
             (1 - elasticity_of_marginal_utility_of_consumption)
             / (1 - inequality_aversion)
         ),
     )
-    print("discount_rate.shape", discount_rate.shape)
-    # discount_rate = np.tile(discount_rate, 1001)
+
     welfare_utilitarian = np.sum(
         (
             (
