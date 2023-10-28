@@ -116,15 +116,15 @@ class OutputToEmissions:
         """
         This method calculates the total CO2 fossil fuel and CO2 Land Use emissions.
         """
-        print("Land use before", land_use_emissions[0, 0])
+        # print("Land use before", land_use_emissions[0, 0])
         # Get downscaled land use emissions
         land_use_emissions = self.emission_downscaler(land_use_emissions)
-        print("Land use after", (land_use_emissions.sum(axis=0))[0, 0])
+        # print("Land use after", (land_use_emissions.sum(axis=0))[0, 0])
 
         # Sum CO2 fossil fuel and CO2 Land Use emissions
         fossil_and_land_use_emissions = self.emissions + land_use_emissions
-        print("Emission before", self.emissions[0, 0, 0])
-        print("Emission after", fossil_and_land_use_emissions[0, 0, 0])
+        # print("Emission before", self.emissions[0, 0, 0])
+        # print("Emission after", fossil_and_land_use_emissions[0, 0, 0])
 
         return fossil_and_land_use_emissions
 
