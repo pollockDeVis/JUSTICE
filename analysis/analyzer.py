@@ -4,6 +4,8 @@ This module contains the uncertainty analysis for the JUSTICE model using EMA Wo
 import numpy as np
 import os
 
+stat = "95th"  # mean, median, 5th, 95th
+
 # EMA
 from ema_workbench import (
     Model,
@@ -31,19 +33,45 @@ data_loader = DataLoader()
 time_horizon = TimeHorizon(start_year=2015, end_year=2300, data_timestep=5, timestep=1)
 
 
-def get_mean_median_5th_95th(results):
-    mean_array = np.mean(results, axis=2)
-    median_array = np.median(results, axis=2)
-    fifth_percentile_array = np.percentile(results, 5, axis=2)
-    ninety_fifth_percentile_array = np.percentile(results, 95, axis=2)
+def apply_statistical_functions(results):
+    if stat == "mean":
+        if len(results.shape) == 3:
+            # Return mean of results
+            return np.mean(results, axis=2)
+        elif len(results.shape) == 2:
+            # Return results
+            return np.mean(results, axis=1)
+        elif len(results.shape) == 1:
+            return np.mean(results)
+    elif stat == "median":
+        if len(results.shape) == 3:
+            # Return mean of results
+            return np.median(results, axis=2)
+        elif len(results.shape) == 2:
+            # Return results
+            return np.median(results, axis=1)
+        elif len(results.shape) == 1:
+            return np.median(results)
 
-    # Return list of arrays
-    return [
-        fifth_percentile_array,
-        mean_array,
-        median_array,
-        ninety_fifth_percentile_array,
-    ]
+    elif stat == "95th":
+        if len(results.shape) == 3:
+            # Return mean of results
+            return np.percentile(results, 95, axis=2)
+        elif len(results.shape) == 2:
+            # Return results
+            return np.percentile(results, 95, axis=1)
+        elif len(results.shape) == 1:
+            return np.percentile(results, 95)
+
+    elif stat == "5th":
+        if len(results.shape) == 3:
+            # Return mean of results
+            return np.percentile(results, 5, axis=2)
+        elif len(results.shape) == 2:
+            # Return results
+            return np.percentile(results, 5, axis=1)
+        elif len(results.shape) == 1:
+            return np.percentile(results, 5)
 
 
 def get_mean_3D(results):
@@ -66,6 +94,7 @@ def get_mean_2D(results):
 
 def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None):
     # Instantiate the model
+
     model = Model("JUSTICE", function=model_wrapper)
     model.constants = [
         Constant("n_regions", len(data_loader.REGION_LIST)),
@@ -99,12 +128,14 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         # ArrayOutcome("net_economic_output", function=get_mean),
         # ArrayOutcome("consumption", function=get_mean),
         # ßArrayOutcome("welfare_utilitarian"),  # (286, 1001) #, function=get_mean_2D
-        ArrayOutcome("consumption_per_capita", function=get_mean_3D),
-        ArrayOutcome("emissions", function=get_mean_3D),
-        TimeSeriesOutcome("global_temperature", function=get_mean_2D),  # (286, 1001)
-        ArrayOutcome("economic_damage", function=get_mean_3D),
-        ArrayOutcome("abatement_cost", function=get_mean_3D),
-        ArrayOutcome("disentangled_utility", function=get_mean_3D),
+        ArrayOutcome("consumption_per_capita", function=apply_statistical_functions),
+        ArrayOutcome("emissions", function=apply_statistical_functions),
+        TimeSeriesOutcome(
+            "global_temperature", function=apply_statistical_functions
+        ),  # (286, 1001)
+        ArrayOutcome("economic_damage", function=apply_statistical_functions),
+        ArrayOutcome("abatement_cost", function=apply_statistical_functions),
+        ArrayOutcome("disentangled_utility", function=apply_statistical_functions),
     ]
 
     with MultiprocessingEvaluator(model) as evaluator:
@@ -113,7 +144,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         )
 
         if filename is None:
-            file_name = f"results_open_exploration_{number_of_experiments}"
+            file_name = f"results_open_exploration_{number_of_experiments}_{stat}"
 
         if folder is None:
             target_directory = os.path.join(os.getcwd(), "data/output", file_name)
