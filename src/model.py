@@ -249,7 +249,7 @@ class JUSTICE:
 
         population = self.economy.get_population(scenario=self.scenario)
 
-        # TODO: to be implemented later. Checking the enums doesn't work well with EMA
+        # TODO: to be implemented later. Checking the enums doesn't work well with EMA #need to make it self.welfare_function?
         # if welfare_function == WelfareFunction.UTILITARIAN:
         (
             self.data["disentangled_utility"],

@@ -1,11 +1,11 @@
 #!/bin/bash -l                                                                                                       
 
-#SBATCH --job-name="Test10_95"                                                                                     
-#SBATCH --time=10:00:00
+#SBATCH --job-name="RUN_10000_MEAN"                                                                                     
+#SBATCH --time=48:00:00
 #SBATCH --partition=compute
 
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=12
+#SBATCH --cpus-per-task=48
 #SBATCH --mem=0                                                                                               
                                                                                      
 

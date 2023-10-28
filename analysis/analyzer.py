@@ -4,7 +4,7 @@ This module contains the uncertainty analysis for the JUSTICE model using EMA Wo
 import numpy as np
 import os
 
-stat = "95th"  # mean, median, 5th, 95th
+stat = "median"  # mean, median, 5th, 95th
 
 # EMA
 from ema_workbench import (
