@@ -3,4 +3,5 @@ fair==2.1.0
 pandas==1.4.2
 pooch==1.7.0
 xarray==2023.5.0
+h5py
 

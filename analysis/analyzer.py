@@ -16,6 +16,7 @@ from ema_workbench import (
     ema_logging,
     MultiprocessingEvaluator,
     Constant,
+    SequentialEvaluator
 )
 from ema_workbench.util.utilities import save_results, load_results
 
@@ -144,7 +145,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         )
 
         if filename is None:
-            file_name = f"results_open_exploration_{number_of_experiments}_{stat}"
+            file_name = f"results_open_exploration_{number_of_experiments}_{stat}.tar.gz"
 
         if folder is None:
             target_directory = os.path.join(os.getcwd(), "data/output", file_name)
