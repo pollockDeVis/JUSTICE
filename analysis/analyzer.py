@@ -138,7 +138,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         ArrayOutcome("disentangled_utility", function=apply_statistical_functions),
     ]
 
-    with MultiprocessingEvaluator(model) as evaluator:
+    with MultiprocessingEvaluator(model, n_processes=28) as evaluator:
         results = evaluator.perform_experiments(
             scenarios=number_of_experiments, policies=2, reporting_frequency=100
         )

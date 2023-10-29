@@ -1,13 +1,15 @@
 #!/bin/bash -l                                                                                                       
 
-#SBATCH --job-name="RUN_10000_MEAN"                                                                                     
+#SBATCH --job-name="MEAN_RUN_1000"                                                                                     
 #SBATCH --time=48:00:00
 #SBATCH --partition=compute
 
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=48
-#SBATCH --mem=0                                                                                               
-                                                                                     
+
+#SBATCH --nodes=1                                                                                                    
+#SBATCH --exclusive                                                                                                  
+#SBATCH --mem=0     
+
+                                                                                                                                                                          
 
 #SBATCH --account=research-tpm-mas                                                                                   
 
