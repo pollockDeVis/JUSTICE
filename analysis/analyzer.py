@@ -151,9 +151,6 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         else:
             target_directory = os.path.join(folder, file_name)
 
-        # Create directory if not already existing
-        # os.makedirs(target_directory, exist_ok=True)
-
         save_results(results, file_name=target_directory)
 
 
