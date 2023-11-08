@@ -5,6 +5,7 @@ import numpy as np
 
 from src.model import JUSTICE
 from src.enumerations import *
+from src.enumerations import get_economic_scenario
 
 
 def model_wrapper(**kwargs):
@@ -26,10 +27,24 @@ def model_wrapper(**kwargs):
 
     savings_rate = np.zeros((n_regions, n_timesteps))
     emissions_control_rate = np.zeros((n_regions, n_timesteps))
-    for i in range(n_regions):
-        for j in range(n_timesteps):
-            savings_rate[i, j] = kwargs.pop(f"savings_rate {i} {j}")
-            emissions_control_rate[i, j] = kwargs.pop(f"emissions_control_rate {i} {j}")
+
+    # TODO temporarily commented out
+    # for i in range(n_regions):
+    #     for j in range(n_timesteps):
+    #         savings_rate[i, j] = kwargs.pop(f"savings_rate {i} {j}")
+    #         emissions_control_rate[i, j] = kwargs.pop(f"emissions_control_rate {i} {j}")
+
+    ssp_scenario = get_economic_scenario(scenario)
+    optimal_emissions_control = np.load(
+        "./data/input/solved_RICE50_data/interpolated_emissions_control.npy",
+        allow_pickle=True,
+    )
+    optimal_savings_rate = np.load(
+        "./data/input/solved_RICE50_data/interpolated_savings_rate.npy",
+        allow_pickle=True,
+    )
+    savings_rate = optimal_savings_rate[ssp_scenario, :, :]
+    emissions_control_rate = optimal_emissions_control[ssp_scenario, :, :]
 
     # print(savings_rate)
 

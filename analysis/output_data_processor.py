@@ -2,11 +2,46 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import pandas as pd
+from scipy.interpolate import interp1d
 
 
 from ema_workbench import load_results, ema_logging
 
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
+
+
+def interpolator(data_array, data_time_horizon, model_time_horizon):
+    # Check if data array is 3D
+    if len(data_array.shape) == 3:
+        interp_data = np.zeros(
+            (
+                data_array.shape[0],
+                data_array.shape[1],
+                len(model_time_horizon),
+            )
+        )
+
+        for i in range(data_array.shape[0]):
+            for j in range(data_array.shape[1]):
+                f = interp1d(data_time_horizon, data_array[i, j, :], kind="linear")
+                interp_data[i, j, :] = f(model_time_horizon)
+
+        data_array = interp_data
+    elif len(data_array.shape) == 2:
+        interp_data = np.zeros(
+            (
+                data_array.shape[0],
+                len(model_time_horizon),
+            )
+        )
+
+        for i in range(data_array.shape[0]):
+            f = interp1d(data_time_horizon, data_array[i, :], kind="linear")
+            interp_data[i, :] = f(model_time_horizon)
+
+        data_array = interp_data
+
+    return data_array
 
 
 def concatenate_data(number_of_runs):
@@ -64,6 +99,7 @@ def calculate_welfare(
     disentangled_utility,
     time_horizon,
 ):
+    # This is temporary.
     timestep_list = np.arange(
         0, len(time_horizon.model_time_horizon), time_horizon.timestep
     )

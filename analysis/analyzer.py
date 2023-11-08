@@ -16,7 +16,7 @@ from ema_workbench import (
     ema_logging,
     MultiprocessingEvaluator,
     Constant,
-    SequentialEvaluator
+    SequentialEvaluator,
 )
 from ema_workbench.util.utilities import save_results, load_results
 
@@ -108,27 +108,31 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
             "ssp_rcp_scenario", (0, 1, 2, 3, 4, 5, 6, 7)
         ),  # 8 SSP-RCP scenario combinations
         RealParameter("elasticity_of_marginal_utility_of_consumption", 0.0, 2.0),
-        RealParameter("pure_rate_of_social_time_preference", 0.0, 0.020),
+        RealParameter(
+            "pure_rate_of_social_time_preference", 0.0001, 0.020
+        ),  # 0.1 to 3% in RICE50 gazzotti2
         RealParameter("inequality_aversion", 0.0, 2.0),
     ]
 
     # Set model levers - has to be 2D array of shape (57, 286) 57 regions and 286 timesteps
-    sr_levers = []
-    ecr_levers = []
-    for i in range(len(data_loader.REGION_LIST)):
-        for j in range(len(time_horizon.model_time_horizon)):
-            sr_levers.append(RealParameter(f"savings_rate {i} {j}", 0.05, 0.5))
-            ecr_levers.append(
-                RealParameter(f"emissions_control_rate {i} {j}", 0.00, 1.0)
-            )
 
-    model.levers = sr_levers + ecr_levers
+    # TODO temporarily commented out
+    # sr_levers = []
+    # ecr_levers = []
+    # for i in range(len(data_loader.REGION_LIST)):
+    #     for j in range(len(time_horizon.model_time_horizon)):
+    #         sr_levers.append(RealParameter(f"savings_rate {i} {j}", 0.05, 0.5))
+    #         ecr_levers.append(
+    #             RealParameter(f"emissions_control_rate {i} {j}", 0.00, 1.0)
+    #         )
+
+    # model.levers = sr_levers + ecr_levers
 
     # Specify outcomes #All outcomes have shape (57, 286, 1001) except global_temperature which has shape (286, 1001)
     model.outcomes = [
         # ArrayOutcome("net_economic_output", function=get_mean),
         # ArrayOutcome("consumption", function=get_mean),
-        # ßArrayOutcome("welfare_utilitarian"),  # (286, 1001) #, function=get_mean_2D
+        # ArrayOutcome("welfare_utilitarian"),  # (286, 1001) #, function=get_mean_2D
         ArrayOutcome("consumption_per_capita", function=apply_statistical_functions),
         ArrayOutcome("emissions", function=apply_statistical_functions),
         TimeSeriesOutcome(
@@ -141,11 +145,14 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
     with MultiprocessingEvaluator(model, n_processes=28) as evaluator:
         results = evaluator.perform_experiments(
-            scenarios=number_of_experiments, policies=2, reporting_frequency=100
+            scenarios=number_of_experiments,
+            reporting_frequency=100,  # policies=2,TODO temporarily commented out
         )
 
         if filename is None:
-            file_name = f"results_open_exploration_{number_of_experiments}_{stat}.tar.gz"
+            file_name = (
+                f"optimal_open_exploration_{number_of_experiments}_{stat}.tar.gz"
+            )
 
         if folder is None:
             target_directory = os.path.join(os.getcwd(), "data/output", file_name)
