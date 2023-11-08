@@ -44,10 +44,10 @@ def interpolator(data_array, data_time_horizon, model_time_horizon):
     return data_array
 
 
-def concatenate_data(number_of_runs):
+def concatenate_data(number_of_runs, filename="optimal_open_exploration"):
     # create a list of filenames to load from
     filenames = [
-        "optimal_open_exploration_" + str(number_of_runs) + "_" + metric
+        filename + "_" + str(number_of_runs) + "_" + metric
         for metric in ["5th", "median", "mean", "95th"]
     ]
 
@@ -63,7 +63,17 @@ def concatenate_data(number_of_runs):
         print(filepath)
         # load the data
         experiments, outcomes = load_results(filepath)
-        experiments = experiments.iloc[:, [0, 1, 2, -3, -2, -1]]
+        experiments = experiments[
+            [
+                "elasticity_of_marginal_utility_of_consumption",
+                "inequality_aversion",
+                "pure_rate_of_social_time_preference",
+                "ssp_rcp_scenario",
+                "scenario",
+                "policy",
+            ]
+        ]
+        # experiments = experiments.iloc[:, [0, 1, 2, -4, -3, -2, -1]]
         temp = outcomes["global_temperature"]
         damages = outcomes["economic_damage"]
         dis_util = outcomes["disentangled_utility"]
@@ -167,7 +177,7 @@ if __name__ == "__main__":
         damages_array,
         disentangled_utility,
         experiment_array,
-    ) = concatenate_data(1000)
+    ) = concatenate_data(1000, filename="results_open_exploration")
     # Save the data as pickle files
     np.save("./data/output/temperature_array.npy", temperature_array)
     np.save("./data/output/damages_array.npy", damages_array)
