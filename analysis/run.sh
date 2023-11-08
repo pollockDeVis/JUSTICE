@@ -1,6 +1,6 @@
 #!/bin/bash -l                                                                                                       
 
-#SBATCH --job-name="MEAN_RUN_1000"                                                                                     
+#SBATCH --job-name="20k_MEAN"                                                                                     
 #SBATCH --time=48:00:00
 #SBATCH --partition=compute
 

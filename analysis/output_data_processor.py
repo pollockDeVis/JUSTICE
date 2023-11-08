@@ -47,7 +47,7 @@ def interpolator(data_array, data_time_horizon, model_time_horizon):
 def concatenate_data(number_of_runs):
     # create a list of filenames to load from
     filenames = [
-        "results_open_exploration_" + str(number_of_runs) + "_" + metric
+        "optimal_open_exploration_" + str(number_of_runs) + "_" + metric
         for metric in ["5th", "median", "mean", "95th"]
     ]
 
