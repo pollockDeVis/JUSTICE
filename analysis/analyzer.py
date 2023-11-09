@@ -34,6 +34,41 @@ data_loader = DataLoader()
 time_horizon = TimeHorizon(start_year=2015, end_year=2300, data_timestep=5, timestep=1)
 
 
+class ApplyStatisticalFunctions:
+    def __init__(self, stat="mean"):
+        self.stat = stat
+
+    def __call__(self, results):
+        if self.stat == "mean":
+            if len(results.shape) == 3:
+                return np.mean(results, axis=2)
+            elif len(results.shape) == 2:
+                return np.mean(results, axis=1)
+            elif len(results.shape) == 1:
+                return np.mean(results)
+        elif self.stat == "median":
+            if len(results.shape) == 3:
+                return np.median(results, axis=2)
+            elif len(results.shape) == 2:
+                return np.median(results, axis=1)
+            elif len(results.shape) == 1:
+                return np.median(results)
+        elif self.stat == "95th":
+            if len(results.shape) == 3:
+                return np.percentile(results, 95, axis=2)
+            elif len(results.shape) == 2:
+                return np.percentile(results, 95, axis=1)
+            elif len(results.shape) == 1:
+                return np.percentile(results, 95)
+        elif self.stat == "5th":
+            if len(results.shape) == 3:
+                return np.percentile(results, 5, axis=2)
+            elif len(results.shape) == 2:
+                return np.percentile(results, 5, axis=1)
+            elif len(results.shape) == 1:
+                return np.percentile(results, 5)
+
+
 def apply_statistical_functions(results):
     if stat == "mean":
         if len(results.shape) == 3:
@@ -93,7 +128,9 @@ def get_mean_2D(results):
         return np.mean(results)
 
 
-def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None):
+def perform_exploratory_analysis(
+    number_of_experiments=10, filename=None, folder=None, stat="mean"
+):
     # Instantiate the model
 
     model = Model("JUSTICE", function=model_wrapper)
@@ -114,6 +151,9 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         RealParameter("inequality_aversion", 0.0, 2.0),
     ]
 
+    # Instantiate the function class with specified statistical method
+    function = ApplyStatisticalFunctions(stat)
+
     # Set model levers - has to be 2D array of shape (57, 286) 57 regions and 286 timesteps
 
     # TODO temporarily commented out
@@ -133,14 +173,12 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         # ArrayOutcome("net_economic_output", function=get_mean),
         # ArrayOutcome("consumption", function=get_mean),
         # ArrayOutcome("welfare_utilitarian"),  # (286, 1001) #, function=get_mean_2D
-        ArrayOutcome("consumption_per_capita", function=apply_statistical_functions),
-        ArrayOutcome("emissions", function=apply_statistical_functions),
-        TimeSeriesOutcome(
-            "global_temperature", function=apply_statistical_functions
-        ),  # (286, 1001)
-        ArrayOutcome("economic_damage", function=apply_statistical_functions),
-        ArrayOutcome("abatement_cost", function=apply_statistical_functions),
-        ArrayOutcome("disentangled_utility", function=apply_statistical_functions),
+        ArrayOutcome("consumption_per_capita", function=function),
+        ArrayOutcome("emissions", function=function),
+        TimeSeriesOutcome("global_temperature", function=function),  # (286, 1001)
+        ArrayOutcome("economic_damage", function=function),
+        ArrayOutcome("abatement_cost", function=function),
+        ArrayOutcome("disentangled_utility", function=function),
     ]
 
     with MultiprocessingEvaluator(model, n_processes=28) as evaluator:
