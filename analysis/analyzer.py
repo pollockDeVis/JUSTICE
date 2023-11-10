@@ -36,65 +36,6 @@ data_loader = DataLoader()
 time_horizon = TimeHorizon(start_year=2015, end_year=2300, data_timestep=5, timestep=1)
 
 
-def apply_statistical_functions(results):
-    if stat == "mean":
-        if len(results.shape) == 3:
-            # Return mean of results
-            return np.mean(results, axis=2)
-        elif len(results.shape) == 2:
-            # Return results
-            return np.mean(results, axis=1)
-        elif len(results.shape) == 1:
-            return np.mean(results)
-    elif stat == "median":
-        if len(results.shape) == 3:
-            # Return mean of results
-            return np.median(results, axis=2)
-        elif len(results.shape) == 2:
-            # Return results
-            return np.median(results, axis=1)
-        elif len(results.shape) == 1:
-            return np.median(results)
-
-    elif stat == "95th":
-        if len(results.shape) == 3:
-            # Return mean of results
-            return np.percentile(results, 95, axis=2)
-        elif len(results.shape) == 2:
-            # Return results
-            return np.percentile(results, 95, axis=1)
-        elif len(results.shape) == 1:
-            return np.percentile(results, 95)
-
-    elif stat == "5th":
-        if len(results.shape) == 3:
-            # Return mean of results
-            return np.percentile(results, 5, axis=2)
-        elif len(results.shape) == 2:
-            # Return results
-            return np.percentile(results, 5, axis=1)
-        elif len(results.shape) == 1:
-            return np.percentile(results, 5)
-
-
-def get_mean_3D(results):
-    # Check if results is a 3D array or a 2D array
-    if len(results.shape) == 3:
-        # Return mean of results
-        return np.mean(results, axis=2)
-    elif len(results.shape) == 2:
-        # Return results
-        return np.mean(results, axis=1)
-
-
-def get_mean_2D(results):
-    if len(results.shape) == 2:
-        # Return mean of results
-        return np.mean(results, axis=1)
-    elif len(results.shape) == 1:
-        return np.mean(results)
-
-
 def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None):
     # Instantiate the model
 
@@ -178,9 +119,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         )
 
         if filename is None:
-            file_name = (
-                f"optimal_open_exploration_{number_of_experiments}.tar.gz"
-            )
+            file_name = f"optimal_open_exploration_{number_of_experiments}.tar.gz"
 
         if folder is None:
             target_directory = os.path.join(os.getcwd(), "data/output", file_name)
