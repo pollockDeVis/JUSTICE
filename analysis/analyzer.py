@@ -1,10 +1,12 @@
 """
 This module contains the uncertainty analysis for the JUSTICE model using EMA Workbench.
 """
+import functools
+
 import numpy as np
 import os
 
-stat = "mean"  # mean, median, 5th, 95th
+# stat = "mean"  # mean, median, 5th, 95th
 
 # EMA
 from ema_workbench import (
@@ -34,103 +36,7 @@ data_loader = DataLoader()
 time_horizon = TimeHorizon(start_year=2015, end_year=2300, data_timestep=5, timestep=1)
 
 
-class ApplyStatisticalFunctions:
-    def __init__(self, stat="mean"):
-        self.stat = stat
-
-    def __call__(self, results):
-        if self.stat == "mean":
-            if len(results.shape) == 3:
-                return np.mean(results, axis=2)
-            elif len(results.shape) == 2:
-                return np.mean(results, axis=1)
-            elif len(results.shape) == 1:
-                return np.mean(results)
-        elif self.stat == "median":
-            if len(results.shape) == 3:
-                return np.median(results, axis=2)
-            elif len(results.shape) == 2:
-                return np.median(results, axis=1)
-            elif len(results.shape) == 1:
-                return np.median(results)
-        elif self.stat == "95th":
-            if len(results.shape) == 3:
-                return np.percentile(results, 95, axis=2)
-            elif len(results.shape) == 2:
-                return np.percentile(results, 95, axis=1)
-            elif len(results.shape) == 1:
-                return np.percentile(results, 95)
-        elif self.stat == "5th":
-            if len(results.shape) == 3:
-                return np.percentile(results, 5, axis=2)
-            elif len(results.shape) == 2:
-                return np.percentile(results, 5, axis=1)
-            elif len(results.shape) == 1:
-                return np.percentile(results, 5)
-
-
-def apply_statistical_functions(results):
-    if stat == "mean":
-        if len(results.shape) == 3:
-            # Return mean of results
-            return np.mean(results, axis=2)
-        elif len(results.shape) == 2:
-            # Return results
-            return np.mean(results, axis=1)
-        elif len(results.shape) == 1:
-            return np.mean(results)
-    elif stat == "median":
-        if len(results.shape) == 3:
-            # Return mean of results
-            return np.median(results, axis=2)
-        elif len(results.shape) == 2:
-            # Return results
-            return np.median(results, axis=1)
-        elif len(results.shape) == 1:
-            return np.median(results)
-
-    elif stat == "95th":
-        if len(results.shape) == 3:
-            # Return mean of results
-            return np.percentile(results, 95, axis=2)
-        elif len(results.shape) == 2:
-            # Return results
-            return np.percentile(results, 95, axis=1)
-        elif len(results.shape) == 1:
-            return np.percentile(results, 95)
-
-    elif stat == "5th":
-        if len(results.shape) == 3:
-            # Return mean of results
-            return np.percentile(results, 5, axis=2)
-        elif len(results.shape) == 2:
-            # Return results
-            return np.percentile(results, 5, axis=1)
-        elif len(results.shape) == 1:
-            return np.percentile(results, 5)
-
-
-def get_mean_3D(results):
-    # Check if results is a 3D array or a 2D array
-    if len(results.shape) == 3:
-        # Return mean of results
-        return np.mean(results, axis=2)
-    elif len(results.shape) == 2:
-        # Return results
-        return np.mean(results, axis=1)
-
-
-def get_mean_2D(results):
-    if len(results.shape) == 2:
-        # Return mean of results
-        return np.mean(results, axis=1)
-    elif len(results.shape) == 1:
-        return np.mean(results)
-
-
-def perform_exploratory_analysis(
-    number_of_experiments=10, filename=None, folder=None, stat="mean"
-):
+def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None):
     # Instantiate the model
 
     model = Model("JUSTICE", function=model_wrapper)
@@ -151,9 +57,6 @@ def perform_exploratory_analysis(
         RealParameter("inequality_aversion", 0.0, 2.0),
     ]
 
-    # Instantiate the function class with specified statistical method
-    function = ApplyStatisticalFunctions(stat)
-
     # Set model levers - has to be 2D array of shape (57, 286) 57 regions and 286 timesteps
 
     # TODO temporarily commented out
@@ -170,27 +73,53 @@ def perform_exploratory_analysis(
 
     # Specify outcomes #All outcomes have shape (57, 286, 1001) except global_temperature which has shape (286, 1001)
     model.outcomes = [
-        # ArrayOutcome("net_economic_output", function=get_mean),
-        # ArrayOutcome("consumption", function=get_mean),
+        ArrayOutcome(
+            "mean_net_economic_output",
+            function=functools.partial(np.mean, axis=2),
+            variable_name="net_economic_output",
+        ),
+        ArrayOutcome(
+            "5p_net_economic_output",
+            function=functools.partial(np.percentile, q=5, axis=2),
+            variable_name="net_economic_output",
+        ),
+        ArrayOutcome(
+            "95p_net_economic_output",
+            function=functools.partial(np.percentile, q=95, axis=2),
+            variable_name="net_economic_output",
+        ),
+        # ArrayOutcome("consumption", function=functools.partial(np.mean, axis=2)),
         # ArrayOutcome("welfare_utilitarian"),  # (286, 1001) #, function=get_mean_2D
-        ArrayOutcome("consumption_per_capita", function=function),
-        ArrayOutcome("emissions", function=function),
-        TimeSeriesOutcome("global_temperature", function=function),  # (286, 1001)
-        ArrayOutcome("economic_damage", function=function),
-        ArrayOutcome("abatement_cost", function=function),
-        ArrayOutcome("disentangled_utility", function=function),
+        # ArrayOutcome("consumption_per_capita", function=apply_statistical_functions),
+        # ArrayOutcome("emissions", function=apply_statistical_functions),
+        ArrayOutcome(
+            "mean_global_temperature",
+            function=functools.partial(np.mean, axis=1),
+            variable_name="global_temperature",
+        ),  # (286, 1001)
+        ArrayOutcome(
+            "5p_global_temperature",
+            function=functools.partial(np.percentile, q=5, axis=1),
+            variable_name="global_temperature",
+        ),  # (286, 1001)
+        ArrayOutcome(
+            "90p_global_temperature",
+            function=functools.partial(np.percentile, q=95, axis=1),
+            variable_name="global_temperature",
+        ),  # (286, 1001)
+        # ArrayOutcome("economic_damage", function=apply_statistical_functions),
+        # ArrayOutcome("abatement_cost", function=apply_statistical_functions),
+        # ArrayOutcome("disentangled_utility", function=apply_statistical_functions),
     ]
 
-    with MultiprocessingEvaluator(model, n_processes=28) as evaluator:
+    with MultiprocessingEvaluator(model) as evaluator:
         results = evaluator.perform_experiments(
             scenarios=number_of_experiments,
             reporting_frequency=100,  # policies=2,TODO temporarily commented out
         )
 
         if filename is None:
-            file_name = (
-                f"optimal_open_exploration_{number_of_experiments}_{stat}.tar.gz"
-            )
+            file_name = f"optimal_open_exploration_{number_of_experiments}.tar.gz"
 
         if folder is None:
             target_directory = os.path.join(os.getcwd(), "data/output", file_name)
