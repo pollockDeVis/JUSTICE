@@ -1,10 +1,12 @@
 """
 This module contains the uncertainty analysis for the JUSTICE model using EMA Workbench.
 """
+import functools
+
 import numpy as np
 import os
 
-stat = "mean"  # mean, median, 5th, 95th
+# stat = "mean"  # mean, median, 5th, 95th
 
 # EMA
 from ema_workbench import (
@@ -130,20 +132,46 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
     # Specify outcomes #All outcomes have shape (57, 286, 1001) except global_temperature which has shape (286, 1001)
     model.outcomes = [
-        # ArrayOutcome("net_economic_output", function=get_mean),
-        # ArrayOutcome("consumption", function=get_mean),
+        ArrayOutcome(
+            "mean_net_economic_output",
+            function=functools.partial(np.mean, axis=2),
+            variable_name="net_economic_output",
+        ),
+        ArrayOutcome(
+            "5p_net_economic_output",
+            function=functools.partial(np.percentile, q=5, axis=2),
+            variable_name="net_economic_output",
+        ),
+        ArrayOutcome(
+            "95p_net_economic_output",
+            function=functools.partial(np.percentile, q=95, axis=2),
+            variable_name="net_economic_output",
+        ),
+        # ArrayOutcome("consumption", function=functools.partial(np.mean, axis=2)),
         # ArrayOutcome("welfare_utilitarian"),  # (286, 1001) #, function=get_mean_2D
-        ArrayOutcome("consumption_per_capita", function=apply_statistical_functions),
-        ArrayOutcome("emissions", function=apply_statistical_functions),
-        TimeSeriesOutcome(
-            "global_temperature", function=apply_statistical_functions
+        # ArrayOutcome("consumption_per_capita", function=apply_statistical_functions),
+        # ArrayOutcome("emissions", function=apply_statistical_functions),
+        ArrayOutcome(
+            "mean_global_temperature",
+            function=functools.partial(np.mean, axis=1),
+            variable_name="global_temperature",
         ),  # (286, 1001)
-        ArrayOutcome("economic_damage", function=apply_statistical_functions),
-        ArrayOutcome("abatement_cost", function=apply_statistical_functions),
-        ArrayOutcome("disentangled_utility", function=apply_statistical_functions),
+        ArrayOutcome(
+            "5p_global_temperature",
+            function=functools.partial(np.percentile, q=5, axis=1),
+            variable_name="global_temperature",
+        ),  # (286, 1001)
+        ArrayOutcome(
+            "90p_global_temperature",
+            function=functools.partial(np.percentile, q=95, axis=1),
+            variable_name="global_temperature",
+        ),  # (286, 1001)
+        # ArrayOutcome("economic_damage", function=apply_statistical_functions),
+        # ArrayOutcome("abatement_cost", function=apply_statistical_functions),
+        # ArrayOutcome("disentangled_utility", function=apply_statistical_functions),
     ]
 
-    with MultiprocessingEvaluator(model, n_processes=28) as evaluator:
+    with MultiprocessingEvaluator(model) as evaluator:
         results = evaluator.perform_experiments(
             scenarios=number_of_experiments,
             reporting_frequency=100,  # policies=2,TODO temporarily commented out
@@ -151,7 +179,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
         if filename is None:
             file_name = (
-                f"optimal_open_exploration_{number_of_experiments}_{stat}.tar.gz"
+                f"optimal_open_exploration_{number_of_experiments}.tar.gz"
             )
 
         if folder is None:

@@ -36,11 +36,11 @@ def model_wrapper(**kwargs):
 
     ssp_scenario = get_economic_scenario(scenario)
     optimal_emissions_control = np.load(
-        "./data/input/solved_RICE50_data/interpolated_emissions_control.npy",
+        "../data/input/solved_RICE50_data/interpolated_emissions_control.npy",
         allow_pickle=True,
     )
     optimal_savings_rate = np.load(
-        "./data/input/solved_RICE50_data/interpolated_savings_rate.npy",
+        "../data/input/solved_RICE50_data/interpolated_savings_rate.npy",
         allow_pickle=True,
     )
     savings_rate = optimal_savings_rate[ssp_scenario, :, :]
@@ -66,27 +66,7 @@ def model_wrapper(**kwargs):
         inequality_aversion=inequality_aversion,
     )
 
-    # net_economic_output = datasets["net_economic_output"]
-    # consumption = datasets["consumption"]
-    # welfare = datasets["welfare_utilitarian"]
-    consumption_per_capita = datasets["consumption_per_capita"]
-    emissions = datasets["emissions"]
-    global_temperature = datasets["global_temperature"]
-    economic_damage = datasets["economic_damage"]
-    abatement_cost = datasets["abatement_cost"]
-    disentangled_utility = datasets["disentangled_utility"]
-
-    return (
-        # net_economic_output,
-        # consumption,
-        # welfare,
-        consumption_per_capita,
-        emissions,
-        global_temperature,
-        economic_damage,
-        abatement_cost,
-        disentangled_utility,
-    )
+    return datasets
 
 
 def get_outcome_names():
