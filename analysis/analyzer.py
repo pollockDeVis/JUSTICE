@@ -88,6 +88,96 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
             function=functools.partial(np.percentile, q=95, axis=2),
             variable_name="net_economic_output",
         ),
+        ArrayOutcome(
+            "mean_consumption_per_capita",
+            function=functools.partial(np.mean, axis=2),
+            variable_name="consumption_per_capita",
+        ),
+        ArrayOutcome(
+            "5p_consumption_per_capita",
+            function=functools.partial(np.percentile, q=5, axis=2),
+            variable_name="consumption_per_capita",
+        ),
+        ArrayOutcome(
+            "95p_consumption_per_capita",
+            function=functools.partial(np.percentile, q=95, axis=2),
+            variable_name="consumption_per_capita",
+        ),
+        ArrayOutcome(
+            "mean_emissions",
+            function=functools.partial(np.mean, axis=2),
+            variable_name="emissions",
+        ),
+        ArrayOutcome(
+            "5p_emissions",
+            function=functools.partial(np.percentile, q=5, axis=2),
+            variable_name="emissions",
+        ),
+        ArrayOutcome(
+            "95p_emissions",
+            function=functools.partial(np.percentile, q=95, axis=2),
+            variable_name="emissions",
+        ),
+        ArrayOutcome(
+            "mean_economic_damage",
+            function=functools.partial(np.mean, axis=2),
+            variable_name="economic_damage",
+        ),
+        ArrayOutcome(
+            "5p_economic_damage",
+            function=functools.partial(np.percentile, q=5, axis=2),
+            variable_name="economic_damage",
+        ),
+        ArrayOutcome(
+            "95p_economic_damage",
+            function=functools.partial(np.percentile, q=95, axis=2),
+            variable_name="economic_damage",
+        ),
+        ArrayOutcome(
+            "mean_abatement_cost",
+            function=functools.partial(np.mean, axis=2),
+            variable_name="abatement_cost",
+        ),
+        ArrayOutcome(
+            "5p_abatement_cost",
+            function=functools.partial(np.percentile, q=5, axis=2),
+            variable_name="abatement_cost",
+        ),
+        ArrayOutcome(
+            "95p_abatement_cost",
+            function=functools.partial(np.percentile, q=95, axis=2),
+            variable_name="abatement_cost",
+        ),
+        ArrayOutcome(
+            "mean_disentangled_utility",
+            function=functools.partial(np.mean, axis=2),
+            variable_name="disentangled_utility",
+        ),
+        ArrayOutcome(
+            "5p_disentangled_utility",
+            function=functools.partial(np.percentile, q=5, axis=2),
+            variable_name="disentangled_utility",
+        ),
+        ArrayOutcome(
+            "95p_disentangled_utility",
+            function=functools.partial(np.percentile, q=95, axis=2),
+            variable_name="disentangled_utility",
+        ),
+        ArrayOutcome(
+            "mean_consumption",
+            function=functools.partial(np.mean, axis=2),
+            variable_name="consumption",
+        ),
+        ArrayOutcome(
+            "5p_consumption",
+            function=functools.partial(np.percentile, q=5, axis=2),
+            variable_name="consumption",
+        ),
+        ArrayOutcome(
+            "95p_consumption",
+            function=functools.partial(np.percentile, q=95, axis=2),
+            variable_name="consumption",
+        ),
         # ArrayOutcome("consumption", function=functools.partial(np.mean, axis=2)),
         # ArrayOutcome("welfare_utilitarian"),  # (286, 1001) #, function=get_mean_2D
         # ArrayOutcome("consumption_per_capita", function=apply_statistical_functions),
@@ -103,10 +193,26 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
             variable_name="global_temperature",
         ),  # (286, 1001)
         ArrayOutcome(
-            "90p_global_temperature",
+            "95p_global_temperature",
             function=functools.partial(np.percentile, q=95, axis=1),
             variable_name="global_temperature",
+        ),
+        ArrayOutcome(
+            "mean_welfare_utilitarian",
+            function=functools.partial(np.mean, axis=1),
+            variable_name="welfare_utilitarian",
         ),  # (286, 1001)
+        ArrayOutcome(
+            "5p_welfare_utilitarian",
+            function=functools.partial(np.percentile, q=5, axis=1),
+            variable_name="welfare_utilitarian",
+        ),  # (286, 1001)
+        ArrayOutcome(
+            "95p_welfare_utilitarian",
+            function=functools.partial(np.percentile, q=95, axis=1),
+            variable_name="welfare_utilitarian",
+        ),  # (286, 1001)
+        # (286, 1001)
         # ArrayOutcome("economic_damage", function=apply_statistical_functions),
         # ArrayOutcome("abatement_cost", function=apply_statistical_functions),
         # ArrayOutcome("disentangled_utility", function=apply_statistical_functions),

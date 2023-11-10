@@ -34,13 +34,17 @@ def model_wrapper(**kwargs):
     #         savings_rate[i, j] = kwargs.pop(f"savings_rate {i} {j}")
     #         emissions_control_rate[i, j] = kwargs.pop(f"emissions_control_rate {i} {j}")
 
+    # Optimal savings rate and emissions control rate RUNS from RICE50
+
+    # TODO: Loading policy levers here - RICE50 optimal runs
+
     ssp_scenario = get_economic_scenario(scenario)
     optimal_emissions_control = np.load(
-        "../data/input/solved_RICE50_data/interpolated_emissions_control.npy",
+        "./data/input/solved_RICE50_data/interpolated_emissions_control.npy",
         allow_pickle=True,
     )
     optimal_savings_rate = np.load(
-        "../data/input/solved_RICE50_data/interpolated_savings_rate.npy",
+        "./data/input/solved_RICE50_data/interpolated_savings_rate.npy",
         allow_pickle=True,
     )
     savings_rate = optimal_savings_rate[ssp_scenario, :, :]
