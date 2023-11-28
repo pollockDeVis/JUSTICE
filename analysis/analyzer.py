@@ -54,7 +54,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         RealParameter(
             "pure_rate_of_social_time_preference", 0.0001, 0.020
         ),  # 0.1 to 3% in RICE50 gazzotti2
-        RealParameter("inequality_aversion", 0.0, 2.0),
+        RealParameter("inequality_aversion", 0.0, 2.0),  # 0.2 -2.5
     ]
 
     # Set model levers - has to be 2D array of shape (57, 286) 57 regions and 286 timesteps
