@@ -6,7 +6,7 @@ Derived from RICE50 model which is based on Berger et al. (2020).
 """
 import numpy as np
 import pandas as pd
-from src.enumerations import get_economic_scenario
+from src.util.enumerations import get_economic_scenario
 
 
 def calculate_utilitarian_welfare(

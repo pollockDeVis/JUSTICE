@@ -5,9 +5,9 @@ This is the main JUSTICE model.
 import numpy as np
 import pandas as pd
 
-from src.data_loader import DataLoader
-from src.enumerations import Economy, DamageFunction, Abatement, WelfareFunction
-from src.model_time import TimeHorizon
+from src.util.data_loader import DataLoader
+from src.util.enumerations import Economy, DamageFunction, Abatement, WelfareFunction
+from src.util.model_time import TimeHorizon
 from src.economy.neoclassical import NeoclassicalEconomyModel
 from src.emissions.emission import OutputToEmissions
 from src.damage.kalkuhl import DamageKalkuhl

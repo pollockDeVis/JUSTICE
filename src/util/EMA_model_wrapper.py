@@ -4,8 +4,8 @@ This module wraps the model for uncertainty analysis experiments using EMA.
 import numpy as np
 
 from src.model import JUSTICE
-from src.enumerations import *
-from src.enumerations import get_economic_scenario
+from src.util.enumerations import *
+from src.util.enumerations import get_economic_scenario
 
 
 def model_wrapper(**kwargs):
