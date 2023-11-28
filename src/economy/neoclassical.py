@@ -7,7 +7,7 @@ import numpy as np
 import copy
 
 
-from src.default_parameters import EconomyDefaults
+from config.default_parameters import EconomyDefaults
 from src.util.enumerations import Economy, get_economic_scenario
 
 
