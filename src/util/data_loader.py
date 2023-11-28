@@ -23,8 +23,8 @@ class DataLoader:
         # Get the current working directory
         current_directory = os.path.dirname(os.path.realpath(__file__))
 
-        # Go up to the root directory of the project (two levels up)
-        root_directory = os.path.dirname(current_directory)
+        # Go up two levels to the root directory of the project
+        root_directory = os.path.dirname(os.path.dirname(current_directory))
 
         # Create the data file path
         data_file_path = os.path.join(root_directory, "data/input")

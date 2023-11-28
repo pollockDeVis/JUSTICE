@@ -18,7 +18,7 @@ import numpy as np
 
 # from scipy.special import erfc
 from typing import Any
-from src.default_parameters import DamageDefaults
+from config.default_parameters import DamageDefaults
 
 
 class DamageKalkuhl:

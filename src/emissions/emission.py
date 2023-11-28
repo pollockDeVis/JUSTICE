@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 from scipy.interpolate import interp1d
 import copy
-from src.enumerations import get_economic_scenario
+from src.util.enumerations import get_economic_scenario
 
 
 class OutputToEmissions:

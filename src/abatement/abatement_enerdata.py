@@ -13,8 +13,8 @@ from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
 
-from src.default_parameters import AbatementDefaults
-from src.enumerations import Abatement
+from config.default_parameters import AbatementDefaults
+from src.util.enumerations import Abatement
 
 
 class AbatementEnerdata:

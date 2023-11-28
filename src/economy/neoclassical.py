@@ -7,8 +7,8 @@ import numpy as np
 import copy
 
 
-from src.default_parameters import EconomyDefaults
-from src.enumerations import Economy, get_economic_scenario
+from config.default_parameters import EconomyDefaults
+from src.util.enumerations import Economy, get_economic_scenario
 
 
 class NeoclassicalEconomyModel:
