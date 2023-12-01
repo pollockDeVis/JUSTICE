@@ -161,6 +161,69 @@ class JUSTICE:
             "welfare_utilitarian": np.zeros((self.no_of_ensembles)),
         }
 
+    def stepwise_run(self, savings_rate, emissions_control_rate, timestep):
+        """
+        Run the model timestep by timestep and return the outcomes every timestep
+
+        @param timestep: The timestep to run the model for 0 to model_time_horizon
+        @param savings_rate: The savings rate for each timestep. So shape will be (no_of_regions,)
+        @param emissions_control_rate: The emissions control rate for each timestep. So shape will be (no_of_regions,)
+        """
+
+        # Error check on the inputs
+        assert timestep >= 0 and timestep <= len(
+            self.time_horizon.model_time_horizon
+        ), "The given timestep is out of range. Please select a different timestep."
+
+        # Save the savings rate and emissions control rate for the given timestep
+        # self.savings_rate[:, timestep] = savings_rate[:, timestep]
+        # self.emissions_control_rate[:, timestep] = emissions_control_rate[:, timestep]
+
+        # Save the savings rate and emissions control rate
+        self.savings_rate = savings_rate
+        self.emissions_control_rate = emissions_control_rate
+
+        output = self.economy.run(
+            scenario=self.scenario,
+            timestep=timestep,
+            savings_rate=savings_rate,
+        )
+
+        self.emissions_array = self.emissions.run_emissions(
+            timestep=timestep,
+            scenario=self.scenario,
+            output=output,
+            emission_control_rate=emissions_control_rate,
+        )
+
+        # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
+        if timestep < (len(self.time_horizon.model_time_horizon) - 1):
+            global_temperature = self.climate.compute_temperature_from_emission(
+                timestep, self.emissions_array
+            )
+
+            regional_temperature = self.downscaler.get_regional_temperature(
+                global_temperature
+            )
+
+            # Save the regional temperature
+            self.data["regional_temperature"][:, timestep, :] = regional_temperature
+
+            damage = self.damage_function.calculate_damage(
+                temperature=regional_temperature, timestep=timestep
+            )
+
+            abatement_cost = self.abatement.calculate_abatement(
+                timestep=timestep,
+                emissions=self.emissions_array,
+                emission_control_rate=emissions_control_rate,
+            )
+            # Apply the computed damage and abatement to the economic output for the next timestep.
+            self.economy.apply_damage_to_output(timestep=timestep + 1, damage=damage)
+            self.economy.apply_abatement_to_output(
+                timestep=timestep + 1, abatement=abatement_cost
+            )
+
     def run(self, savings_rate, emissions_control_rate):
         """
         Run the model.
