@@ -14,7 +14,10 @@ from src.damage.kalkuhl import DamageKalkuhl
 from src.climate.coupled_fair import CoupledFAIR
 from src.climate.temperature_downscaler import TemperatureDownscaler
 from src.abatement.abatement_enerdata import AbatementEnerdata
-from src.welfare.utilitarian import calculate_utilitarian_welfare
+from src.welfare.utilitarian import (
+    calculate_utilitarian_welfare,
+    stepwise_utilitarian_welfare,
+)
 
 # from src import utils
 
@@ -163,6 +166,8 @@ class JUSTICE:
 
     def stepwise_run(self, savings_rate, emissions_control_rate, timestep):
         """
+        This method is used for Reinforcement Learning (RL) applications.
+
         Run the model timestep by timestep and return the outcomes every timestep
 
         @param timestep: The timestep to run the model for 0 to model_time_horizon
@@ -173,15 +178,15 @@ class JUSTICE:
         # Error check on the inputs
         assert timestep >= 0 and timestep <= len(
             self.time_horizon.model_time_horizon
-        ), "The given timestep is out of range. Please select a different timestep."
+        ), "The given timestep is out of range."
 
         # Save the savings rate and emissions control rate for the given timestep
         # self.savings_rate[:, timestep] = savings_rate[:, timestep]
         # self.emissions_control_rate[:, timestep] = emissions_control_rate[:, timestep]
 
         # Save the savings rate and emissions control rate
-        self.savings_rate = savings_rate
-        self.emissions_control_rate = emissions_control_rate
+        # self.savings_rate = savings_rate
+        # self.emissions_control_rate = emissions_control_rate
 
         output = self.economy.run(
             scenario=self.scenario,
@@ -189,7 +194,7 @@ class JUSTICE:
             savings_rate=savings_rate,
         )
 
-        self.emissions_array = self.emissions.run_emissions(
+        self.emissions_array = self.emissions.run(
             timestep=timestep,
             scenario=self.scenario,
             output=output,
@@ -206,9 +211,6 @@ class JUSTICE:
                 global_temperature
             )
 
-            # Save the regional temperature
-            self.data["regional_temperature"][:, timestep, :] = regional_temperature
-
             damage = self.damage_function.calculate_damage(
                 temperature=regional_temperature, timestep=timestep
             )
@@ -222,6 +224,22 @@ class JUSTICE:
             self.economy.apply_damage_to_output(timestep=timestep + 1, damage=damage)
             self.economy.apply_abatement_to_output(
                 timestep=timestep + 1, abatement=abatement_cost
+            )
+
+            # Save the regional temperature
+            self.data["net_economic_output"][:, timestep, :] = output
+            self.data["regional_temperature"][:, timestep, :] = regional_temperature
+            self.data["emissions"][:, timestep, :] = self.emissions_array
+            self.data["economic_damage"][:, timestep, :] = damage
+            self.data["abatement_cost"][:, timestep, :] = abatement_cost
+            self.data["global_temperature"][timestep, :] = global_temperature
+            self.data["consumption"][
+                :, timestep, :
+            ] = self.economy.calculate_consumption_per_timestep(savings_rate, timestep)
+            self.data["consumption_per_capita"][
+                :, timestep, :
+            ] = self.economy.get_consumption_per_capita_per_timestep(
+                self.scenario, savings_rate, timestep
             )
 
     def run(self, savings_rate, emissions_control_rate):
@@ -243,7 +261,8 @@ class JUSTICE:
                 savings_rate=self.savings_rate[:, timestep],
             )
 
-            self.emissions_array = self.emissions.run_emissions(
+            # TODO: Change from self.emissions_array to emissions_array
+            self.emissions_array = self.emissions.run(
                 timestep=timestep,
                 scenario=self.scenario,
                 output=output,
@@ -285,6 +304,49 @@ class JUSTICE:
                     timestep=timestep + 1, abatement=abatement_cost
                 )
 
+    def stepwise_evaluate(
+        self,
+        elasticity_of_marginal_utility_of_consumption,
+        pure_rate_of_social_time_preference,
+        inequality_aversion,
+        welfare_function=WelfareFunction.UTILITARIAN,
+        timestep=0,
+    ):
+        """
+        Evaluate the model timestep by timestep and return the outcomes every timestep
+
+        @param timestep: The timestep to run the model for 0 to model_time_horizon
+        @param elasticity_of_marginal_utility_of_consumption: The elasticity of marginal utility of consumption
+        @param pure_rate_of_social_time_preference: The pure rate of social time preference
+        @param inequality_aversion: The inequality aversion
+        @param welfare_function: The welfare function to use
+        """
+
+        # Error check on the inputs
+        assert timestep >= 0 and timestep <= len(
+            self.time_horizon.model_time_horizon
+        ), "The given timestep is out of range."
+
+        # Get the population of shape (no_of_regions, timesteps, no_of_ensembles)
+        population = self.economy.get_population(scenario=self.scenario)
+
+        # TODO : Check the enums. To be implemented later
+
+        (
+            self.data["disentangled_utility"][:, timestep, :],
+            self.data["welfare_utilitarian"],  # [timestep, :],
+        ) = stepwise_utilitarian_welfare(
+            time_horizon=self.time_horizon,
+            region_list=self.region_list,
+            scenario=self.scenario,
+            population=population[:, timestep, :],
+            consumption_per_capita=self.data["consumption_per_capita"][:, timestep, :],
+            elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
+            pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+            inequality_aversion=inequality_aversion,
+        )
+        return self.data
+
     def evaluate(
         self,
         elasticity_of_marginal_utility_of_consumption,
@@ -321,7 +383,6 @@ class JUSTICE:
             time_horizon=self.time_horizon,
             region_list=self.region_list,
             scenario=self.scenario,
-            # savings_rate=self.savings_rate,
             population=population,
             consumption_per_capita=self.data["consumption_per_capita"],
             elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,

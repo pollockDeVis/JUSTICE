@@ -313,6 +313,29 @@ class NeoclassicalEconomyModel:
 
         return consumption
 
+    def calculate_consumption_per_timestep(self, savings_rate, timestep):  #
+        """
+        This method calculates the consumption per timestep.
+        """
+        # Reshape savings rate from 1D to 2D
+        savings_rate = savings_rate[:, np.newaxis]
+
+        investment = savings_rate * self.output[:, timestep, :]
+        consumption_per_timestep = self.output[:, timestep, :] - investment
+
+        return consumption_per_timestep
+
+    def get_consumption_per_capita_per_timestep(self, scenario, savings_rate, timestep):
+        scenario = get_economic_scenario(scenario)
+        consumption_per_timestep = self.calculate_consumption_per_timestep(
+            savings_rate, timestep
+        )
+        consumption_per_capita_per_timestep = (
+            1e3 * consumption_per_timestep / self.population[:, timestep, :, scenario]
+        )
+
+        return consumption_per_capita_per_timestep
+
     def calculate_social_cost_of_carbon(
         self, fossil_and_land_use_emissions, savings_rate, regional=True
     ):

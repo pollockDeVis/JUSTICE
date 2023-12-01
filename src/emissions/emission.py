@@ -74,7 +74,7 @@ class OutputToEmissions:
                 ),
             )
 
-    def run_emissions(self, scenario, timestep, output, emission_control_rate):
+    def run(self, scenario, timestep, output, emission_control_rate):
         """
         This method calculates the emissions for the economic output of a given scenario.
         carbon intensity shape (57, 1001)
