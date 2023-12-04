@@ -14,6 +14,9 @@ from src.damage.kalkuhl import DamageKalkuhl
 from src.climate.coupled_fair import CoupledFAIR
 from src.climate.temperature_downscaler import TemperatureDownscaler
 from src.abatement.abatement_enerdata import AbatementEnerdata
+from src.welfare.utilitarian import Utilitarian
+
+# TODO: Remove this later
 from src.welfare.utilitarian import (
     calculate_utilitarian_welfare,
     stepwise_utilitarian_welfare,
@@ -36,6 +39,8 @@ class JUSTICE:
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
+        social_welfare_function=WelfareFunction.UTILITARIAN,
+        **kwargs,
     ):
         """
         @param start_year: The start year of the model
@@ -67,6 +72,7 @@ class JUSTICE:
         )
         self.region_list = self.data_loader.REGION_LIST
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
+        # I think it is failing because I am checking self.economy_type instead of economy_type, which is passed as a parameter
         # TODO: Incomplete Implementation
         # if self.damage_function_type == DamageFunction.KALKUHL:
         self.damage_function = DamageKalkuhl(
@@ -91,6 +97,15 @@ class JUSTICE:
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
             climate_ensembles=self.no_of_ensembles,
+        )
+
+        # TODO: Incomplete Implementation
+        # if self.social_welfare_function == WelfareFunction.UTILITARIAN:
+        self.welfare_function = Utilitarian(
+            input_dataset=self.data_loader,
+            time_horizon=self.time_horizon,
+            population=self.economy.get_population(scenario=self.scenario),
+            **kwargs,
         )
 
         # Create a data dictionary to store the data
@@ -372,22 +387,30 @@ class JUSTICE:
         self.data["abatement_cost"] = self.economy.get_abatement()
         self.data["global_temperature"] = self.climate.get_justice_temperature_array()
 
+        # TODO Remove this later
         population = self.economy.get_population(scenario=self.scenario)
 
         # TODO: to be implemented later. Checking the enums doesn't work well with EMA #need to make it self.welfare_function?
         # if welfare_function == WelfareFunction.UTILITARIAN:
+        # (
+        #     self.data["disentangled_utility"],
+        #     self.data["welfare_utilitarian"],
+        # ) = calculate_utilitarian_welfare(
+        #     time_horizon=self.time_horizon,
+        #     region_list=self.region_list,
+        #     scenario=self.scenario,
+        #     population=population,
+        #     consumption_per_capita=self.data["consumption_per_capita"],
+        #     elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
+        #     pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+        #     inequality_aversion=inequality_aversion,
+        # )
+
         (
             self.data["disentangled_utility"],
             self.data["welfare_utilitarian"],
-        ) = calculate_utilitarian_welfare(
-            time_horizon=self.time_horizon,
-            region_list=self.region_list,
-            scenario=self.scenario,
-            population=population,
-            consumption_per_capita=self.data["consumption_per_capita"],
-            elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
-            pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
-            inequality_aversion=inequality_aversion,
+        ) = self.welfare_function.calculate_welfare(
+            consumption_per_capita=self.data["consumption_per_capita"]
         )
         return self.data
 

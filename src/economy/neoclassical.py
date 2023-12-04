@@ -50,18 +50,6 @@ class NeoclassicalEconomyModel:
             "elasticity_of_output_to_capital",
             econ_neoclassical_defaults["elasticity_of_output_to_capital"],
         )
-        # TODO: Remove later. This is only used in the Welfare Functions to Compute Utility
-        # self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
-        #     "elasticity_of_marginal_utility_of_consumption",
-        #     econ_neoclassical_defaults["elasticity_of_marginal_utility_of_consumption"],
-        # )
-        # self.pure_rate_of_social_time_preference = kwargs.get(
-        #     "pure_rate_of_social_time_preference",
-        #     econ_neoclassical_defaults["pure_rate_of_social_time_preference"],
-        # )
-        # self.inequality_aversion = kwargs.get(
-        #     "inequality_aversion", econ_neoclassical_defaults["inequality_aversion"]
-        # )
 
         self.region_list = input_dataset.REGION_LIST
         self.gdp_array = copy.deepcopy(input_dataset.GDP_ARRAY)
