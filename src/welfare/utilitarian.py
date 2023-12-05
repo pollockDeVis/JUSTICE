@@ -59,8 +59,11 @@ class Utilitarian:
             )
         )
 
+        # Regionalize the discount rate
+        discount_rate = np.tile(discount_rate, (len(self.region_list), 1))
+
         # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1)
-        self.discount_rate = discount_rate[:, np.newaxis]
+        self.discount_rate = discount_rate[:, :, np.newaxis]
 
         # Calculate the total population for each timestep
         total_population = np.sum(population, axis=0)
@@ -110,6 +113,22 @@ class Utilitarian:
             )
             * self.discount_rate,
             axis=0,
+        )
+
+        # TODO Remove this print statement
+        # Print shape of disentangled_utility, disentangled_utility_summed, disentangled_utility_powered, welfare_utilitarian
+        # TODO Remove this print statement
+        # Print the shape of discount_rate
+        print("Shape of discount_rate")
+        print(self.discount_rate.shape)
+        print(
+            "Shape of disentangled_utility, disentangled_utility_summed, disentangled_utility_powered, welfare_utilitarian"
+        )
+        print(
+            disentangled_utility.shape,
+            disentangled_utility_summed.shape,
+            disentangled_utility_powered.shape,
+            welfare_utilitarian.shape,
         )
 
         return disentangled_utility, welfare_utilitarian
@@ -301,6 +320,22 @@ def calculate_utilitarian_welfare(
         )
         * discount_rate,
         axis=0,
+    )
+
+    # TODO Remove this print statement
+    # Print the shape of discount_rate
+    print("Shape of discount_rate")
+    print(discount_rate.shape)
+
+    # Print shape of disentangled_utility, disentangled_utility_summed, disentangled_utility_powered, welfare_utilitarian
+    print(
+        "Shape of disentangled_utility, disentangled_utility_summed, disentangled_utility_powered, welfare_utilitarian"
+    )
+    print(
+        disentangled_utility.shape,
+        disentangled_utility_summed.shape,
+        disentangled_utility_powered.shape,
+        welfare_utilitarian.shape,
     )
 
     return disentangled_utility, welfare_utilitarian
