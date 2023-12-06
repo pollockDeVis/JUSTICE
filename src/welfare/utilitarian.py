@@ -115,69 +115,54 @@ class Utilitarian:
             axis=0,
         )
 
-        # TODO Remove this print statement
-        # Print shape of disentangled_utility, disentangled_utility_summed, disentangled_utility_powered, welfare_utilitarian
-        # TODO Remove this print statement
-        # Print the shape of discount_rate
-        print("Shape of discount_rate")
-        print(self.discount_rate.shape)
-        print(
-            "Shape of disentangled_utility, disentangled_utility_summed, disentangled_utility_powered, welfare_utilitarian"
+        return disentangled_utility, welfare_utilitarian
+
+    def calculate_stepwise_welfare(self, consumption_per_capita, timestep):
+        """
+        This method calculates the utilitarian welfare.
+        """
+        # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
+        consumption_per_capita_inequality_aversion = np.power(
+            consumption_per_capita, 1 - self.inequality_aversion
         )
-        print(
-            disentangled_utility.shape,
-            disentangled_utility_summed.shape,
-            disentangled_utility_powered.shape,
-            welfare_utilitarian.shape,
+
+        # Calculate the population weighted consumption per capita
+        population_weighted_consumption_per_capita = (
+            self.population_ratio[:, timestep, :]
+            * consumption_per_capita_inequality_aversion
+        )
+
+        # Calculate the disentangled utility
+        disentangled_utility = population_weighted_consumption_per_capita
+
+        # Sum the disentangled utility
+        disentangled_utility_summed = np.sum(
+            population_weighted_consumption_per_capita, axis=0
+        )
+
+        # Calculate the disentangled utility powered
+        disentangled_utility_powered = np.power(
+            disentangled_utility_summed,
+            (
+                (1 - self.elasticity_of_marginal_utility_of_consumption)
+                / (1 - self.inequality_aversion)
+            ),
+        )
+
+        # Calculate the utilitarian welfare
+        welfare_utilitarian = np.sum(
+            (
+                (
+                    disentangled_utility_powered
+                    / (1 - self.elasticity_of_marginal_utility_of_consumption)
+                )
+                - 1
+            )
+            * self.discount_rate[:, timestep, :],
+            axis=0,
         )
 
         return disentangled_utility, welfare_utilitarian
-
-    # def stepwise_welfare(self, consumption_per_capita, timestep):
-    #     """
-    #     This method calculates the utilitarian welfare.
-    #     """
-    #     # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
-    #     consumption_per_capita_inequality_aversion = np.power(
-    #         consumption_per_capita, 1 - self.inequality_aversion
-    #     )
-
-    #     # Calculate the population weighted consumption per capita
-    #     population_weighted_consumption_per_capita = (
-    #         self.population_ratio[:, timestep] * consumption_per_capita_inequality_aversion
-    #     )
-
-    #     # Calculate the disentangled utility
-    #     disentangled_utility = population_weighted_consumption_per_capita
-
-    #     # Sum the disentangled utility
-    #     disentangled_utility_summed = np.sum(
-    #         population_weighted_consumption_per_capita, axis=0
-    #     )
-
-    #     # Calculate the disentangled utility powered
-    #     disentangled_utility_powered = np.power(
-    #         disentangled_utility_summed,
-    #         (
-    #             (1 - self.elasticity_of_marginal_utility_of_consumption)
-    #             / (1 - self.inequality_aversion)
-    #         ),
-    #     )
-
-    #     # Calculate the utilitarian welfare
-    #     welfare_utilitarian = np.sum(
-    #         (
-    #             (
-    #                 disentangled_utility_powered
-    #                 / (1 - self.elasticity_of_marginal_utility_of_consumption)
-    #             )
-    #             - 1
-    #         )
-    #         * self.discount_rate[timestep],
-    #         axis=0,
-    #     )
-
-    #     return disentangled_utility, welfare_utilitarian
 
 
 def stepwise_utilitarian_welfare(
@@ -320,22 +305,6 @@ def calculate_utilitarian_welfare(
         )
         * discount_rate,
         axis=0,
-    )
-
-    # TODO Remove this print statement
-    # Print the shape of discount_rate
-    print("Shape of discount_rate")
-    print(discount_rate.shape)
-
-    # Print shape of disentangled_utility, disentangled_utility_summed, disentangled_utility_powered, welfare_utilitarian
-    print(
-        "Shape of disentangled_utility, disentangled_utility_summed, disentangled_utility_powered, welfare_utilitarian"
-    )
-    print(
-        disentangled_utility.shape,
-        disentangled_utility_summed.shape,
-        disentangled_utility_powered.shape,
-        welfare_utilitarian.shape,
     )
 
     return disentangled_utility, welfare_utilitarian

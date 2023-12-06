@@ -108,6 +108,21 @@ class JUSTICE:
             **kwargs,
         )
 
+        # Set the savings rate and emissions control rate levers
+        self.savings_rate = np.zeros(
+            (
+                len(self.data_loader.REGION_LIST),
+                len(self.time_horizon.model_time_horizon),
+            )
+        )
+
+        self.emissions_control_rate = np.zeros(
+            (
+                len(self.data_loader.REGION_LIST),
+                len(self.time_horizon.model_time_horizon),
+            )
+        )
+
         # Create a data dictionary to store the data
         self.data = {
             "net_economic_output": np.zeros(
@@ -176,7 +191,12 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
-            "welfare_utilitarian": np.zeros((self.no_of_ensembles)),
+            "welfare_utilitarian": np.zeros(
+                (
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
         }
 
     def stepwise_run(self, savings_rate, emissions_control_rate, timestep):
@@ -196,24 +216,21 @@ class JUSTICE:
         ), "The given timestep is out of range."
 
         # Save the savings rate and emissions control rate for the given timestep
-        # self.savings_rate[:, timestep] = savings_rate[:, timestep]
-        # self.emissions_control_rate[:, timestep] = emissions_control_rate[:, timestep]
-
-        # Save the savings rate and emissions control rate
-        # self.savings_rate = savings_rate
-        # self.emissions_control_rate = emissions_control_rate
+        self.savings_rate[:, timestep] = savings_rate
+        self.emissions_control_rate[:, timestep] = emissions_control_rate
 
         output = self.economy.run(
             scenario=self.scenario,
             timestep=timestep,
-            savings_rate=savings_rate,
+            savings_rate=self.savings_rate[:, timestep],
         )
 
+        # TODO : Change from self.emissions_array to emissions_array
         self.emissions_array = self.emissions.run(
             timestep=timestep,
             scenario=self.scenario,
             output=output,
-            emission_control_rate=emissions_control_rate,
+            emission_control_rate=self.emissions_control_rate[:, timestep],
         )
 
         # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
@@ -225,6 +242,9 @@ class JUSTICE:
             regional_temperature = self.downscaler.get_regional_temperature(
                 global_temperature
             )
+
+            # Save the regional temperature
+            self.data["regional_temperature"][:, timestep, :] = regional_temperature
 
             damage = self.damage_function.calculate_damage(
                 temperature=regional_temperature, timestep=timestep
@@ -240,22 +260,44 @@ class JUSTICE:
             self.economy.apply_abatement_to_output(
                 timestep=timestep + 1, abatement=abatement_cost
             )
+        elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
+            self.data["global_temperature"][timestep, :] = (
+                self.climate.get_justice_temperature_array()
+            )[timestep, :]
 
-            # Save the regional temperature
-            self.data["net_economic_output"][:, timestep, :] = output
-            self.data["regional_temperature"][:, timestep, :] = regional_temperature
-            self.data["emissions"][:, timestep, :] = self.emissions_array
-            self.data["economic_damage"][:, timestep, :] = damage
-            self.data["abatement_cost"][:, timestep, :] = abatement_cost
-            self.data["global_temperature"][timestep, :] = global_temperature
-            self.data["consumption"][
-                :, timestep, :
-            ] = self.economy.calculate_consumption_per_timestep(savings_rate, timestep)
-            self.data["consumption_per_capita"][
-                :, timestep, :
-            ] = self.economy.get_consumption_per_capita_per_timestep(
-                self.scenario, savings_rate, timestep
+            regional_temperature = self.downscaler.get_regional_temperature(
+                self.data["global_temperature"][timestep, :]
             )
+            # Save the regional temperature
+            self.data["regional_temperature"][:, timestep, :] = regional_temperature
+
+        # Save the data
+        self.data["net_economic_output"][:, timestep, :] = (
+            self.economy.get_net_output()
+        )[:, timestep, :]
+        self.data["regional_temperature"][:, timestep, :] = self.data[
+            "regional_temperature"
+        ][:, timestep, :]
+        self.data["emissions"][:, timestep, :] = (self.emissions.get_emissions())[
+            :, timestep, :
+        ]
+        self.data["economic_damage"][:, timestep, :] = (self.economy.get_damages())[
+            :, timestep, :
+        ]
+        self.data["abatement_cost"][:, timestep, :] = (self.economy.get_abatement())[
+            :, timestep, :
+        ]
+        self.data["global_temperature"][timestep, :] = (
+            self.climate.get_justice_temperature_array()
+        )[timestep, :]
+        self.data["consumption"][
+            :, timestep, :
+        ] = self.economy.calculate_consumption_per_timestep(savings_rate, timestep)
+        self.data["consumption_per_capita"][
+            :, timestep, :
+        ] = self.economy.get_consumption_per_capita_per_timestep(
+            self.scenario, savings_rate, timestep
+        )
 
     def run(self, savings_rate, emissions_control_rate):
         """
@@ -318,13 +360,19 @@ class JUSTICE:
                 self.economy.apply_abatement_to_output(
                     timestep=timestep + 1, abatement=abatement_cost
                 )
+            elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
+                self.data["global_temperature"][timestep, :] = (
+                    self.climate.get_justice_temperature_array()
+                )[timestep, :]
+
+                regional_temperature = self.downscaler.get_regional_temperature(
+                    self.data["global_temperature"][timestep, :]
+                )
+                # Save the regional temperature
+                self.data["regional_temperature"][:, timestep, :] = regional_temperature
 
     def stepwise_evaluate(
         self,
-        elasticity_of_marginal_utility_of_consumption,
-        pure_rate_of_social_time_preference,
-        inequality_aversion,
-        welfare_function=WelfareFunction.UTILITARIAN,
         timestep=0,
     ):
         """
@@ -342,32 +390,33 @@ class JUSTICE:
             self.time_horizon.model_time_horizon
         ), "The given timestep is out of range."
 
-        # Get the population of shape (no_of_regions, timesteps, no_of_ensembles)
-        population = self.economy.get_population(scenario=self.scenario)
-
         # TODO : Check the enums. To be implemented later
+        # if welfare_function == WelfareFunction.UTILITARIAN:
+        # (
+        #     self.data["disentangled_utility"][:, timestep, :],
+        #     self.data["welfare_utilitarian"],  # [timestep, :],
+        # ) = stepwise_utilitarian_welfare(
+        #     time_horizon=self.time_horizon,
+        #     region_list=self.region_list,
+        #     scenario=self.scenario,
+        #     population=population[:, timestep, :],
+        #     consumption_per_capita=self.data["consumption_per_capita"][:, timestep, :],
+        #     elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
+        #     pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+        #     inequality_aversion=inequality_aversion,
+        # )
 
         (
             self.data["disentangled_utility"][:, timestep, :],
-            self.data["welfare_utilitarian"],  # [timestep, :],
-        ) = stepwise_utilitarian_welfare(
-            time_horizon=self.time_horizon,
-            region_list=self.region_list,
-            scenario=self.scenario,
-            population=population[:, timestep, :],
+            self.data["welfare_utilitarian"][timestep, :],
+        ) = self.welfare_function.calculate_stepwise_welfare(
             consumption_per_capita=self.data["consumption_per_capita"][:, timestep, :],
-            elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
-            pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
-            inequality_aversion=inequality_aversion,
+            timestep=timestep,
         )
         return self.data
 
     def evaluate(
         self,
-        elasticity_of_marginal_utility_of_consumption,
-        pure_rate_of_social_time_preference,
-        inequality_aversion,
-        welfare_function=WelfareFunction.UTILITARIAN,
     ):
         """
         Evaluate the model.
@@ -386,9 +435,6 @@ class JUSTICE:
         self.data["economic_damage"] = self.economy.get_damages()
         self.data["abatement_cost"] = self.economy.get_abatement()
         self.data["global_temperature"] = self.climate.get_justice_temperature_array()
-
-        # TODO Remove this later
-        population = self.economy.get_population(scenario=self.scenario)
 
         # TODO: to be implemented later. Checking the enums doesn't work well with EMA #need to make it self.welfare_function?
         # if welfare_function == WelfareFunction.UTILITARIAN:
