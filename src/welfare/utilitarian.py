@@ -4,81 +4,165 @@ Derived from RICE50 model which is based on Berger et al. (2020).
 * REFERENCES
 * Berger, Loic, and Johannes Emmerling (2020): Welfare as Equity Equivalents, Journal of Economic Surveys 34, no. 4 (26 August 2020): 727-752. https://doi.org/10.1111/joes.12368.
 """
+from typing import Any
 import numpy as np
 import pandas as pd
-from src.util.enumerations import get_economic_scenario
+from src.util.enumerations import get_economic_scenario, WelfareFunction
+from config.default_parameters import SocialWelfareDefaults
 
 
-def calculate_utilitarian_welfare(
-    time_horizon,
-    region_list,
-    scenario,
-    population,
-    consumption_per_capita,
-    elasticity_of_marginal_utility_of_consumption,
-    pure_rate_of_social_time_preference,
-    inequality_aversion,
-):
-    scenario = get_economic_scenario(scenario)
+class Utilitarian:
+    """
+    This class computes the utilitarian welfare for the JUSTICE model.
+    """
 
-    timestep_list = np.arange(
-        0, len(time_horizon.model_time_horizon), time_horizon.timestep
-    )
+    def __init__(self, input_dataset, time_horizon, population, **kwargs):
+        """
+        This method initializes the Utilitarian class.
+        """
+        self.region_list = input_dataset.REGION_LIST
 
-    # Calculate the discount rate
-    discount_rate = 1 / (
-        np.power(
-            (1 + pure_rate_of_social_time_preference),
-            (time_horizon.timestep * (timestep_list)),
+        self.timestep = time_horizon.timestep
+        self.data_timestep = time_horizon.data_timestep
+        self.data_time_horizon = time_horizon.data_time_horizon
+        self.model_time_horizon = time_horizon.model_time_horizon
+        # Instantiate the SocialWelfareDefaults class
+        social_welfare_defaults = SocialWelfareDefaults()
+
+        # Fetch the defaults for UTILITARIAN
+        utilitarian_defaults = social_welfare_defaults.get_defaults(
+            WelfareFunction.UTILITARIAN.name
         )
-    )
-    discount_rate = np.tile(discount_rate, (len(region_list), 1))
-    # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1)
-    discount_rate = discount_rate[:, :, np.newaxis]
 
-    # Calculate the total population for each timestep
-    total_population = np.sum(population, axis=0)
+        # Assign the defaults to the class attributes
+        self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
+            "elasticity_of_marginal_utility_of_consumption",
+            utilitarian_defaults["elasticity_of_marginal_utility_of_consumption"],
+        )
+        self.pure_rate_of_social_time_preference = kwargs.get(
+            "pure_rate_of_social_time_preference",
+            utilitarian_defaults["pure_rate_of_social_time_preference"],
+        )
+        self.inequality_aversion = kwargs.get(
+            "inequality_aversion", utilitarian_defaults["inequality_aversion"]
+        )
 
-    # Calculate the population ratio for each timestep
-    population_ratio = population / total_population
+        # Time horizon
+        timestep_list = np.arange(
+            0, len(time_horizon.model_time_horizon), time_horizon.timestep
+        )
 
-    # Fetch Consumption per Capita
-    # consumption_per_capita = economy.get_consumption_per_capita(scenario, savings_rate)
+        # Calculate the discount rate
+        discount_rate = 1 / (
+            np.power(
+                (1 + self.pure_rate_of_social_time_preference),
+                (time_horizon.timestep * (timestep_list)),
+            )
+        )
 
-    # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
-    consumption_per_capita_inequality_aversion = np.power(
-        consumption_per_capita, 1 - inequality_aversion
-    )
+        # Regionalize the discount rate
+        discount_rate = np.tile(discount_rate, (len(self.region_list), 1))
 
-    # Calculate the population weighted consumption per capita
-    population_weighted_consumption_per_capita = (
-        population_ratio * consumption_per_capita_inequality_aversion
-    )
+        # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1)
+        self.discount_rate = discount_rate[:, :, np.newaxis]
 
-    disentangled_utility = population_weighted_consumption_per_capita
+        # Calculate the total population for each timestep
+        total_population = np.sum(population, axis=0)
 
-    disentangled_utility_summed = np.sum(
-        population_weighted_consumption_per_capita, axis=0
-    )
+        # Calculate the population ratio for each timestep
+        self.population_ratio = population / total_population
 
-    disentangled_utility_powered = np.power(
-        disentangled_utility_summed,
-        (
-            (1 - elasticity_of_marginal_utility_of_consumption)
-            / (1 - inequality_aversion)
-        ),
-    )
+    def calculate_welfare(self, consumption_per_capita):
+        """
+        This method calculates the utilitarian welfare.
+        """
+        # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
+        consumption_per_capita_inequality_aversion = np.power(
+            consumption_per_capita, 1 - self.inequality_aversion
+        )
 
-    welfare_utilitarian = np.sum(
-        (
+        # Calculate the population weighted consumption per capita
+        population_weighted_consumption_per_capita = (
+            self.population_ratio * consumption_per_capita_inequality_aversion
+        )
+
+        # Calculate the disentangled utility
+        disentangled_utility = population_weighted_consumption_per_capita
+
+        # Sum the disentangled utility
+        disentangled_utility_summed = np.sum(
+            population_weighted_consumption_per_capita, axis=0
+        )
+
+        # Calculate the disentangled utility powered
+        disentangled_utility_powered = np.power(
+            disentangled_utility_summed,
+            (
+                (1 - self.elasticity_of_marginal_utility_of_consumption)
+                / (1 - self.inequality_aversion)
+            ),
+        )
+
+        welfare_utilitarian_temporal = (
             (
                 disentangled_utility_powered
-                / (1 - elasticity_of_marginal_utility_of_consumption)
+                / (1 - self.elasticity_of_marginal_utility_of_consumption)
             )
             - 1
-        )
-        * discount_rate,
-        axis=0,
-    )
+        ) * self.discount_rate[0, :, :]
 
-    return disentangled_utility, welfare_utilitarian
+        # Calculate the utilitarian welfare
+        welfare_utilitarian = np.sum(
+            welfare_utilitarian_temporal,
+            axis=0,
+        )
+
+        return disentangled_utility, welfare_utilitarian_temporal, welfare_utilitarian
+
+    def calculate_stepwise_welfare(self, consumption_per_capita, timestep):
+        """
+        This method calculates the utilitarian welfare.
+        """
+        # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
+        consumption_per_capita_inequality_aversion = np.power(
+            consumption_per_capita, 1 - self.inequality_aversion
+        )
+
+        # Calculate the population weighted consumption per capita
+        population_weighted_consumption_per_capita = (
+            self.population_ratio[:, timestep, :]
+            * consumption_per_capita_inequality_aversion
+        )
+
+        # Calculate the disentangled utility
+        disentangled_utility = population_weighted_consumption_per_capita
+
+        # Sum the disentangled utility
+        disentangled_utility_summed = np.sum(
+            population_weighted_consumption_per_capita, axis=0
+        )
+
+        # Calculate the disentangled utility powered
+        disentangled_utility_powered = np.power(
+            disentangled_utility_summed,
+            (
+                (1 - self.elasticity_of_marginal_utility_of_consumption)
+                / (1 - self.inequality_aversion)
+            ),
+        )
+
+        welfare_utilitarian_temporal = (
+            (
+                disentangled_utility_powered
+                / (1 - self.elasticity_of_marginal_utility_of_consumption)
+            )
+            - 1
+        ) * self.discount_rate[0, timestep, :]
+
+        return disentangled_utility, welfare_utilitarian_temporal
+
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)
