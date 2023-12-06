@@ -16,14 +16,6 @@ from src.climate.temperature_downscaler import TemperatureDownscaler
 from src.abatement.abatement_enerdata import AbatementEnerdata
 from src.welfare.utilitarian import Utilitarian
 
-# TODO: Remove this later
-from src.welfare.utilitarian import (
-    calculate_utilitarian_welfare,
-    stepwise_utilitarian_welfare,
-)
-
-# from src import utils
-
 
 class JUSTICE:
     """
@@ -32,10 +24,10 @@ class JUSTICE:
 
     def __init__(
         self,
-        start_year,
-        end_year,
-        timestep,
-        scenario,
+        start_year=2015,  # Model is only tested for start year 2015
+        end_year=2300,  # Model is only tested for end year 2300
+        timestep=1,  # Model is only tested for timestep 1
+        scenario=0,
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
