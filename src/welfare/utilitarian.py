@@ -4,6 +4,7 @@ Derived from RICE50 model which is based on Berger et al. (2020).
 * REFERENCES
 * Berger, Loic, and Johannes Emmerling (2020): Welfare as Equity Equivalents, Journal of Economic Surveys 34, no. 4 (26 August 2020): 727-752. https://doi.org/10.1111/joes.12368.
 """
+from typing import Any
 import numpy as np
 import pandas as pd
 from src.util.enumerations import get_economic_scenario, WelfareFunction
@@ -102,20 +103,21 @@ class Utilitarian:
             ),
         )
 
+        welfare_utilitarian_temporal = (
+            (
+                disentangled_utility_powered
+                / (1 - self.elasticity_of_marginal_utility_of_consumption)
+            )
+            - 1
+        ) * self.discount_rate[0, :, :]
+
         # Calculate the utilitarian welfare
         welfare_utilitarian = np.sum(
-            (
-                (
-                    disentangled_utility_powered
-                    / (1 - self.elasticity_of_marginal_utility_of_consumption)
-                )
-                - 1
-            )
-            * self.discount_rate,
+            welfare_utilitarian_temporal,
             axis=0,
         )
 
-        return disentangled_utility, welfare_utilitarian
+        return disentangled_utility, welfare_utilitarian_temporal, welfare_utilitarian
 
     def calculate_stepwise_welfare(self, consumption_per_capita, timestep):
         """
@@ -149,17 +151,18 @@ class Utilitarian:
             ),
         )
 
-        # Calculate the utilitarian welfare
-        welfare_utilitarian = np.sum(
+        welfare_utilitarian_temporal = (
             (
-                (
-                    disentangled_utility_powered
-                    / (1 - self.elasticity_of_marginal_utility_of_consumption)
-                )
-                - 1
+                disentangled_utility_powered
+                / (1 - self.elasticity_of_marginal_utility_of_consumption)
             )
-            * self.discount_rate[:, timestep, :],
-            axis=0,
-        )
+            - 1
+        ) * self.discount_rate[0, timestep, :]
 
-        return disentangled_utility, welfare_utilitarian
+        return disentangled_utility, welfare_utilitarian_temporal
+
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)
