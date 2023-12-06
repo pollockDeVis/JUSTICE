@@ -225,8 +225,7 @@ class JUSTICE:
             savings_rate=self.savings_rate[:, timestep],
         )
 
-        # TODO : Change from self.emissions_array to emissions_array
-        self.emissions_array = self.emissions.run(
+        emissions_array = self.emissions.run(
             timestep=timestep,
             scenario=self.scenario,
             output=output,
@@ -236,7 +235,7 @@ class JUSTICE:
         # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
         if timestep < (len(self.time_horizon.model_time_horizon) - 1):
             global_temperature = self.climate.compute_temperature_from_emission(
-                timestep, self.emissions_array
+                timestep, emissions_array
             )
 
             regional_temperature = self.downscaler.get_regional_temperature(
@@ -252,7 +251,7 @@ class JUSTICE:
 
             abatement_cost = self.abatement.calculate_abatement(
                 timestep=timestep,
-                emissions=self.emissions_array,
+                emissions=emissions_array,
                 emission_control_rate=emissions_control_rate,
             )
             # Apply the computed damage and abatement to the economic output for the next timestep.
@@ -318,8 +317,7 @@ class JUSTICE:
                 savings_rate=self.savings_rate[:, timestep],
             )
 
-            # TODO: Change from self.emissions_array to emissions_array
-            self.emissions_array = self.emissions.run(
+            emissions_array = self.emissions.run(
                 timestep=timestep,
                 scenario=self.scenario,
                 output=output,
@@ -329,7 +327,7 @@ class JUSTICE:
             # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
             if timestep < (len(self.time_horizon.model_time_horizon) - 1):
                 global_temperature = self.climate.compute_temperature_from_emission(
-                    timestep, self.emissions_array
+                    timestep, emissions_array
                 )
 
                 regional_temperature = self.downscaler.get_regional_temperature(
@@ -345,7 +343,7 @@ class JUSTICE:
 
                 abatement_cost = self.abatement.calculate_abatement(
                     timestep=timestep,
-                    emissions=self.emissions_array,
+                    emissions=emissions_array,
                     emission_control_rate=self.emissions_control_rate[:, timestep],
                 )
                 # TODO: Incomplete Implementation
