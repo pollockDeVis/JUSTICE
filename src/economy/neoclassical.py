@@ -219,7 +219,7 @@ class NeoclassicalEconomyModel:
         """
         # Calculate the Optimal long-run Savings Rate
         # This will depend on the input paramters. This is also a upper limit of the savings rate
-        self.optimal_long_run_savings_rate = (
+        optimal_long_run_savings_rate = (
             (self.depreciation_rate_capital + self.elasticity_of_output_to_capital)
             / (
                 self.depreciation_rate_capital
@@ -229,7 +229,39 @@ class NeoclassicalEconomyModel:
             )
         ) * self.capital_elasticity_in_production_function
 
-        return self.optimal_long_run_savings_rate
+        return optimal_long_run_savings_rate
+
+    def get_fixed_savings_rate(
+        self,
+        elasticity_of_marginal_utility_of_consumption,
+        pure_rate_of_social_time_preference,
+    ):
+        """
+        This method returns the fixed savings rate. It takes the intial savings rate and increases
+        it linearly to the optimal long run savings rate.
+        """
+        # Calculate the Optimal long-run Savings Rate
+        # This will depend on the input paramters. This is also a upper limit of the savings rate
+
+        fixed_savings_rate = np.copy(self.savings_rate_init_arr).reshape(-1, 1)
+        # fixed_savings_rate Validated with RICE50 for timestep 1 and 5
+
+        optimal_long_run_savings_rate = self.get_optimal_long_run_savings_rate(
+            elasticity_of_marginal_utility_of_consumption,
+            pure_rate_of_social_time_preference,
+        )
+
+        # for i, years in enumerate(set_year):
+        for i in range(len(self.model_time_horizon)):
+            t = i + 1  # index starts at 0, so add 1 to get the year
+            if t != 1:  # no need to repeat for the first year
+                next_rate = self.savings_rate_init_arr + (
+                    optimal_long_run_savings_rate - self.savings_rate_init_arr
+                ) * ((t - 1) / (len(self.model_time_horizon) - 1))
+                # append to the fixed savings rate array for each year
+                fixed_savings_rate = np.column_stack((fixed_savings_rate, next_rate))
+
+        return fixed_savings_rate
 
     def _calculate_tfp(self, timestep, scenario):
         # Calculate the TFP

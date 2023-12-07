@@ -45,6 +45,7 @@ class JUSTICE:
         self.economy_type = economy_type
         self.damage_function_type = damage_function_type
         self.abatement_type = abatement_type
+        self.welfare_function = social_welfare_function
 
         # Load the data
         self.data_loader = DataLoader()
