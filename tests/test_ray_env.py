@@ -1,5 +1,5 @@
 import pytest
-from rl.marl.wrap_env import JusticeEnv
+from rl.marl.ray_wrapper import JusticeEnv
 from src.util.enumerations import Economy, DamageFunction, Abatement, WelfareFunction
 
 
@@ -26,3 +26,12 @@ def test_smoke(env: JusticeEnv):
 
 def test_reset(env: JusticeEnv):
     obs, rew = env.reset()
+
+def test_step(env: JusticeEnv):
+    action = {
+        "savings_rate":0.2,
+        "emissions_rate":0.5
+    }
+    actions = {f"agent_{i}":action for i in range(env.num_agents)}
+    for i in range(100):
+        observations, rewards, terminated, truncateds, infos = env.step(actions)
