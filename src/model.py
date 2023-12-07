@@ -183,6 +183,19 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
+            "welfare_utilitarian_regional_temporal": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "welfare_utilitarian_regional": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    self.no_of_ensembles,
+                )
+            ),
             "welfare_utilitarian_temporal": np.zeros(
                 (
                     len(self.time_horizon.model_time_horizon),
@@ -383,22 +396,10 @@ class JUSTICE:
 
         # TODO : Check the enums. To be implemented later
         # if welfare_function == WelfareFunction.UTILITARIAN:
-        # (
-        #     self.data["disentangled_utility"][:, timestep, :],
-        #     self.data["welfare_utilitarian"],  # [timestep, :],
-        # ) = stepwise_utilitarian_welfare(
-        #     time_horizon=self.time_horizon,
-        #     region_list=self.region_list,
-        #     scenario=self.scenario,
-        #     population=population[:, timestep, :],
-        #     consumption_per_capita=self.data["consumption_per_capita"][:, timestep, :],
-        #     elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
-        #     pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
-        #     inequality_aversion=inequality_aversion,
-        # )
 
         (
             self.data["disentangled_utility"][:, timestep, :],
+            self.data["welfare_utilitarian_regional_temporal"][:, timestep, :],
             self.data["welfare_utilitarian_temporal"][timestep, :],
         ) = self.welfare_function.calculate_stepwise_welfare(
             consumption_per_capita=self.data["consumption_per_capita"][:, timestep, :],
@@ -428,10 +429,12 @@ class JUSTICE:
         self.data["global_temperature"] = self.climate.get_justice_temperature_array()
 
         # TODO: to be implemented later. Checking the enums doesn't work well with EMA #need to make it self.welfare_function?
+        # if welfare_function == WelfareFunction.UTILITARIAN:
 
         (
             self.data["disentangled_utility"],
             self.data["welfare_utilitarian_temporal"],
+            self.data["welfare_utilitarian_regional"],
             self.data["welfare_utilitarian"],
         ) = self.welfare_function.calculate_welfare(
             consumption_per_capita=self.data["consumption_per_capita"]
