@@ -144,6 +144,7 @@ class Utilitarian:
 
         return (
             disentangled_utility,
+            welfare_utilitarian_regional_temporal,
             welfare_utilitarian_temporal,
             welfare_utilitarian_regional,
             welfare_utilitarian,

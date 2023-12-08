@@ -260,9 +260,6 @@ class JUSTICE:
         else:
             self.savings_rate[:, timestep] = savings_rate
 
-        # # Save the savings rate and emissions control rate for the given timestep
-        # self.savings_rate[:, timestep] = savings_rate
-
         self.emissions_control_rate[:, timestep] = emissions_control_rate
 
         output = self.economy.run(
@@ -346,12 +343,20 @@ class JUSTICE:
             self.scenario, self.savings_rate[:, timestep], timestep
         )
 
-    def run(self, savings_rate, emissions_control_rate):
+    def run(
+        self,
+        emissions_control_rate,
+        savings_rate=None,
+        endogenous_savings_rate=False,
+    ):
         """
         Run the model.
         """
-        # Save the savings rate and emissions control rate
-        self.savings_rate = savings_rate
+        if endogenous_savings_rate == True:
+            self.savings_rate = self.fixed_savings_rate
+        else:
+            self.savings_rate = savings_rate
+
         self.emissions_control_rate = emissions_control_rate
 
         for timestep in range(len(self.time_horizon.model_time_horizon)):
@@ -475,6 +480,7 @@ class JUSTICE:
 
         (
             self.data["disentangled_utility"],
+            self.data["welfare_utilitarian_regional_temporal"],
             self.data["welfare_utilitarian_temporal"],
             self.data["welfare_utilitarian_regional"],
             self.data["welfare_utilitarian"],
