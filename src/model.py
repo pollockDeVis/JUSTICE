@@ -64,41 +64,13 @@ class JUSTICE:
             time_horizon=self.time_horizon, scenarios=self.scenario
         )
         self.region_list = self.data_loader.REGION_LIST
-        # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
-        # I think it is failing because I am checking self.economy_type instead of economy_type, which is passed as a parameter
-        # TODO: Incomplete Implementation
-        # if self.damage_function_type == DamageFunction.KALKUHL:
-        self.damage_function = DamageKalkuhl(
-            input_dataset=self.data_loader,
-            time_horizon=self.time_horizon,
-            climate_ensembles=self.no_of_ensembles,
-        )
-        # TODO: Incomplete Implementation
-        # if self.abatement_type == Abatement.ENERDATA:
-        self.abatement = AbatementEnerdata(
-            input_dataset=self.data_loader, time_horizon=self.time_horizon
-        )
-        # TODO: Incomplete Implementation
-        # if self.economy_type == Economy.NEOCLASSICAL:
-        self.economy = NeoclassicalEconomyModel(
-            input_dataset=self.data_loader,
-            time_horizon=self.time_horizon,
-            climate_ensembles=self.no_of_ensembles,
-        )
 
-        self.emissions = OutputToEmissions(
-            input_dataset=self.data_loader,
-            time_horizon=self.time_horizon,
-            climate_ensembles=self.no_of_ensembles,
-        )
-
-        # TODO: Incomplete Implementation
-        # if self.social_welfare_function == WelfareFunction.UTILITARIAN:
-        self.welfare_function = Utilitarian(
-            input_dataset=self.data_loader,
-            time_horizon=self.time_horizon,
-            population=self.economy.get_population(scenario=self.scenario),
-            **kwargs,
+        # Set the savings rate and emissions control rate levers
+        self.fixed_savings_rate = np.zeros(
+            (
+                len(self.data_loader.REGION_LIST),
+                len(self.time_horizon.model_time_horizon),
+            )
         )
 
         # Set the savings rate and emissions control rate levers
@@ -114,6 +86,61 @@ class JUSTICE:
                 len(self.data_loader.REGION_LIST),
                 len(self.time_horizon.model_time_horizon),
             )
+        )
+
+        # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
+        # I think it is failing because I am checking self.economy_type instead of economy_type, which is passed as a parameter
+        # TODO: Incomplete Implementation
+        # if self.damage_function_type == DamageFunction.KALKUHL:
+        self.damage_function = DamageKalkuhl(
+            input_dataset=self.data_loader,
+            time_horizon=self.time_horizon,
+            climate_ensembles=self.no_of_ensembles,
+        )
+        # TODO: Incomplete Implementation
+        # if self.abatement_type == Abatement.ENERDATA:
+        self.abatement = AbatementEnerdata(
+            input_dataset=self.data_loader, time_horizon=self.time_horizon
+        )
+
+        # TODO: Incomplete Implementation
+        # if self.economy_type == Economy.NEOCLASSICAL:
+        self.economy = NeoclassicalEconomyModel(
+            input_dataset=self.data_loader,
+            time_horizon=self.time_horizon,
+            climate_ensembles=self.no_of_ensembles,
+        )
+
+        # Checking if the savings rate is endogenous or exogenous by checking kwargs
+        if (
+            "elasticity_of_marginal_utility_of_consumption" in kwargs
+            and "pure_rate_of_social_time_preference" in kwargs
+        ):
+            elasticity_of_marginal_utility_of_consumption = kwargs[
+                "elasticity_of_marginal_utility_of_consumption"
+            ]
+            pure_rate_of_social_time_preference = kwargs[
+                "pure_rate_of_social_time_preference"
+            ]
+
+            self.fixed_savings_rate = self.economy.get_fixed_savings_rate(
+                elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
+                pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+            )
+
+        self.emissions = OutputToEmissions(
+            input_dataset=self.data_loader,
+            time_horizon=self.time_horizon,
+            climate_ensembles=self.no_of_ensembles,
+        )
+
+        # TODO: Incomplete Implementation
+        # if self.social_welfare_function == WelfareFunction.UTILITARIAN:
+        self.welfare_function = Utilitarian(
+            input_dataset=self.data_loader,
+            time_horizon=self.time_horizon,
+            population=self.economy.get_population(scenario=self.scenario),
+            **kwargs,
         )
 
         # Create a data dictionary to store the data
@@ -206,7 +233,13 @@ class JUSTICE:
             "welfare_utilitarian": np.zeros((self.no_of_ensembles,)),
         }
 
-    def stepwise_run(self, savings_rate, emissions_control_rate, timestep):
+    def stepwise_run(
+        self,
+        emissions_control_rate,
+        timestep,
+        savings_rate=None,
+        endogenous_savings_rate=False,
+    ):
         """
         This method is used for Reinforcement Learning (RL) applications.
 
@@ -222,8 +255,14 @@ class JUSTICE:
             self.time_horizon.model_time_horizon
         ), "The given timestep is out of range."
 
-        # Save the savings rate and emissions control rate for the given timestep
-        self.savings_rate[:, timestep] = savings_rate
+        if endogenous_savings_rate == True:
+            self.savings_rate[:, timestep] = self.fixed_savings_rate[:, timestep]
+        else:
+            self.savings_rate[:, timestep] = savings_rate
+
+        # # Save the savings rate and emissions control rate for the given timestep
+        # self.savings_rate[:, timestep] = savings_rate
+
         self.emissions_control_rate[:, timestep] = emissions_control_rate
 
         output = self.economy.run(
@@ -298,11 +337,13 @@ class JUSTICE:
         )[timestep, :]
         self.data["consumption"][
             :, timestep, :
-        ] = self.economy.calculate_consumption_per_timestep(savings_rate, timestep)
+        ] = self.economy.calculate_consumption_per_timestep(
+            self.savings_rate[:, timestep], timestep
+        )
         self.data["consumption_per_capita"][
             :, timestep, :
         ] = self.economy.get_consumption_per_capita_per_timestep(
-            self.scenario, savings_rate, timestep
+            self.scenario, self.savings_rate[:, timestep], timestep
         )
 
     def run(self, savings_rate, emissions_control_rate):
