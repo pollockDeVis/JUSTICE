@@ -27,6 +27,7 @@ ppo_config = (  # 1. Configure the algorithm,
     .rollouts(num_rollout_workers=0)
     .framework("torch")
     .training(model={"fcnet_hiddens": [64, 64]})
+    .evaluation(evaluation_num_workers=0)
 )
 
 ray.init(local_mode=True)
@@ -36,4 +37,4 @@ algo = ppo_config.build()  # 2. build the algorithm,
 for _ in range(5):
     print(algo.train())  # 3. train it,
 
-# algo.evaluate()
+algo.evaluate() 
