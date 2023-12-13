@@ -72,10 +72,10 @@ class JusticeEnv(MultiAgentEnv):
         obs = self.generate_observations(data)
         return obs, {}
 
-    def vec_to_dict(self, vector):
+    def generate_reward(self, vector):
         output_dict = {}
         for agent_idx in range(self.num_agents):
-            output_dict[f"agent_{agent_idx}"] = vector[agent_idx, self.timestep]
+            output_dict[f"agent_{agent_idx}"] = vector[self.timestep, 0]
         return output_dict
     
     def generate_observations(self, data):
@@ -108,8 +108,7 @@ class JusticeEnv(MultiAgentEnv):
                                 
         data = self.model.stepwise_evaluate(timestep=self.timestep) #57 x 286 x 1001
         obs = self.generate_observations(data)
-        #TODO: remove rewards from observation
-        rewards = self.vec_to_dict(data[REWARD])
+        rewards = self.generate_reward(data[REWARD])
         #broadcast across all agents
         terminated = {
             "__all__":self.start_year + self.timestep >= self.end_year
