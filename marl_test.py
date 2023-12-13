@@ -33,8 +33,6 @@ ray.init(local_mode=True)
 
 algo = ppo_config.build()  # 2. build the algorithm,
 
-
-
 for _ in range(5):
     print(algo.train())  # 3. train it,
 
