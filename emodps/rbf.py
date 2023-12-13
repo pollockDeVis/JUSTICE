@@ -117,6 +117,20 @@ class RBF:
         self.radii = None
         self.weights = None
 
+    def get_rbf_shapes(self):
+        """
+        This method returns the shapes of centers, radii, and weights if they have been initialized.
+
+        Returns:
+            tuple: A tuple containing the shapes of centers, radii, and weights.
+        """
+        if self.c_i is None or self.r_i is None or self.w_i is None:
+            raise ValueError(
+                "Centers, radii, and weights must be initialized before getting their shapes."
+            )
+
+        return self.c_i.shape, self.r_i.shape, self.w_i.shape
+
     def set_decision_vars(self, decision_vars):
         decision_vars = decision_vars.copy()
 
