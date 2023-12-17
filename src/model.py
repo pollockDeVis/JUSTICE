@@ -57,7 +57,7 @@ class JUSTICE:
 
         self.scenario = scenario
 
-        self.climate = CoupledFAIR()
+        self.climate = CoupledFAIR(ch4_method="Thornhill2021")
         self.downscaler = TemperatureDownscaler(input_dataset=self.data_loader)
 
         self.no_of_ensembles = self.climate.fair_justice_run_init(
@@ -443,6 +443,9 @@ class JUSTICE:
 
         # TODO : Check the enums. To be implemented later
         # if welfare_function == WelfareFunction.UTILITARIAN:
+
+        # TODO: Return step by step individual data/observations
+        # TODO: FOr RL, we have to separate obeservation and rewards
 
         (
             self.data["disentangled_utility"][:, timestep, :],
