@@ -16,18 +16,15 @@ from fair.forcing.ozone import thornhill2021
 
 from fair.energy_balance_model import (
     calculate_toa_imbalance_postrun,
-    multi_ebm,
     step_temperature,
 )
 
 from fair.earth_params import (
     earth_radius,
-    mass_atmosphere,
-    molecular_weight_air,
     seconds_per_year,
 )
 
-from fair.structure.species import multiple_allowed, species_types, valid_input_modes
+# from fair.structure.species import multiple_allowed, species_types, valid_input_modes
 
 from fair.structure.units import (
     compound_convert,
