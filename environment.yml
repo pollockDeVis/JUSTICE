@@ -117,11 +117,19 @@ dependencies:
   - zstd=1.5.5=h4f39d0f_0
   - pip:
       - charset-normalizer==3.3.2
+      - dill==0.3.7
+      - ema-workbench==2.4.1
       - fair==2.1.3
       - idna==3.6
+      - joblib==1.3.2
+      - multiprocess==0.70.15
       - numpy==1.24.4
+      - platypus-opt==1.1.0
       - pooch==1.8.0
       - requests==2.31.0
+      - salib==1.4.7
+      - scikit-learn==1.3.2
+      - threadpoolctl==3.2.0
       - tqdm==4.66.1
       - urllib3==2.1.0
       - xarray==2023.12.0

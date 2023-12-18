@@ -5,6 +5,13 @@ import numpy as np
 
 from src.model import JUSTICE
 from src.util.enumerations import *
+from emodps.rbf import RBF
+
+# Scaling Values
+max_temperature = 16.0
+min_temperature = 0.0
+max_difference = 10.0
+min_difference = -10.0
 
 
 def model_wrapper_emodps(**kwargs):
@@ -17,39 +24,89 @@ def model_wrapper_emodps(**kwargs):
     )
     inequality_aversion = kwargs.pop("inequality_aversion")
 
-    economy_type = (Economy.NEOCLASSICAL,)
-    damage_function_type = (DamageFunction.KALKUHL,)
-    abatement_type = (Abatement.ENERDATA,)
-    welfare_function = (WelfareFunction.UTILITARIAN,)
+    economy_type = kwargs.pop("economy_type", (Economy.NEOCLASSICAL,))
+    damage_function_type = kwargs.pop("damage_function_type", (DamageFunction.KALKUHL,))
+    abatement_type = kwargs.pop("abatement_type", (Abatement.ENERDATA,))
+    welfare_function = kwargs.pop("welfare_function", (WelfareFunction.UTILITARIAN,))
 
     n_regions = kwargs.pop("n_regions")
     n_timesteps = kwargs.pop("n_timesteps")
 
-    savings_rate = np.zeros((n_regions, n_timesteps))
+    n_inputs_rbf = kwargs.pop("n_inputs_rbf")
+    n_outputs_rbf = kwargs.pop("n_outputs_rbf")
+
+    rbf = RBF(n_rbfs=(n_inputs_rbf + 2), n_inputs=n_inputs_rbf, n_outputs=n_outputs_rbf)
+
+    centers_shape, radii_shape, weights_shape = rbf.get_shape()
+
+    centers = np.zeros(centers_shape)
+    radii = np.zeros(radii_shape)
+    weights = np.zeros(weights_shape)
+
+    for i in range(centers_shape):
+        centers[i] = kwargs.pop(f"center {i}")
+        radii[i] = kwargs.pop(f"radii {i}")
+
+    for i in range(weights_shape):
+        weights[i] = kwargs.pop(f"weights {i}")
+
+    # Populating the decision variables
+    centers_flat = centers.flatten()
+    radii_flat = radii.flatten()
+    weights_flat = weights.flatten()
+
+    decision_vars = np.concatenate((centers_flat, radii_flat, weights_flat))
+
+    rbf.set_decision_vars(decision_vars)
+
     emissions_control_rate = np.zeros((n_regions, n_timesteps))
 
-    # for i in range(n_regions):
-    #     for j in range(n_timesteps):
-    #         savings_rate[i, j] = kwargs.pop(f"savings_rate {i} {j}")
-    #         emissions_control_rate[i, j] = kwargs.pop(f"emissions_control_rate {i} {j}")
+    model = JUSTICE(
+        scenario=scenario,
+        economy_type=economy_type,
+        damage_function_type=damage_function_type,
+        abatement_type=abatement_type,
+        social_welfare_function=welfare_function,
+        # Declaring for endogenous fixed savings rate
+        elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
+        pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+        inequality_aversion=inequality_aversion,
+    )
 
-    # model = JUSTICE(
-    #     scenario=scenario,
-    #     economy_type=economy_type,
-    #     damage_function_type=damage_function_type,
-    #     abatement_type=abatement_type,
-    #     social_welfare_function=welfare_function,
-    # )
+    nsamples = model.__getattribute__("no_of_ensembles")
 
-    # model.run(savings_rate=savings_rate, emissions_control_rate=emissions_control_rate)
-    # datasets = model.evaluate(
-    #     welfare_function=welfare_function,
-    #     elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
-    #     pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
-    #     inequality_aversion=inequality_aversion,
-    # )
+    datasets = {}
+    previous_temperature = 0
+    difference = 0
 
-    # return datasets
+    for timestep in range(n_timesteps):
+        model.stepwise_run(
+            emissions_control_rate=emissions_control_rate[:, timestep],
+            timestep=timestep,
+            endogenous_savings_rate=True,
+        )
+        datasets = model.stepwise_evaluate(timestep=timestep)
+        temperature = datasets["global_temperature"][timestep, :]
+
+        if timestep % 5 == 0:
+            difference = temperature - previous_temperature
+            # Do something with the difference variable
+
+        previous_temperature = temperature
+
+        # Apply Min Max Scaling to temperature and difference
+        scaled_temperature = (temperature - min_temperature) / (
+            max_temperature - min_temperature
+        )
+        scaled_difference = (difference - min_difference) / (
+            max_difference - min_difference
+        )
+
+        # TODO: How to deal with nsamples?
+        inputs = [scaled_temperature, scaled_difference]
+        emissions_control_rate[:, timestep + 1] = rbf.apply_rbfs(inputs)
+
+    return datasets
 
 
 def model_wrapper(**kwargs):

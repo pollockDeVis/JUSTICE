@@ -4,6 +4,7 @@ This is the main JUSTICE model.
 
 import numpy as np
 import pandas as pd
+from typing import Any
 
 from src.util.data_loader import DataLoader
 from src.util.enumerations import Economy, DamageFunction, Abatement, WelfareFunction
@@ -232,6 +233,12 @@ class JUSTICE:
             ),
             "welfare_utilitarian": np.zeros((self.no_of_ensembles,)),
         }
+
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)
 
     def stepwise_run(
         self,

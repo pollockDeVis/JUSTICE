@@ -117,7 +117,7 @@ class RBF:
         self.radii = None
         self.weights = None
 
-    def get_rbf_shapes(self):
+    def get_shape(self):
         """
         This method returns the shapes of centers, radii, and weights if they have been initialized.
 
