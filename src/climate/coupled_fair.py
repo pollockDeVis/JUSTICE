@@ -80,7 +80,7 @@ class CoupledFAIR(FAIR):
         """
         return object.__getattribute__(self, __name)
 
-    def fair_justice_run_init(self, time_horizon, scenarios):
+    def fair_justice_run_init(self, time_horizon, scenarios, climate_ensembles=None):
         """Setup the stepwise run of the FaIR model with the JUSTICE IAM.
 
         Parameters
@@ -97,7 +97,10 @@ class CoupledFAIR(FAIR):
         scenarios = get_climate_scenario(scenarios)
         scenarios = [scenarios]  # Converting into a list
 
-        self.fair_fill_data(scenarios)
+        if climate_ensembles is not None:
+            self.fair_fill_data(scenarios, climate_ensembles=climate_ensembles)
+        else:
+            self.fair_fill_data(scenarios)
 
         # End of filling in configs
         self._check_properties()
@@ -1039,7 +1042,7 @@ class CoupledFAIR(FAIR):
                     # fill FaIR xarray
                     fill(self.forcing, forc[:, None], specie=specie, scenario=scenario)
 
-    def fair_fill_data(self, scenarios):
+    def fair_fill_data(self, scenarios, climate_ensembles=None):
         self.define_time(
             self.start_year_fair, self.end_year_fair, self.timestep_justice
         )
@@ -1051,8 +1054,16 @@ class CoupledFAIR(FAIR):
             data_file_path + "/calibrated_constrained_parameters.csv", index_col=0
         )
 
-        # take only the first row from df_configs #this is to select one scenario
-        # df_configs = df_configs.iloc[0:1]
+        if climate_ensembles is not None:
+            assert (
+                climate_ensembles >= 0
+            ), "climate_ensembles must be greater than or equal to 0"
+            assert climate_ensembles <= len(
+                df_configs.index
+            ), "climate_ensembles must be less than or equal to the number of ensembles"
+
+            # Take only one specific row from df_configs
+            df_configs = df_configs.iloc[(climate_ensembles - 1) : climate_ensembles]
 
         self.define_configs(df_configs.index)
         self.number_of_ensembles = len(df_configs.index)

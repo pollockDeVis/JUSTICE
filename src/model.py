@@ -29,6 +29,7 @@ class JUSTICE:
         end_year=2300,  # Model is only tested for end year 2300
         timestep=1,  # Model is only tested for timestep 1
         scenario=0,
+        climate_ensembles=None,
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
@@ -61,9 +62,18 @@ class JUSTICE:
         self.climate = CoupledFAIR(ch4_method="Thornhill2021")
         self.downscaler = TemperatureDownscaler(input_dataset=self.data_loader)
 
-        self.no_of_ensembles = self.climate.fair_justice_run_init(
-            time_horizon=self.time_horizon, scenarios=self.scenario
-        )
+        # Check if climate_ensembles is passed as a parameter
+        if climate_ensembles is not None:
+            self.no_of_ensembles = self.climate.fair_justice_run_init(
+                time_horizon=self.time_horizon,
+                scenarios=self.scenario,
+                climate_ensembles=climate_ensembles,
+            )
+        else:
+            self.no_of_ensembles = self.climate.fair_justice_run_init(
+                time_horizon=self.time_horizon, scenarios=self.scenario
+            )
+
         self.region_list = self.data_loader.REGION_LIST
 
         # Set the savings rate and emissions control rate levers
