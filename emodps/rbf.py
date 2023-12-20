@@ -123,7 +123,10 @@ def original_rbf_vectorized(rbf_input, centers, radii, weights):
     # calculate weighted RBF scores
     weighted_rbfs = rbf_scores @ weights
 
-    return weighted_rbfs
+    # Output
+    output = weighted_rbfs.T
+
+    return output
 
 
 class RBF:
