@@ -278,6 +278,12 @@ class JUSTICE:
         else:
             self.savings_rate[:, timestep] = savings_rate
 
+        # Check the shape of the emission_control_rate whether it is 1D or 2D
+        if len(emission_control_rate.shape) == 1:
+            emission_control_rate = np.tile(
+                emission_control_rate[:, np.newaxis], (1, self.no_of_ensembles)
+            )
+
         self.emission_control_rate[:, timestep, :] = emission_control_rate
 
         output = self.economy.run(
@@ -374,6 +380,12 @@ class JUSTICE:
             self.savings_rate = self.fixed_savings_rate
         else:
             self.savings_rate = savings_rate
+
+        # Check the shape of the emission_control_rate whether 1D or 2D
+        if len(emission_control_rate.shape) == 2:
+            emission_control_rate = np.tile(
+                emission_control_rate[:, :, np.newaxis], (1, 1, self.no_of_ensembles)
+            )
 
         self.emission_control_rate = emission_control_rate
 
