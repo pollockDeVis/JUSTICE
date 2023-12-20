@@ -92,10 +92,11 @@ class JUSTICE:
             )
         )
 
-        self.emissions_control_rate = np.zeros(
+        self.emission_control_rate = np.zeros(
             (
                 len(self.data_loader.REGION_LIST),
                 len(self.time_horizon.model_time_horizon),
+                self.no_of_ensembles,
             )
         )
 
@@ -252,7 +253,7 @@ class JUSTICE:
 
     def stepwise_run(
         self,
-        emissions_control_rate,
+        emission_control_rate,
         timestep,
         savings_rate=None,
         endogenous_savings_rate=False,
@@ -264,7 +265,7 @@ class JUSTICE:
 
         @param timestep: The timestep to run the model for 0 to model_time_horizon
         @param savings_rate: The savings rate for each timestep. So shape will be (no_of_regions,)
-        @param emissions_control_rate: The emissions control rate for each timestep. So shape will be (no_of_regions,)
+        @param emission_control_rate: The emissions control rate for each timestep. So shape will be (no_of_regions,)
         """
 
         # Error check on the inputs
@@ -277,7 +278,7 @@ class JUSTICE:
         else:
             self.savings_rate[:, timestep] = savings_rate
 
-        self.emissions_control_rate[:, timestep] = emissions_control_rate
+        self.emission_control_rate[:, timestep, :] = emission_control_rate
 
         output = self.economy.run(
             scenario=self.scenario,
@@ -289,7 +290,7 @@ class JUSTICE:
             timestep=timestep,
             scenario=self.scenario,
             output=output,
-            emission_control_rate=self.emissions_control_rate[:, timestep],
+            emission_control_rate=self.emission_control_rate[:, timestep, :],
         )
 
         # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
@@ -312,7 +313,7 @@ class JUSTICE:
             abatement_cost = self.abatement.calculate_abatement(
                 timestep=timestep,
                 emissions=emissions_array,
-                emission_control_rate=emissions_control_rate,
+                emission_control_rate=emission_control_rate,
             )
             # Apply the computed damage and abatement to the economic output for the next timestep.
             self.economy.apply_damage_to_output(timestep=timestep + 1, damage=damage)
@@ -362,7 +363,7 @@ class JUSTICE:
 
     def run(
         self,
-        emissions_control_rate,
+        emission_control_rate,
         savings_rate=None,
         endogenous_savings_rate=False,
     ):
@@ -374,7 +375,7 @@ class JUSTICE:
         else:
             self.savings_rate = savings_rate
 
-        self.emissions_control_rate = emissions_control_rate
+        self.emission_control_rate = emission_control_rate
 
         for timestep in range(len(self.time_horizon.model_time_horizon)):
             """
@@ -391,7 +392,7 @@ class JUSTICE:
                 timestep=timestep,
                 scenario=self.scenario,
                 output=output,
-                emission_control_rate=self.emissions_control_rate[:, timestep],
+                emission_control_rate=self.emission_control_rate[:, timestep, :],
             )
 
             # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
@@ -414,7 +415,7 @@ class JUSTICE:
                 abatement_cost = self.abatement.calculate_abatement(
                     timestep=timestep,
                     emissions=emissions_array,
-                    emission_control_rate=self.emissions_control_rate[:, timestep],
+                    emission_control_rate=self.emission_control_rate[:, timestep, :],
                 )
                 # TODO: Incomplete Implementation
                 # carbon_price = self.abatement.calculate_carbon_price(

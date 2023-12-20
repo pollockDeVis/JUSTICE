@@ -68,7 +68,7 @@ def JUSTICE_example_run(scenarios=7):
 
     # Run the model
     model.run(
-        emissions_control_rate=emissions_control_rate, endogenous_savings_rate=True
+        emission_control_rate=emissions_control_rate, endogenous_savings_rate=True
     )
 
     # Get the results

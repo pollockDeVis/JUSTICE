@@ -164,9 +164,9 @@ class AbatementEnerdata:
             self.coefficient_multiplier[:, timestep, np.newaxis]
             * (
                 self.abatement_coefficient_a[:, timestep, np.newaxis]
-                * ((np.power(emission_control_rate[:, np.newaxis], 2)) / 2)
+                * ((np.power(emission_control_rate, 2)) / 2)  # [:, np.newaxis]
                 + self.abatement_coefficient_b[:, timestep, np.newaxis]
-                * ((np.power(emission_control_rate[:, np.newaxis], 5)) / 5)
+                * ((np.power(emission_control_rate, 5)) / 5)  # [:, np.newaxis]
             )
             * (emissions / 1000)  #   Conversion:  [ G$ ] / 1000 -> [Trill $]
         )

@@ -87,7 +87,7 @@ class OutputToEmissions:
             self.carbon_intensity[:, timestep, :, scenario]
             * output
             * (
-                1 - emission_control_rate[:, np.newaxis]
+                1 - emission_control_rate  # [:, np.newaxis]
             )  # Emisison Control Rate is a lever and might have to take timestep
         )
 

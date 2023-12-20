@@ -81,7 +81,7 @@ def model_wrapper_emodps(**kwargs):
 
     for timestep in range(n_timesteps):
         model.stepwise_run(
-            emissions_control_rate=emissions_control_rate[:, timestep],
+            emission_control_rate=emissions_control_rate[:, timestep],
             timestep=timestep,
             endogenous_savings_rate=True,
         )
@@ -159,7 +159,7 @@ def model_wrapper(**kwargs):
         social_welfare_function=welfare_function,
     )
 
-    model.run(savings_rate=savings_rate, emissions_control_rate=emissions_control_rate)
+    model.run(savings_rate=savings_rate, emission_control_rate=emissions_control_rate)
     datasets = model.evaluate(
         welfare_function=welfare_function,
         elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
