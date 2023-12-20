@@ -26,7 +26,7 @@ ema_logging.log_to_stderr(ema_logging.INFO)
 
 # JUSTICE
 from src.enumerations import Scenario
-from src.util.EMA_model_wrapper import model_wrapper
+from src.util.EMA_model_wrapper import model_wrapper, model_wrapper_emodps
 from src.model_time import TimeHorizon
 from src.data_loader import DataLoader
 
@@ -34,6 +34,63 @@ from src.data_loader import DataLoader
 data_loader = DataLoader()
 # Instantiate the TimeHorizon class
 time_horizon = TimeHorizon(start_year=2015, end_year=2300, data_timestep=5, timestep=1)
+
+
+def run_optimization_adaptive(
+    n_rbfs=4, n_inputs=2, nfe=5000, filename=None, folder=None
+):
+    model = Model("JUSTICE", function=model_wrapper_emodps)
+
+    # Define constants, uncertainties and levers
+    model.constants = [
+        Constant("n_regions", len(data_loader.REGION_LIST)),
+        Constant("n_timesteps", len(time_horizon.model_time_horizon)),
+        Constant("n_rbfs", n_rbfs),
+        Constant("n_inputs_rbf", n_inputs),
+        Constant("n_outputs_rbf", len(data_loader.REGION_LIST)),
+    ]
+
+    # Speicify uncertainties
+    model.uncertainties = [
+        CategoricalParameter(
+            "ssp_rcp_scenario", (0, 1, 2, 3, 4, 5, 6, 7)
+        ),  # 8 SSP-RCP scenario combinations
+        # TODO temporarily commented out
+        # RealParameter("elasticity_of_marginal_utility_of_consumption", 0.0, 2.0),
+        # RealParameter(
+        #     "pure_rate_of_social_time_preference", 0.0001, 0.020
+        # ),  # 0.1 to 3% in RICE50 gazzotti2
+        # RealParameter("inequality_aversion", 0.0, 2.0),  # 0.2 -2.5
+    ]
+
+    # Set the model levers, which are the RBF parameters
+    # These are the formula to calculate the number of centers, radii and weights
+
+    centers_shape = (
+        n_rbfs * n_inputs
+    )  # centers = n_rbfs x n_inputs # radii = n_rbfs x n_inputs
+    weights_shape = (
+        len(data_loader.REGION_LIST) * n_rbfs
+    )  # weights = n_outputs x n_rbfs
+
+    centers_levers = []
+    radii_levers = []
+    weights_levers = []
+
+    for i in range(centers_shape):
+        centers_levers.append(RealParameter(f"center {i}", -1.0, 1.0))
+        radii_levers.append(RealParameter(f"radii {i}", 0.0, 1.0))
+
+    for i in range(weights_shape):
+        weights_levers.append(RealParameter(f"weights {i}", 0.0, 1.0))
+
+    # Set the model levers
+    model.levers = centers_levers + radii_levers + weights_levers
+
+    # Reference Scenario?
+    # Hyperparameters
+    # Epsilon
+    # Outcomes?
 
 
 def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None):
