@@ -88,7 +88,7 @@ def run_optimization_adaptive(
     model.levers = centers_levers + radii_levers + weights_levers
 
     # Reference Scenario?
-    # Hyperparameters
+    # Hyperparameters -deap
     # Epsilon
     # Outcomes?
 

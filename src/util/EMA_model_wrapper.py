@@ -73,15 +73,17 @@ def model_wrapper_emodps(**kwargs):
         inequality_aversion=inequality_aversion,
     )
 
-    nsamples = model.__getattribute__("no_of_ensembles")
+    no_of_ensembles = model.__getattribute__("no_of_ensembles")
 
     datasets = {}
+    # Initialize emissions control rate
+    emissions_control_rate = np.zeros((n_regions, n_timesteps, no_of_ensembles))
     previous_temperature = 0
     difference = 0
 
     for timestep in range(n_timesteps):
         model.stepwise_run(
-            emission_control_rate=emissions_control_rate[:, timestep],
+            emission_control_rate=emissions_control_rate[:, timestep, :],
             timestep=timestep,
             endogenous_savings_rate=True,
         )
@@ -102,9 +104,14 @@ def model_wrapper_emodps(**kwargs):
             max_difference - min_difference
         )
 
-        # TODO: How to deal with nsamples?
-        inputs = [scaled_temperature, scaled_difference]
-        emissions_control_rate[:, timestep + 1] = rbf.apply_rbfs(inputs)
+        # TODO: How to deal with 2 inputs?
+        # inputs = [scaled_temperature, scaled_difference]
+        # emissions_control_rate[:, timestep + 1] = rbf.apply_rbfs(inputs)
+        # Check if this is not the last timestep
+        if timestep < n_timesteps - 1:
+            emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(
+                scaled_temperature
+            )
 
     return datasets
 

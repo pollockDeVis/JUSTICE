@@ -46,6 +46,10 @@ def original_rbf(rbf_input, centers, radii, weights):
     weighted_rbfs = weights * rbf_scores[:, np.newaxis]
     output = weighted_rbfs.sum(axis=0)
 
+    print("rbf_scores[:, np.newaxis].shape:", rbf_scores[:, np.newaxis].shape)  # (3, 1)
+    print("weighted_rbfs.shape:", weighted_rbfs.shape)  # (3, 57)
+    print("output.shape:", output.shape)
+
     return output
 
 
@@ -79,17 +83,6 @@ def squared_exponential_rbf(rbf_input, centers, radii, weights):
     weighted_rbfs = weights * rbf_scores[:, np.newaxis]
     output = weighted_rbfs.sum(axis=0)
 
-    # Print the shapes:
-    # print("centers.shape:", centers.shape)
-    # print("radii.shape:", radii.shape)
-    # print("weights.shape:", weights.shape)
-    # print("a.shape:", a.shape)
-    # print("b.shape:", b.shape)
-    # print("c.shape:", c.shape)
-    # print("rbf_scores.shape:", rbf_scores.shape)
-    # print("weighted_rbfs.shape:", weighted_rbfs.shape)
-    # print("output.shape:", output.shape)
-
     return output
 
 
@@ -99,7 +92,7 @@ def original_rbf_vectorized(rbf_input, centers, radii, weights):
     Parameters
     ----------
     rbf_input : numpy array
-                1-D, shape is (n_inputs,)
+                1-D, shape is (n_inputs, no_ensemble_members)
     centers :   numpy array
                 2-D, shape is (n_rbfs X n_inputs)
     radii :     2-D, shape is (n_rbfs X n_inputs)
@@ -113,18 +106,29 @@ def original_rbf_vectorized(rbf_input, centers, radii, weights):
     """
 
     # reshape inputs to ensure correct broadcasting
-    rbf_input_reshaped = rbf_input[:, np.newaxis]
-    centers = centers.reshape(1, -1)
-    radii = radii.reshape(1, -1)
+    rbf_input_reshaped = rbf_input[np.newaxis, :, :]
+
+    # Strech rbf_input_reshaped to match the shape of centers and radii on the first axis
+    rbf_input_reshaped = np.repeat(rbf_input_reshaped, centers.shape[0], axis=0)
+
+    # Adding extra axis to centers and radii to ensure correct broadcasting
+    centers = centers[:, :, np.newaxis]
+    radii = radii[:, :, np.newaxis]
+
     # calculate squared distance
     squared_distance = np.square(rbf_input_reshaped - centers)
+    squared_distance_over_radii_summed = np.sum(
+        (-squared_distance / (radii**2)), axis=1
+    )
+
     # calculate RBF scores
-    rbf_scores = np.exp(-squared_distance / (2 * radii**2))
-    # calculate weighted RBF scores
-    weighted_rbfs = rbf_scores @ weights
+    rbf_scores = np.exp(squared_distance_over_radii_summed)
+
+    # Multiply weights by rbf_scores so that output is of shape (57, 1001)
+    weighted_rbfs = weights[:, :, np.newaxis] * rbf_scores[:, np.newaxis, :]
 
     # Output
-    output = weighted_rbfs.T
+    output = weighted_rbfs.sum(axis=0)
 
     return output
 
@@ -135,7 +139,7 @@ class RBF:
         n_rbfs,
         n_inputs,
         n_outputs,
-        rbf_function=original_rbf_vectorized,  # squared_exponential_rbf #rbf_vectorized
+        rbf_function=original_rbf_vectorized,  # _vectorized squared_exponential_rbf #rbf_vectorized
     ):
         self.n_rbfs = n_rbfs
         self.n_inputs = n_inputs
