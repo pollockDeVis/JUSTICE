@@ -96,8 +96,11 @@ class JusticeEnv(MultiAgentEnv):
         MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict
     ]:            
 
+        self.timestep+=1
+
         savings_rate = []
         emissions_rate = []
+
         for agent_idx in range(self.num_agents):
             savings_rate.append(action_dict[f"agent_{agent_idx}"]["savings_rate"])
             emissions_rate.append(action_dict[f"agent_{agent_idx}"]["emissions_rate"])

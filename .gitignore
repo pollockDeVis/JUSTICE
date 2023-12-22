@@ -33,6 +33,8 @@ local.properties
 # PDT-specific
 .buildpath
 
+rl/marl/checkpoints/*
+
 ##############
 ## PyCharm
 ############
@@ -110,6 +112,9 @@ DocProject/Help/html
 
 # Click-Once directory
 publish
+
+#test notebooks
+*.ipynb
 
 # Others
 [Bb]in
