@@ -105,29 +105,25 @@ def original_rbf_vectorized(rbf_input, centers, radii, weights):
 
     """
 
-    # reshape inputs to ensure correct broadcasting
-    rbf_input_reshaped = rbf_input[np.newaxis, :, :]
-
-    # Strech rbf_input_reshaped to match the shape of centers and radii on the first axis
-    rbf_input_reshaped = np.repeat(rbf_input_reshaped, centers.shape[0], axis=0)
-
-    # Adding extra axis to centers and radii to ensure correct broadcasting
-    centers = centers[:, :, np.newaxis]
-    radii = radii[:, :, np.newaxis]
-
-    # calculate squared distance
-    squared_distance = np.square(rbf_input_reshaped - centers)
-    squared_distance_over_radii_summed = np.sum(
-        (-squared_distance / (radii**2)), axis=1
+    # reshape rbf_inputs to match the shape of centers and radii on the first axis
+    rbf_input_reshaped = np.repeat(
+        rbf_input[np.newaxis, :, :], centers.shape[0], axis=0
     )
 
-    # calculate RBF scores
+    # Adding extra axis to centers and radii to ensure correct broadcasting for squared distance calculation
+    squared_distance = np.square(rbf_input_reshaped - centers[:, :, np.newaxis])
+
+    # Sum of the negative squared distance over radii
+    squared_distance_over_radii_summed = np.sum(
+        -squared_distance / np.square(radii[:, :, np.newaxis]), axis=1
+    )
+    # calculate RBF scores by exponentiating the sum of the negative squared distance over radii
     rbf_scores = np.exp(squared_distance_over_radii_summed)
 
     # Multiply weights by rbf_scores so that output is of shape (57, 1001)
     weighted_rbfs = weights[:, :, np.newaxis] * rbf_scores[:, np.newaxis, :]
 
-    # Output
+    # Output derived by summing over the first axis of weighted_rbfs
     output = weighted_rbfs.sum(axis=0)
 
     return output
