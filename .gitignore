@@ -1,18 +1,25 @@
-#################
+## CRAB related fodlers to avoid
+/IT_PUF_EUSILC
+/CRAB/Inputs
+
+############
 ## Eclipse
-#################
+################
 
 *.pydevproject
 .project
 .metadata
+
 bin/
 tmp/
 cover/
 *.tmp
 *.bak
+*.csv
 *.swp
 *~.nib
 *.pyc
+*.gdx
 *.cfg
 *.pypirc
 local.properties
