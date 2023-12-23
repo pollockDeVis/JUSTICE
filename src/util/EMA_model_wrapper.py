@@ -10,8 +10,8 @@ from emodps.rbf import RBF
 # Scaling Values
 max_temperature = 16.0
 min_temperature = 0.0
-max_difference = 10.0
-min_difference = -10.0
+max_difference = 2.0
+min_difference = 0.0
 
 
 def model_wrapper_emodps(**kwargs):
@@ -59,8 +59,6 @@ def model_wrapper_emodps(**kwargs):
 
     rbf.set_decision_vars(decision_vars)
 
-    emissions_control_rate = np.zeros((n_regions, n_timesteps))
-
     model = JUSTICE(
         scenario=scenario,
         economy_type=economy_type,
@@ -93,8 +91,7 @@ def model_wrapper_emodps(**kwargs):
         if timestep % 5 == 0:
             difference = temperature - previous_temperature
             # Do something with the difference variable
-
-        previous_temperature = temperature
+            previous_temperature = temperature
 
         # Apply Min Max Scaling to temperature and difference
         scaled_temperature = (temperature - min_temperature) / (
@@ -104,15 +101,15 @@ def model_wrapper_emodps(**kwargs):
             max_difference - min_difference
         )
 
-        # TODO: How to deal with 2 inputs?
-        # inputs = [scaled_temperature, scaled_difference]
-        # emissions_control_rate[:, timestep + 1] = rbf.apply_rbfs(inputs)
+        rbf_input = np.array([scaled_temperature, scaled_difference])
+
         # Check if this is not the last timestep
         if timestep < n_timesteps - 1:
-            emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(
-                scaled_temperature
-            )
+            emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(rbf_input)
 
+        datasets = model.evaluate()
+        # Calculate the mean of ["welfare_utilitarian"]
+        datasets["welfare_utilitarian"] = np.mean(datasets["welfare_utilitarian"])
     return datasets
 
 
