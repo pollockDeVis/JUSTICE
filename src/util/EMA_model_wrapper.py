@@ -43,11 +43,11 @@ def model_wrapper_emodps(**kwargs):
     radii = np.zeros(radii_shape)
     weights = np.zeros(weights_shape)
 
-    for i in range(centers_shape):
+    for i in range(centers_shape[0]):
         centers[i] = kwargs.pop(f"center {i}")
         radii[i] = kwargs.pop(f"radii {i}")
 
-    for i in range(weights_shape):
+    for i in range(weights_shape[0]):
         weights[i] = kwargs.pop(f"weights {i}")
 
     # Populating the decision variables
@@ -107,9 +107,10 @@ def model_wrapper_emodps(**kwargs):
         if timestep < n_timesteps - 1:
             emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(rbf_input)
 
-        datasets = model.evaluate()
-        # Calculate the mean of ["welfare_utilitarian"]
-        datasets["welfare_utilitarian"] = np.mean(datasets["welfare_utilitarian"])
+    datasets = model.evaluate()
+    # Calculate the mean of ["welfare_utilitarian"]
+    datasets["welfare_utilitarian"] = np.mean(datasets["welfare_utilitarian"])
+
     return datasets
 
 
