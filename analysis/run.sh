@@ -1,6 +1,6 @@
 #!/bin/bash -l                                                                                                       
 
-#SBATCH --job-name="20k_%a"                                                                                      
+#SBATCH --job-name="5_DPS"                                                                                      
 #SBATCH --time=48:00:00
 #SBATCH --partition=compute
 
