@@ -6,6 +6,11 @@ import functools
 import numpy as np
 import os
 
+# Suppress numpy version warnings
+import warnings
+
+warnings.filterwarnings("ignore")
+
 # stat = "mean"  # mean, median, 5th, 95th
 
 # EMA
@@ -90,96 +95,96 @@ def run_optimization_adaptive(
     model.levers = centers_levers + radii_levers + weights_levers
 
     model.outcomes = [
-        ArrayOutcome(
-            "mean_net_economic_output",
-            function=functools.partial(np.mean, axis=2),
-            variable_name="net_economic_output",
-        ),
-        ArrayOutcome(
-            "5p_net_economic_output",
-            function=functools.partial(np.percentile, q=5, axis=2),
-            variable_name="net_economic_output",
-        ),
-        ArrayOutcome(
-            "95p_net_economic_output",
-            function=functools.partial(np.percentile, q=95, axis=2),
-            variable_name="net_economic_output",
-        ),
-        ArrayOutcome(
-            "mean_consumption_per_capita",
-            function=functools.partial(np.mean, axis=2),
-            variable_name="consumption_per_capita",
-        ),
-        ArrayOutcome(
-            "5p_consumption_per_capita",
-            function=functools.partial(np.percentile, q=5, axis=2),
-            variable_name="consumption_per_capita",
-        ),
-        ArrayOutcome(
-            "95p_consumption_per_capita",
-            function=functools.partial(np.percentile, q=95, axis=2),
-            variable_name="consumption_per_capita",
-        ),
-        ArrayOutcome(
-            "mean_emissions",
-            function=functools.partial(np.mean, axis=2),
-            variable_name="emissions",
-        ),
-        ArrayOutcome(
-            "5p_emissions",
-            function=functools.partial(np.percentile, q=5, axis=2),
-            variable_name="emissions",
-        ),
-        ArrayOutcome(
-            "95p_emissions",
-            function=functools.partial(np.percentile, q=95, axis=2),
-            variable_name="emissions",
-        ),
-        ArrayOutcome(
-            "mean_economic_damage",
-            function=functools.partial(np.mean, axis=2),
-            variable_name="economic_damage",
-        ),
-        ArrayOutcome(
-            "5p_economic_damage",
-            function=functools.partial(np.percentile, q=5, axis=2),
-            variable_name="economic_damage",
-        ),
-        ArrayOutcome(
-            "95p_economic_damage",
-            function=functools.partial(np.percentile, q=95, axis=2),
-            variable_name="economic_damage",
-        ),
-        ArrayOutcome(
-            "mean_abatement_cost",
-            function=functools.partial(np.mean, axis=2),
-            variable_name="abatement_cost",
-        ),
-        ArrayOutcome(
-            "5p_abatement_cost",
-            function=functools.partial(np.percentile, q=5, axis=2),
-            variable_name="abatement_cost",
-        ),
-        ArrayOutcome(
-            "95p_abatement_cost",
-            function=functools.partial(np.percentile, q=95, axis=2),
-            variable_name="abatement_cost",
-        ),
-        ArrayOutcome(
-            "mean_global_temperature",
-            function=functools.partial(np.mean, axis=1),
-            variable_name="global_temperature",
-        ),  # (286, 1001)
-        ArrayOutcome(
-            "5p_global_temperature",
-            function=functools.partial(np.percentile, q=5, axis=1),
-            variable_name="global_temperature",
-        ),  # (286, 1001)
-        ArrayOutcome(
-            "95p_global_temperature",
-            function=functools.partial(np.percentile, q=95, axis=1),
-            variable_name="global_temperature",
-        ),
+        # ArrayOutcome(
+        #     "mean_net_economic_output",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="net_economic_output",
+        # ),
+        # ArrayOutcome(
+        #     "5p_net_economic_output",
+        #     function=functools.partial(np.percentile, q=5, axis=2),
+        #     variable_name="net_economic_output",
+        # ),
+        # ArrayOutcome(
+        #     "95p_net_economic_output",
+        #     function=functools.partial(np.percentile, q=95, axis=2),
+        #     variable_name="net_economic_output",
+        # ),
+        # ArrayOutcome(
+        #     "mean_consumption_per_capita",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="consumption_per_capita",
+        # ),
+        # ArrayOutcome(
+        #     "5p_consumption_per_capita",
+        #     function=functools.partial(np.percentile, q=5, axis=2),
+        #     variable_name="consumption_per_capita",
+        # ),
+        # ArrayOutcome(
+        #     "95p_consumption_per_capita",
+        #     function=functools.partial(np.percentile, q=95, axis=2),
+        #     variable_name="consumption_per_capita",
+        # ),
+        # ArrayOutcome(
+        #     "mean_emissions",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="emissions",
+        # ),
+        # ArrayOutcome(
+        #     "5p_emissions",
+        #     function=functools.partial(np.percentile, q=5, axis=2),
+        #     variable_name="emissions",
+        # ),
+        # ArrayOutcome(
+        #     "95p_emissions",
+        #     function=functools.partial(np.percentile, q=95, axis=2),
+        #     variable_name="emissions",
+        # ),
+        # ArrayOutcome(
+        #     "mean_economic_damage",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="economic_damage",
+        # ),
+        # ArrayOutcome(
+        #     "5p_economic_damage",
+        #     function=functools.partial(np.percentile, q=5, axis=2),
+        #     variable_name="economic_damage",
+        # ),
+        # ArrayOutcome(
+        #     "95p_economic_damage",
+        #     function=functools.partial(np.percentile, q=95, axis=2),
+        #     variable_name="economic_damage",
+        # ),
+        # ArrayOutcome(
+        #     "mean_abatement_cost",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="abatement_cost",
+        # ),
+        # ArrayOutcome(
+        #     "5p_abatement_cost",
+        #     function=functools.partial(np.percentile, q=5, axis=2),
+        #     variable_name="abatement_cost",
+        # ),
+        # ArrayOutcome(
+        #     "95p_abatement_cost",
+        #     function=functools.partial(np.percentile, q=95, axis=2),
+        #     variable_name="abatement_cost",
+        # ),
+        # ArrayOutcome(
+        #     "mean_global_temperature",
+        #     function=functools.partial(np.mean, axis=1),
+        #     variable_name="global_temperature",
+        # ),  # (286, 1001)
+        # ArrayOutcome(
+        #     "5p_global_temperature",
+        #     function=functools.partial(np.percentile, q=5, axis=1),
+        #     variable_name="global_temperature",
+        # ),  # (286, 1001)
+        # ArrayOutcome(
+        #     "95p_global_temperature",
+        #     function=functools.partial(np.percentile, q=95, axis=1),
+        #     variable_name="global_temperature",
+        # ),
         # ArrayOutcome(
         #     "mean_welfare_utilitarian",
         #     function=functools.partial(np.mean, axis=0),
@@ -213,7 +218,7 @@ def run_optimization_adaptive(
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
-            epsilons=[0.01],  # * len(model.outcomes)
+            epsilons=[0.01] * len(model.outcomes),  # * len(model.outcomes)
             reference=reference_scenario,
             convergence=convergence_metrics,
         )
