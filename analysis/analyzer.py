@@ -223,15 +223,15 @@ def run_optimization_adaptive(
             convergence=convergence_metrics,
         )
 
-        if filename is None:
-            file_name = f"JUSTICE_EMODPS_{nfe}.tar.gz"
+        # if filename is None:
+        #     file_name = f"JUSTICE_EMODPS_{nfe}.tar.gz"
 
-        if folder is None:
-            target_directory = os.path.join(os.getcwd(), "data/output", file_name)
-        else:
-            target_directory = os.path.join(folder, file_name)
+        # if folder is None:
+        #     target_directory = os.path.join(os.getcwd(), "data/output", file_name)
+        # else:
+        #     target_directory = os.path.join(folder, file_name)
 
-        save_results(results, file_name=target_directory)
+        # save_results(results, file_name=target_directory)
 
     # Hyperparameters -deap
 
