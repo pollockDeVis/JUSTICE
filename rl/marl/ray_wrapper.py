@@ -99,8 +99,8 @@ class JusticeEnv(MultiAgentEnv):
         for agent_idx in range(self.num_agents):
             savings_rate.append(action_dict[f"agent_{agent_idx}"]["savings_rate"])
             emissions_rate.append(action_dict[f"agent_{agent_idx}"]["emissions_rate"])
-        savings_rate = np.array(savings_rate)
-        emissions_rate = np.array(emissions_rate)
+        savings_rate = np.squeeze(np.array(savings_rate))
+        emissions_rate = np.squeeze(np.array(emissions_rate))
 
         self.model.stepwise_run(savings_rate = savings_rate,
                                  emissions_control_rate = emissions_rate,
