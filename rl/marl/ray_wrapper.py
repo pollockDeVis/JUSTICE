@@ -66,8 +66,7 @@ class JusticeEnv(MultiAgentEnv):
         #TODO: add JUSTICE reset
         super().reset(seed=seed, options=options)
         self.timestep = 0
-        # this is pseudo code, but initializing the model should return observations (obs)
-        # infos is also required, but not useful
+
         data = self.model.stepwise_evaluate(timestep=self.timestep)
         obs = self.generate_observations(data)
         return obs, {}
@@ -82,31 +81,29 @@ class JusticeEnv(MultiAgentEnv):
         obs = {k:data[k] for k in OBSERVATIONS}
         obs_per_agent = {}
         for agent_idx in range(self.num_agents):
-            #TODO: parameterize number of ensembles for MARL during initialization
+
             local_observations_per_agent = {k:np.array([v[agent_idx,self.timestep,0]]).astype("float32") for k,v in obs.items()}
             global_observations_per_agent = {key:np.array([data[key][self.timestep,0]]).astype("float32") for key in GLOBAL_OBSERVATIONS}
 
             obs_per_agent[f"agent_{agent_idx}"] = {**local_observations_per_agent, **global_observations_per_agent}
         return obs_per_agent
 
-
     def step(
         self, action_dict
     ) -> tuple[
         MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict
     ]:            
-
-        self.timestep+=1
-
         savings_rate = []
         emissions_rate = []
 
         for agent_idx in range(self.num_agents):
             savings_rate.append(action_dict[f"agent_{agent_idx}"]["savings_rate"])
             emissions_rate.append(action_dict[f"agent_{agent_idx}"]["emissions_rate"])
+        savings_rate = np.array(savings_rate)
+        emissions_rate = np.array(emissions_rate)
 
-        self.model.stepwise_run(savings_rate = np.squeeze(np.array(savings_rate)),
-                                 emissions_control_rate = np.squeeze(np.array(emissions_rate)),
+        self.model.stepwise_run(savings_rate = savings_rate,
+                                 emissions_control_rate = emissions_rate,
                                    timestep=self.timestep)
                                 
         data = self.model.stepwise_evaluate(timestep=self.timestep) #57 x 286 x 1001
@@ -120,6 +117,7 @@ class JusticeEnv(MultiAgentEnv):
              "__all__":False
         }
         infos = {}
+        self.timestep+=1
         return obs, rewards, terminated, truncateds, infos
     
 
