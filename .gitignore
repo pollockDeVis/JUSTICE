@@ -45,6 +45,9 @@ rl/marl/checkpoints/*
 venv/
 ENV/
 
+#logging
+wandb*
+
 
 #################
 ## Visual Studio
