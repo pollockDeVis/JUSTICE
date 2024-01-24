@@ -19,8 +19,8 @@ CONFIG = {
     "damage_function_type": DamageFunction.KALKUHL,
     "abatement_type": Abatement.ENERDATA,
     "num_agents": 57,
-    "model_pickle_path": Path("pickles") / "JUSTICE.pkl",
-    "config_pickle_path": Path("pickles") / "config.pkl",
+    "model_pickle_path": Path("rl") / "marl" / "pickles" / "JUSTICE.pkl",
+    "config_pickle_path": Path("rl") / "marl" / "pickles" / "config.pkl",
 }
 
 OBSERVATIONS = [

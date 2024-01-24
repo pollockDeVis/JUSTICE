@@ -2,6 +2,7 @@ import os
 import random
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 import gymnasium as gym
 import numpy as np
@@ -12,13 +13,14 @@ import torch.optim as optim
 import tyro
 from torch.distributions import Normal
 from torch.utils.tensorboard import SummaryWriter
-
+from datetime import datetime
 from rl.marl.pettingzoo_wrapper import CONFIG, JusticeEnv
 
 
 @dataclass
 class Args:
-    exp_name: str = os.path.basename(__file__)[: -len(".py")]
+    exp_name: str = os.path.basename(__file__)[: -len(".py")]\
+        +"_"+datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -151,8 +153,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-
-
+    
     # env setup
     JusticeEnv.pickle_model(CONFIG) # needed to pickle the JUSTICE model
     env = JusticeEnv(CONFIG)
@@ -318,6 +319,8 @@ if __name__ == "__main__":
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+
+    torch.save(agent.state_dict(), Path("rl") / "marl" / "checkpoints" / f"{args.exp_name}.pt")
 
     envs.close()
     writer.close()
