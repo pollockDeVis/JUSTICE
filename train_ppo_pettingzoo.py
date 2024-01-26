@@ -3,7 +3,7 @@ import random
 import time
 from dataclasses import dataclass
 from pathlib import Path
-
+from tqdm import tqdm
 import gymnasium as gym
 import numpy as np
 import supersuit as ss
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(envs.num_envs).to(device)
 
-    for iteration in range(1, args.num_iterations + 1):
+    for iteration in tqdm(range(1, args.num_iterations + 1)):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (iteration - 1.0) / args.num_iterations
