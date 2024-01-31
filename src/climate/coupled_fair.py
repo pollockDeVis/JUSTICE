@@ -16,16 +16,15 @@ from fair.forcing.ozone import thornhill2021
 
 from fair.energy_balance_model import (
     calculate_toa_imbalance_postrun,
-    multi_ebm,
     step_temperature,
 )
 
 from fair.earth_params import (
     earth_radius,
-    mass_atmosphere,
-    molecular_weight_air,
     seconds_per_year,
 )
+
+# from fair.structure.species import multiple_allowed, species_types, valid_input_modes
 
 from fair.structure.units import (
     compound_convert,
@@ -81,7 +80,7 @@ class CoupledFAIR(FAIR):
         """
         return object.__getattribute__(self, __name)
 
-    def fair_justice_run_init(self, time_horizon, scenarios):
+    def fair_justice_run_init(self, time_horizon, scenarios, climate_ensembles=None):
         """Setup the stepwise run of the FaIR model with the JUSTICE IAM.
 
         Parameters
@@ -89,6 +88,7 @@ class CoupledFAIR(FAIR):
         suppress_warnings : bool
             Hide warnings relating to covariance in energy balance matrix.
         """
+
         self.start_year_fair = fair_start_year
         self.start_year_justice = time_horizon.start_year
         self.end_year_fair = time_horizon.end_year
@@ -97,7 +97,10 @@ class CoupledFAIR(FAIR):
         scenarios = get_climate_scenario(scenarios)
         scenarios = [scenarios]  # Converting into a list
 
-        self.fair_fill_data(scenarios)
+        if climate_ensembles is not None:
+            self.fair_fill_data(scenarios, climate_ensembles=climate_ensembles)
+        else:
+            self.fair_fill_data(scenarios)
 
         # End of filling in configs
         self._check_properties()
@@ -106,7 +109,9 @@ class CoupledFAIR(FAIR):
             with warnings.catch_warnings():
                 if suppress_warnings:
                     warnings.filterwarnings(
-                        "ignore", message="covariance is not positive-semidefinite."
+                        "ignore",
+                        category=RuntimeWarning,
+                        module="scipy.stats._multivariate",
                     )
                 self._make_ebms()
 
@@ -123,9 +128,9 @@ class CoupledFAIR(FAIR):
             )
 
         self.cumulative_emissions[1:, ...] = (
-            self.emissions.cumsum(axis=0, skipna=False) * self.timestep
+            self.emissions.cumsum(dim="timepoints", skipna=False) * self.timestep
             + self.cumulative_emissions[0, ...]
-        )
+        ).data
 
         # create numpy arrays
         self.alpha_lifetime_array = self.alpha_lifetime.data
@@ -252,16 +257,23 @@ class CoupledFAIR(FAIR):
                     "FAIR.species_configs['forcing_reference_concentration'] which "
                     "means that I can't calculate greenhouse gas forcing."
                 )
-            self.ghg_forcing_offset = meinshausen2020(
-                self.baseline_concentration_array[None, None, ...],
-                self.forcing_reference_concentration_array[None, None, ...],
-                self.forcing_scale_array[None, None, ...],
-                self.greenhouse_gas_radiative_efficiency_array[None, None, ...],
-                self._co2_indices,
-                self._ch4_indices,
-                self._n2o_indices,
-                self._minor_ghg_indices,
-            )
+
+            # Allow for a user-specified offset (provided through self). This will allow
+            # different baseline and pre-industrial concentrations, for example if we
+            # want to include natural emissions in CH4. In this case
+            # baseline_concentration is zero, but the offset should be w.r.t initial
+            # (usually pre-industrial) concentration.
+            if not hasattr(self, "ghg_forcing_offset"):
+                self.ghg_forcing_offset = meinshausen2020(
+                    self.baseline_concentration_array[None, None, ...],
+                    self.forcing_reference_concentration_array[None, None, ...],
+                    self.forcing_scale_array[None, None, ...],
+                    self.greenhouse_gas_radiative_efficiency_array[None, None, ...],
+                    self._co2_indices,
+                    self._ch4_indices,
+                    self._n2o_indices,
+                    self._minor_ghg_indices,
+                )
 
         # purge emissions
 
@@ -751,6 +763,8 @@ class CoupledFAIR(FAIR):
         toa_ocean_airborne_fraction : np.ndarray
             The fraction of airborne emissions that are taken up by the ocean.
         """
+        # 17. TOA imbalance
+        # forcing is not efficacy adjusted here, is this correct?
         self.toa_imbalance_array = calculate_toa_imbalance_postrun(
             self.cummins_state_array,
             self.forcing_sum_array,  # [..., None],
@@ -1028,7 +1042,7 @@ class CoupledFAIR(FAIR):
                     # fill FaIR xarray
                     fill(self.forcing, forc[:, None], specie=specie, scenario=scenario)
 
-    def fair_fill_data(self, scenarios):
+    def fair_fill_data(self, scenarios, climate_ensembles=None):
         self.define_time(
             self.start_year_fair, self.end_year_fair, self.timestep_justice
         )
@@ -1040,8 +1054,16 @@ class CoupledFAIR(FAIR):
             data_file_path + "/calibrated_constrained_parameters.csv", index_col=0
         )
 
-        # take only the first row from df_configs #this is to select one scenario
-        # df_configs = df_configs.iloc[0:1]
+        if climate_ensembles is not None:
+            assert (
+                climate_ensembles >= 0
+            ), "climate_ensembles must be greater than or equal to 0"
+            assert climate_ensembles <= len(
+                df_configs.index
+            ), "climate_ensembles must be less than or equal to the number of ensembles"
+
+            # Take only one specific row from df_configs
+            df_configs = df_configs.iloc[(climate_ensembles - 1) : climate_ensembles]
 
         self.define_configs(df_configs.index)
         self.number_of_ensembles = len(df_configs.index)
@@ -1098,6 +1120,7 @@ class CoupledFAIR(FAIR):
                 .values.squeeze()
             )[: self.emissions.shape[0], None]
 
+        # Filling in climate configs
         fill(
             self.climate_configs["ocean_heat_capacity"],
             df_configs.loc[:, "c1":"c3"].values,
@@ -1115,9 +1138,13 @@ class CoupledFAIR(FAIR):
             df_configs["gamma"].values.squeeze(),
         )
         fill(
-            self.climate_configs["sigma_eta"], df_configs["sigma_eta"].values.squeeze()
+            self.climate_configs["sigma_eta"],
+            df_configs["sigma_eta"].values.squeeze(),
         )
-        fill(self.climate_configs["sigma_xi"], df_configs["sigma_xi"].values.squeeze())
+        fill(
+            self.climate_configs["sigma_xi"],
+            df_configs["sigma_xi"].values.squeeze(),
+        )
         fill(self.climate_configs["seed"], df_configs["seed"])
         fill(self.climate_configs["stochastic_run"], True)
         fill(self.climate_configs["use_seed"], True)

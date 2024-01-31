@@ -89,6 +89,15 @@ class Utilitarian:
         # Calculate the disentangled utility
         disentangled_utility = population_weighted_consumption_per_capita
 
+        # Calculate the regional disentangled utility powered - For regional welfare calculation
+        disentangled_utility_regional_powered = np.power(
+            disentangled_utility,
+            (
+                (1 - self.elasticity_of_marginal_utility_of_consumption)
+                / (1 - self.inequality_aversion)
+            ),
+        )
+
         # Sum the disentangled utility
         disentangled_utility_summed = np.sum(
             population_weighted_consumption_per_capita, axis=0
@@ -103,6 +112,7 @@ class Utilitarian:
             ),
         )
 
+        # Calculate the utilitarian welfare disaggregated temporally
         welfare_utilitarian_temporal = (
             (
                 disentangled_utility_powered
@@ -111,13 +121,34 @@ class Utilitarian:
             - 1
         ) * self.discount_rate[0, :, :]
 
+        # Welfare disaggregated temporally and regionally - For regional welfare calculation
+        welfare_utilitarian_regional_temporal = (
+            (
+                disentangled_utility_regional_powered
+                / (1 - self.elasticity_of_marginal_utility_of_consumption)
+            )
+            - 1
+        ) * self.discount_rate
+
+        # Welfare aggregated regionally
+        welfare_utilitarian_regional = np.sum(
+            welfare_utilitarian_regional_temporal,
+            axis=1,
+        )
+
         # Calculate the utilitarian welfare
         welfare_utilitarian = np.sum(
             welfare_utilitarian_temporal,
             axis=0,
         )
 
-        return disentangled_utility, welfare_utilitarian_temporal, welfare_utilitarian
+        return (
+            disentangled_utility,
+            welfare_utilitarian_regional_temporal,
+            welfare_utilitarian_temporal,
+            welfare_utilitarian_regional,
+            welfare_utilitarian,
+        )
 
     def calculate_stepwise_welfare(self, consumption_per_capita, timestep):
         """
@@ -151,6 +182,25 @@ class Utilitarian:
             ),
         )
 
+        # Calculate disentangled utility regional powered - For regional welfare calculation
+        disentangled_utility_regional_powered = np.power(
+            disentangled_utility,
+            (
+                (1 - self.elasticity_of_marginal_utility_of_consumption)
+                / (1 - self.inequality_aversion)
+            ),
+        )
+
+        # Welfare disaggregated temporally and regionally - For regional welfare calculation
+        welfare_utilitarian_regional_temporal = (
+            (
+                disentangled_utility_regional_powered
+                / (1 - self.elasticity_of_marginal_utility_of_consumption)
+            )
+            - 1
+        ) * self.discount_rate[:, timestep, :]
+
+        # Welfare aggregated regionally, disaggregated temporally
         welfare_utilitarian_temporal = (
             (
                 disentangled_utility_powered
@@ -159,7 +209,11 @@ class Utilitarian:
             - 1
         ) * self.discount_rate[0, timestep, :]
 
-        return disentangled_utility, welfare_utilitarian_temporal
+        return (
+            disentangled_utility,
+            welfare_utilitarian_regional_temporal,
+            welfare_utilitarian_temporal,
+        )
 
     def __getattribute__(self, __name: str) -> Any:
         """
