@@ -113,7 +113,8 @@ class Agent(nn.Module):
         return self.critic(self.network(x))
 
     def get_action_and_value(self, x, action=None):
-        action_mean = self.actor_mean(self.network(x))
+        network_output = self.network(x)
+        action_mean = self.actor_mean(network_output)
         action_logstd = self.actor_logstd.expand_as(action_mean)
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std)
@@ -255,10 +256,11 @@ if __name__ == "__main__":
         clipfracs = []
         for epoch in range(args.update_epochs):
             np.random.shuffle(b_inds)
+            count = 0
             for start in range(0, args.batch_size, args.minibatch_size):
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
-
+                count += 1
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()

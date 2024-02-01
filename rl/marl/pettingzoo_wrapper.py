@@ -30,8 +30,8 @@ OBSERVATIONS = [
     "economic_damage",
     "abatement_cost",
 ]
-# REWARD="welfare_utilitarian_temporal"
-REWARD = "disentangled_utility"
+REWARD="welfare_utilitarian_regional_temporal"
+#REWARD = "disentangled_utility"
 GLOBAL_OBSERVATIONS = ["global_temperature"]
 
 
@@ -89,7 +89,7 @@ class JusticeEnv(ParallelEnv):
     # If your spaces change over time, remove this line (disable caching).
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent):
-        return Box(0.0001, 0.9999, shape=(2,), dtype=np.float32)
+        return Box(0.0001, 0.9999, shape=(1,), dtype=np.float32)
 
     def reset(self, seed=None, options=None):
         if seed is not None:
@@ -120,13 +120,13 @@ class JusticeEnv(ParallelEnv):
         return obs
 
     def step(self, actions: dict):
-        savings_rate = np.array([actions[agent][0] for agent in self.agents], dtype=np.float32)
-        emissions_rate = np.array([actions[agent][1] for agent in self.agents], dtype=np.float32)
+        emissions_rate = np.array([actions[agent][0] for agent in self.agents], dtype=np.float32)
+        emissions_rate = np.clip(emissions_rate, a_min=0.00001, a_max=.999999)
 
         self.model.stepwise_run(
-            savings_rate=savings_rate,
-            emissions_control_rate=emissions_rate,
+            emission_control_rate=emissions_rate,
             timestep=self.timestep,
+            endogenous_savings_rate = True
         )
 
         data = self.model.stepwise_evaluate(timestep=self.timestep)
@@ -135,9 +135,9 @@ class JusticeEnv(ParallelEnv):
         done = self.start_year + self.timestep >= self.end_year
         truncated = {agent: done for agent in self.agents}
         terminated = {agent: done for agent in self.agents}
-        rewards = {agent: data[REWARD][i, self.timestep, 0] for i, agent in enumerate(self.agents)}
+
+        rewards = {agent: data[REWARD][i,self.timestep, 0] for i, agent in enumerate(self.agents)}
         infos = {agent: {} for agent in self.agents}
 
         self.timestep += 1  # NOTE: update timestep after stepwise_run?
-
         return obs, rewards, terminated, truncated, infos
