@@ -23,6 +23,7 @@ from ema_workbench import (
     CategoricalParameter,
     ema_logging,
     MultiprocessingEvaluator,
+    SequentialEvaluator,
     Constant,
     Scenario,
 )
@@ -35,6 +36,8 @@ from ema_workbench.em_framework.optimization import (
 
 
 # JUSTICE
+# Set this path to the src folder
+# export PYTHONPATH=$PYTHONPATH:/Users/palokbiswas/Desktop/pollockdevis_git/JUSTICE/src
 # from src.util.enumerations import Scenario
 from src.util.EMA_model_wrapper import model_wrapper, model_wrapper_emodps
 from src.util.model_time import TimeHorizon
@@ -214,13 +217,14 @@ def run_optimization_adaptive(
         EpsilonProgress(),
     ]
 
-    with MultiprocessingEvaluator(model) as evaluator:
+    with SequentialEvaluator(model) as evaluator:
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
             epsilons=[0.01] * len(model.outcomes),  # * len(model.outcomes)
             reference=reference_scenario,
             convergence=convergence_metrics,
+            population_size=10,
         )
 
         # if filename is None:
@@ -439,6 +443,6 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
 
 if __name__ == "__main__":
-    ema_logging.log_to_stderr(ema_logging.INFO)
+    ema_logging.log_to_stderr(ema_logging.DEBUG)
     # perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None)
     run_optimization_adaptive(n_rbfs=4, n_inputs=2, nfe=5, filename=None, folder=None)
