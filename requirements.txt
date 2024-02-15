@@ -10,3 +10,4 @@ torch
 tyro
 pettingzoo
 supersuit
+gymnasium
