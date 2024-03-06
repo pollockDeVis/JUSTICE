@@ -102,6 +102,16 @@ class CoupledFAIR(FAIR):
         else:
             self.fair_fill_data(scenarios)
 
+        # Create self.emissions_purge_array full on nans
+        self.emissions_purge_array = np.full(
+            (
+                self.end_year_fair - fair_start_year,
+                1,
+                self.number_of_ensembles,
+            ),
+            np.nan,
+        )
+
         # End of filling in configs
         self._check_properties()
         self._make_indices()
@@ -330,18 +340,9 @@ class CoupledFAIR(FAIR):
         # Calculate justice start index
         self.justice_start_index = self.start_year_justice - self.start_year_fair
         # Create array with rcmip emissions before justice_start_index and zeros after
-
-        self.emissions_purge_array = np.concatenate(
-            [
-                rcmip_emission_array[0 : self.justice_start_index].values,
-                np.full(
-                    (self.end_year_fair - self.start_year_justice,)
-                    + rcmip_emission_array.shape[1:],
-                    np.nan,
-                ),
-            ],
-            axis=0,
-        )
+        self.emissions_purge_array[0 : self.justice_start_index] = rcmip_emission_array[
+            0 : self.justice_start_index
+        ].values
 
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
@@ -706,26 +707,28 @@ class CoupledFAIR(FAIR):
             self.forcing_array[i_timepoint + 1 : i_timepoint + 2, ...],
             axis=SPECIES_AXIS,
         )
-        self.forcing_efficacy_sum_array[
-            i_timepoint + 1 : i_timepoint + 2, ...
-        ] = np.nansum(
-            self.forcing_array[i_timepoint + 1 : i_timepoint + 2, ...]
-            * self.forcing_efficacy_array[None, None, ...],
-            axis=SPECIES_AXIS,
+        self.forcing_efficacy_sum_array[i_timepoint + 1 : i_timepoint + 2, ...] = (
+            np.nansum(
+                self.forcing_array[i_timepoint + 1 : i_timepoint + 2, ...]
+                * self.forcing_efficacy_array[None, None, ...],
+                axis=SPECIES_AXIS,
+            )
         )
 
         # 16. forcing to temperature
         if self._routine_flags["temperature"]:
-            self.cummins_state_array[
-                i_timepoint + 1 : i_timepoint + 2, ...
-            ] = step_temperature(
-                self.cummins_state_array[i_timepoint : i_timepoint + 1, ...],
-                self.eb_matrix_d_array[None, None, ...],
-                self.forcing_vector_d_array[None, None, ...],
-                self.stochastic_d_array[i_timepoint + 1 : i_timepoint + 2, None, ...],
-                self.forcing_efficacy_sum_array[
-                    i_timepoint + 1 : i_timepoint + 2, ..., None
-                ],
+            self.cummins_state_array[i_timepoint + 1 : i_timepoint + 2, ...] = (
+                step_temperature(
+                    self.cummins_state_array[i_timepoint : i_timepoint + 1, ...],
+                    self.eb_matrix_d_array[None, None, ...],
+                    self.forcing_vector_d_array[None, None, ...],
+                    self.stochastic_d_array[
+                        i_timepoint + 1 : i_timepoint + 2, None, ...
+                    ],
+                    self.forcing_efficacy_sum_array[
+                        i_timepoint + 1 : i_timepoint + 2, ..., None
+                    ],
+                )
             )
 
     def get_exogenous_land_use_emissions(self, scenarios):
@@ -835,17 +838,17 @@ class CoupledFAIR(FAIR):
         species_to_rcmip["CO2 FFI"] = "CO2|MAGICC Fossil and Industrial"
         species_to_rcmip["CO2 AFOLU"] = "CO2|MAGICC AFOLU"
         species_to_rcmip["NOx aviation"] = "NOx|MAGICC Fossil and Industrial|Aircraft"
-        species_to_rcmip[
-            "Aerosol-radiation interactions"
-        ] = "Aerosols-radiation interactions"
-        species_to_rcmip[
-            "Aerosol-cloud interactions"
-        ] = "Aerosols-radiation interactions"
+        species_to_rcmip["Aerosol-radiation interactions"] = (
+            "Aerosols-radiation interactions"
+        )
+        species_to_rcmip["Aerosol-cloud interactions"] = (
+            "Aerosols-radiation interactions"
+        )
         species_to_rcmip["Contrails"] = "Contrails and Contrail-induced Cirrus"
         species_to_rcmip["Light absorbing particles on snow and ice"] = "BC on Snow"
-        species_to_rcmip[
-            "Stratospheric water vapour"
-        ] = "CH4 Oxidation Stratospheric H2O"
+        species_to_rcmip["Stratospheric water vapour"] = (
+            "CH4 Oxidation Stratospheric H2O"
+        )
         species_to_rcmip["Land use"] = "Albedo Change"
 
         species_to_rcmip_copy = copy.deepcopy(species_to_rcmip)
