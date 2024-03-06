@@ -125,22 +125,22 @@ class CoupledFAIR(FAIR):
                     )
                 self._make_ebms()
 
-        # part of pre-run: TODO move to a new method
-        if (
-            self._co2_indices.sum()
-            + self._co2_ffi_indices.sum()
-            + self._co2_afolu_indices.sum()
-            == 3
-        ):
-            self.emissions[..., self._co2_indices] = (
-                self.emissions[..., self._co2_ffi_indices].data
-                + self.emissions[..., self._co2_afolu_indices].data
-            )
+        # # part of pre-run: TODO move to a new method
+        # if (
+        #     self._co2_indices.sum()
+        #     + self._co2_ffi_indices.sum()
+        #     + self._co2_afolu_indices.sum()
+        #     == 3
+        # ):
+        #     self.emissions[..., self._co2_indices] = (
+        #         self.emissions[..., self._co2_ffi_indices].data
+        #         + self.emissions[..., self._co2_afolu_indices].data
+        #     )
 
-        self.cumulative_emissions[1:, ...] = (
-            self.emissions.cumsum(dim="timepoints", skipna=False) * self.timestep
-            + self.cumulative_emissions[0, ...]
-        ).data
+        # self.cumulative_emissions[1:, ...] = (
+        #     self.emissions.cumsum(dim="timepoints", skipna=False) * self.timestep
+        #     + self.cumulative_emissions[0, ...]
+        # ).data
 
         # create numpy arrays
         self.alpha_lifetime_array = self.alpha_lifetime.data
@@ -175,11 +175,13 @@ class CoupledFAIR(FAIR):
             )
             * np.nan
         )
-        self.cumulative_emissions_array = self.cumulative_emissions.data
+        # TODO: COMMENTED OUT
+        # self.cumulative_emissions_array = self.cumulative_emissions.data
         self.deep_ocean_efficacy_array = self.climate_configs[
             "deep_ocean_efficacy"
         ].data
-        self.emissions_array = self.emissions.data
+        # TODO: COMMENTED OUT
+        # self.emissions_array = self.emissions.data
 
         self.erfari_radiative_efficiency_array = self.species_configs[
             "erfari_radiative_efficiency"
@@ -285,8 +287,33 @@ class CoupledFAIR(FAIR):
                     self._minor_ghg_indices,
                 )
 
+        # TODO: Added here
+        # part of pre-run: TODO move to a new method
+        if (
+            self._co2_indices.sum()
+            + self._co2_ffi_indices.sum()
+            + self._co2_afolu_indices.sum()
+            == 3
+        ):
+            self.emissions[..., self._co2_indices] = (
+                self.emissions[..., self._co2_ffi_indices].data
+                + self.emissions[..., self._co2_afolu_indices].data
+            )
+
+        self.cumulative_emissions[1:, ...] = (
+            self.emissions.cumsum(dim="timepoints", skipna=False) * self.timestep
+            + self.cumulative_emissions[0, ...]
+        ).data
         # purge emissions
 
+        # TODO: COMMENTED OUT
+        self.cumulative_emissions_array = self.cumulative_emissions.data
+        self.deep_ocean_efficacy_array = self.climate_configs[
+            "deep_ocean_efficacy"
+        ].data
+        # TODO: COMMENTED OUT
+        self.emissions_array = self.emissions.data
+        # ADDED TILL HERE
         self.purge_emissions(scenarios)
 
         # Run the historical temperature computation
@@ -366,6 +393,25 @@ class CoupledFAIR(FAIR):
         Step wise run of the FAIR model. Historical Runs from 0 - 264
         JUSTICE Runs from 265 - 549
         """
+        # self.cumulative_emissions_array = self.cumulative_emissions.data
+        # self.emissions_array = self.emissions.data
+        # # part of pre-run: TODO move to a new method
+        # if (
+        #     self._co2_indices.sum()
+        #     + self._co2_ffi_indices.sum()
+        #     + self._co2_afolu_indices.sum()
+        #     == 3
+        # ):
+        #     self.emissions[..., self._co2_indices] = (
+        #         self.emissions[..., self._co2_ffi_indices].data
+        #         + self.emissions[..., self._co2_afolu_indices].data
+        #     )
+
+        # self.cumulative_emissions[1:, ...] = (
+        #     self.emissions.cumsum(dim="timepoints", skipna=False) * self.timestep
+        #     + self.cumulative_emissions[0, ...]
+        # ).data
+
         # print(f"i_timepoint: {i_timepoint}")
         if self._routine_flags["ghg"]:
             # 1. alpha scaling
