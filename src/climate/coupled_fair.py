@@ -94,6 +94,9 @@ class CoupledFAIR(FAIR):
         self.end_year_fair = time_horizon.end_year
         self.timestep_justice = time_horizon.timestep
 
+        # Calculate justice start index
+        self.justice_start_index = self.start_year_justice - self.start_year_fair
+
         scenarios = get_climate_scenario(scenarios)
         scenarios = [scenarios]  # Converting into a list
 
@@ -124,23 +127,6 @@ class CoupledFAIR(FAIR):
                         module="scipy.stats._multivariate",
                     )
                 self._make_ebms()
-
-        # # part of pre-run: TODO move to a new method
-        # if (
-        #     self._co2_indices.sum()
-        #     + self._co2_ffi_indices.sum()
-        #     + self._co2_afolu_indices.sum()
-        #     == 3
-        # ):
-        #     self.emissions[..., self._co2_indices] = (
-        #         self.emissions[..., self._co2_ffi_indices].data
-        #         + self.emissions[..., self._co2_afolu_indices].data
-        #     )
-
-        # self.cumulative_emissions[1:, ...] = (
-        #     self.emissions.cumsum(dim="timepoints", skipna=False) * self.timestep
-        #     + self.cumulative_emissions[0, ...]
-        # ).data
 
         # create numpy arrays
         self.alpha_lifetime_array = self.alpha_lifetime.data
@@ -175,13 +161,10 @@ class CoupledFAIR(FAIR):
             )
             * np.nan
         )
-        # TODO: COMMENTED OUT
-        # self.cumulative_emissions_array = self.cumulative_emissions.data
+
         self.deep_ocean_efficacy_array = self.climate_configs[
             "deep_ocean_efficacy"
         ].data
-        # TODO: COMMENTED OUT
-        # self.emissions_array = self.emissions.data
 
         self.erfari_radiative_efficiency_array = self.species_configs[
             "erfari_radiative_efficiency"
@@ -287,6 +270,8 @@ class CoupledFAIR(FAIR):
                     self._minor_ghg_indices,
                 )
 
+        # TODO: Temporarily added here # So this works to change the calculated temperature
+        self.purge_emissions(scenarios)
         # TODO: Added here
         # part of pre-run: TODO move to a new method
         if (
@@ -308,19 +293,29 @@ class CoupledFAIR(FAIR):
 
         # TODO: COMMENTED OUT
         self.cumulative_emissions_array = self.cumulative_emissions.data
-        self.deep_ocean_efficacy_array = self.climate_configs[
-            "deep_ocean_efficacy"
-        ].data
+
         # TODO: COMMENTED OUT
         self.emissions_array = self.emissions.data
         # ADDED TILL HERE
-        self.purge_emissions(scenarios)
+
+        # Setting the index values for the CO2 values in emissions array of FAIR
+        self.co2_idx = (np.where(self._co2_indices)[0]).item(0)
+        self.co2_ffi_idx = (np.where(self._co2_ffi_indices)[0]).item(0)
+        self.co2_afolu_idx = (np.where(self._co2_afolu_indices)[0]).item(0)
+
+        # TODO: self.purge_emissions(scenarios)
 
         # Run the historical temperature computation
 
         self.run_historical_temperature_calculation()
 
         return self.number_of_ensembles
+
+    def get_justice_initial_temperature(self):
+        """
+        This function returns the initial temperature of the model.
+        """
+        return self.get_justice_temperature_array_by_timestep(self.justice_start_index)
 
     def compute_temperature_from_emission(self, timestep, emissions_data):
         """
@@ -341,14 +336,36 @@ class CoupledFAIR(FAIR):
 
         fill_index = timestep + self.justice_start_index
 
-        # Replace the respective timestep with the emissions data
-        self.emissions_purge_array[fill_index, 0, :] = emissions_data
+        # Commented out for newer implementation
+        # # Replace the respective timestep with the emissions data
+        # self.emissions_purge_array[fill_index, 0, :] = emissions_data
 
-        # Fill the emissions array with the new emissions data
-        fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
+        # # Fill the emissions array with the new emissions data
+        # fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
+
+        # New Implementation - Directly fill the emissions_array
+        self.emissions_array[fill_index, 0, :, self.co2_ffi_idx] = emissions_data
+        # Emissions Array is of shape (550, ...) # CO2 Index is sum of CO2 FFI and AFOLU, AFOLU is exogenous in JUSTICE
+        self.emissions_array[fill_index, 0, :, self.co2_idx] = (
+            self.emissions_array[fill_index, 0, :, self.co2_ffi_idx]
+            + self.emissions_array[fill_index, 0, :, self.co2_afolu_idx]
+        )
+        # Cumulative Emissions Array is of shape (551, ...), 1 step ahead of emissions array
+        # This step retains the cumulative calculation by adding new emissions to the previous cumulative emissions
+        self.cumulative_emissions_array[fill_index + 1, 0, :, self.co2_ffi_idx] = (
+            self.cumulative_emissions_array[fill_index, 0, :, self.co2_ffi_idx]
+            + emissions_data
+        )
+        # Here we update the CO2 cumulative emissions by adding the CO2 FFI and AFOLU emissions
+        self.cumulative_emissions_array[fill_index + 1, 0, :, self.co2_idx] = (
+            self.cumulative_emissions_array[fill_index + 1, 0, :, self.co2_ffi_idx]
+            + self.cumulative_emissions_array[fill_index + 1, 0, :, self.co2_afolu_idx]
+        )
 
         self.stepwise_run(fill_index)
-        global_temperature = self.get_justice_temperature_array_by_timestep(fill_index)
+        global_temperature = self.get_justice_temperature_array_by_timestep(
+            fill_index
+        )  # TODO - this should be the following temp
         # Shape [timestep, scenario, ensemble, box/layer=0] # Layer 0 is used in FAIR example. The current code works only with one SSP-RCP scenario
         # global_temperature = global_temperature[timestep, 0, :, 0]
         return global_temperature
@@ -364,8 +381,7 @@ class CoupledFAIR(FAIR):
         """
         # Select data for "CO2 FFI" and scenario
         rcmip_emission_array = self.emissions.sel(specie="CO2 FFI", scenario=scenario)
-        # Calculate justice start index
-        self.justice_start_index = self.start_year_justice - self.start_year_fair
+
         # Create array with rcmip emissions before justice_start_index and zeros after
         self.emissions_purge_array[0 : self.justice_start_index] = rcmip_emission_array[
             0 : self.justice_start_index
@@ -393,26 +409,6 @@ class CoupledFAIR(FAIR):
         Step wise run of the FAIR model. Historical Runs from 0 - 264
         JUSTICE Runs from 265 - 549
         """
-        # self.cumulative_emissions_array = self.cumulative_emissions.data
-        # self.emissions_array = self.emissions.data
-        # # part of pre-run: TODO move to a new method
-        # if (
-        #     self._co2_indices.sum()
-        #     + self._co2_ffi_indices.sum()
-        #     + self._co2_afolu_indices.sum()
-        #     == 3
-        # ):
-        #     self.emissions[..., self._co2_indices] = (
-        #         self.emissions[..., self._co2_ffi_indices].data
-        #         + self.emissions[..., self._co2_afolu_indices].data
-        #     )
-
-        # self.cumulative_emissions[1:, ...] = (
-        #     self.emissions.cumsum(dim="timepoints", skipna=False) * self.timestep
-        #     + self.cumulative_emissions[0, ...]
-        # ).data
-
-        # print(f"i_timepoint: {i_timepoint}")
         if self._routine_flags["ghg"]:
             # 1. alpha scaling
             self.alpha_lifetime_array[

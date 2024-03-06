@@ -356,15 +356,15 @@ class JUSTICE:
         self.data["global_temperature"][timestep, :] = (
             self.climate.get_justice_temperature_array()
         )[timestep, :]
-        self.data["consumption"][
-            :, timestep, :
-        ] = self.economy.calculate_consumption_per_timestep(
-            self.savings_rate[:, timestep], timestep
+        self.data["consumption"][:, timestep, :] = (
+            self.economy.calculate_consumption_per_timestep(
+                self.savings_rate[:, timestep], timestep
+            )
         )
-        self.data["consumption_per_capita"][
-            :, timestep, :
-        ] = self.economy.get_consumption_per_capita_per_timestep(
-            self.scenario, self.savings_rate[:, timestep], timestep
+        self.data["consumption_per_capita"][:, timestep, :] = (
+            self.economy.get_consumption_per_capita_per_timestep(
+                self.scenario, self.savings_rate[:, timestep], timestep
+            )
         )
 
     def run(
@@ -393,13 +393,13 @@ class JUSTICE:
             """
             Main loop of the model. This loop runs the model for each timestep.
             """
-
+            # TODO: Can directly load it to data dictionary
             output = self.economy.run(
                 scenario=self.scenario,
                 timestep=timestep,
                 savings_rate=self.savings_rate[:, timestep],
             )
-
+            # TODO: Can directly load it to data dictionary
             emissions_array = self.emissions.run(
                 timestep=timestep,
                 scenario=self.scenario,
@@ -409,21 +409,42 @@ class JUSTICE:
 
             # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
             if timestep < (len(self.time_horizon.model_time_horizon) - 1):
-                global_temperature = self.climate.compute_temperature_from_emission(
-                    timestep, emissions_array
+                # Filling in the temperature of the first timestep from FAIR
+                if timestep == 0:
+                    self.data["global_temperature"][
+                        0, :
+                    ] = self.climate.get_justice_initial_temperature()
+
+                    self.data["regional_temperature"][:, 0, :] = (
+                        self.downscaler.get_regional_temperature(
+                            self.data["global_temperature"][0, :]
+                        )
+                    )
+
+                # Emission in the current timestep produces temperature in the next timestep
+                self.data["global_temperature"][(timestep + 1), :] = (
+                    self.climate.compute_temperature_from_emission(
+                        timestep, emissions_array
+                    )
                 )
 
-                regional_temperature = self.downscaler.get_regional_temperature(
-                    global_temperature
+                self.data["regional_temperature"][:, (timestep + 1), :] = (
+                    self.downscaler.get_regional_temperature(
+                        self.data["global_temperature"][(timestep + 1), :]
+                    )
                 )
-
+                # TODO: Regional temp here is t+1
                 # Save the regional temperature
-                self.data["regional_temperature"][:, timestep, :] = regional_temperature
+                # self.data["regional_temperature"][:, timestep, :] = regional_temperature
 
+                # Future Damages and Abatement are calculated based on current temperature.
+                # Damage is applied to the next timestep in the economy model
+                # TODO: Can directly load it to data dictionary
                 damage = self.damage_function.calculate_damage(
-                    temperature=regional_temperature, timestep=timestep
+                    temperature=self.data["regional_temperature"][:, timestep, :],
+                    timestep=timestep,
                 )
-
+                # TODO: Can directly load it to data dictionary
                 abatement_cost = self.abatement.calculate_abatement(
                     timestep=timestep,
                     emissions=emissions_array,
@@ -441,16 +462,19 @@ class JUSTICE:
                 self.economy.apply_abatement_to_output(
                     timestep=timestep + 1, abatement=abatement_cost
                 )
-            elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
-                self.data["global_temperature"][timestep, :] = (
-                    self.climate.get_justice_temperature_array()
-                )[timestep, :]
+            # This is the last timestep
+            # TODO: Verify the last timestep. Might not be necessary
+            # TODO: Might need to calculate emissions for the last timestep - CHECKED ECONOMY
+            # elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
+            #     self.data["global_temperature"][timestep, :] = (
+            #         self.climate.get_justice_temperature_array()
+            #     )[timestep, :]
 
-                regional_temperature = self.downscaler.get_regional_temperature(
-                    self.data["global_temperature"][timestep, :]
-                )
-                # Save the regional temperature
-                self.data["regional_temperature"][:, timestep, :] = regional_temperature
+            #     regional_temperature = self.downscaler.get_regional_temperature(
+            #         self.data["global_temperature"][timestep, :]
+            #     )
+            #     # Save the regional temperature
+            #     self.data["regional_temperature"][:, timestep, :] = regional_temperature
 
     def stepwise_evaluate(
         self,
