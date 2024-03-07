@@ -499,6 +499,19 @@ class JUSTICE:
             consumption_per_capita=self.data["consumption_per_capita"][:, timestep, :],
             timestep=timestep,
         )
+
+        # Last timestep. Welfare_utilitarian_regional and welfare_utilitarian are calculated only for the last timestep
+        if timestep == (len(self.time_horizon.model_time_horizon) - 1):
+            print("Verify it is the last: ", timestep)
+            (
+                self.data["disentangled_utility"],
+                self.data["welfare_utilitarian_regional_temporal"],
+                self.data["welfare_utilitarian_temporal"],
+                self.data["welfare_utilitarian_regional"],
+                self.data["welfare_utilitarian"],
+            ) = self.welfare_function.calculate_welfare(
+                consumption_per_capita=self.data["consumption_per_capita"]
+            )
         return self.data
 
     def evaluate(
