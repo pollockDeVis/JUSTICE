@@ -502,7 +502,6 @@ class JUSTICE:
 
         # Last timestep. Welfare_utilitarian_regional and welfare_utilitarian are calculated only for the last timestep
         if timestep == (len(self.time_horizon.model_time_horizon) - 1):
-            print("Verify it is the last: ", timestep)
             (
                 self.data["disentangled_utility"],
                 self.data["welfare_utilitarian_regional_temporal"],
