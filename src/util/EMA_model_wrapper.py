@@ -1,6 +1,7 @@
 """
 This module wraps the model for uncertainty analysis experiments using EMA.
 """
+
 import numpy as np
 
 from src.model import JUSTICE
@@ -171,6 +172,56 @@ def model_wrapper(**kwargs):
         pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
         inequality_aversion=inequality_aversion,
     )
+
+    return datasets
+
+
+def model_wrapper_static_optimization(**kwargs):
+    scenario = kwargs.pop("ssp_rcp_scenario")
+    elasticity_of_marginal_utility_of_consumption = kwargs.pop(
+        "elasticity_of_marginal_utility_of_consumption"
+    )
+    pure_rate_of_social_time_preference = kwargs.pop(
+        "pure_rate_of_social_time_preference"
+    )
+    inequality_aversion = kwargs.pop("inequality_aversion")
+
+    economy_type = kwargs.pop("economy_type", (Economy.NEOCLASSICAL,))
+    damage_function_type = kwargs.pop("damage_function_type", (DamageFunction.KALKUHL,))
+    abatement_type = kwargs.pop("abatement_type", (Abatement.ENERDATA,))
+    welfare_function = kwargs.pop("welfare_function", (WelfareFunction.UTILITARIAN,))
+
+    n_regions = kwargs.pop("n_regions")
+    n_timesteps = kwargs.pop("n_timesteps")
+
+    emissions_control_rate = np.zeros((n_regions, n_timesteps))
+
+    # TODO temporarily commented out
+    for i in range(n_regions):
+        for j in range(n_timesteps):
+            emissions_control_rate[i, j] = kwargs.pop(f"emissions_control_rate {i} {j}")
+
+    model = JUSTICE(
+        scenario=scenario,
+        economy_type=economy_type,
+        damage_function_type=damage_function_type,
+        abatement_type=abatement_type,
+        social_welfare_function=welfare_function,
+        # Declaring for endogenous fixed savings rate
+        elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
+        pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+        inequality_aversion=inequality_aversion,
+    )
+
+    datasets = {}
+
+    model.run(
+        emission_control_rate=emissions_control_rate, endogenous_savings_rate=True
+    )
+
+    datasets = model.evaluate()
+    # Calculate the mean of ["welfare_utilitarian"] over the 1000 ensembles
+    datasets["welfare_utilitarian"] = np.mean(datasets["welfare_utilitarian"])
 
     return datasets
 

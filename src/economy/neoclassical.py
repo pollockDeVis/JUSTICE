@@ -1,6 +1,7 @@
 """
 This file contains the neoclassical economic part of the JUSTICE model.
 """
+
 from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
@@ -12,7 +13,6 @@ from src.util.enumerations import Economy, get_economic_scenario
 
 
 class NeoclassicalEconomyModel:
-
     """
     This class describes the neoclassical economic part of the JUSTICE model.
     """
@@ -190,15 +190,20 @@ class NeoclassicalEconomyModel:
         else:
             # Calculate the investment_tfp
             self.investment_tfp[:, timestep, :] = (
-                savings_rate * self.gdp[:, 0, :, scenario]
+                savings_rate * self.gdp[:, timestep, :, scenario]
             )
 
             # Calculate capital_tfp
 
-            self.capital_tfp[:, timestep, :] = (
-                self.capital_tfp[:, timestep - 1, :]
-                * np.power((1 - self.depreciation_rate_capital), timestep)
-                + self.investment_tfp[:, timestep - 1, :] * timestep
+            self.capital_tfp[:, timestep, :] = self.capital_tfp[
+                :, timestep - 1, :
+            ] * np.power(
+                (1 - self.depreciation_rate_capital),
+                (self.timestep / self.data_timestep),
+            ) + self.investment_tfp[
+                :, timestep - 1, :
+            ] * (
+                (self.timestep / self.data_timestep)
             )
 
             # Calculate the TFP
