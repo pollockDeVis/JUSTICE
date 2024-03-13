@@ -331,8 +331,8 @@ class JUSTICE:
             )
 
             abatement_cost = self.abatement.calculate_abatement(
+                scenario=self.scenario,
                 timestep=timestep,
-                emissions=self.data["emissions"][:, timestep, :],
                 emission_control_rate=emission_control_rate,
             )
             # Apply the computed damage and abatement to the economic output for the next timestep.
@@ -435,8 +435,8 @@ class JUSTICE:
                 )
 
                 abatement_cost = self.abatement.calculate_abatement(
+                    scenario=self.scenario,
                     timestep=timestep,
-                    emissions=self.data["emissions"][:, timestep, :],
                     emission_control_rate=self.emission_control_rate[:, timestep, :],
                 )
                 # TODO: Incomplete Implementation

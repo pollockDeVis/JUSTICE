@@ -12,9 +12,11 @@ This file computes the Marginal Abatement Cost (MAC) for the JUSTICE model using
 from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
+import copy
 
 from config.default_parameters import AbatementDefaults
 from src.util.enumerations import Abatement
+from src.util.enumerations import get_economic_scenario
 
 
 class AbatementEnerdata:
@@ -33,6 +35,9 @@ class AbatementEnerdata:
 
         self.abatement_coefficient_a = input_dataset.ABATEMENT_COEFFICIENT_A
         self.abatement_coefficient_b = input_dataset.ABATEMENT_COEFFICIENT_B
+        self.emissions_array_business_as_usual = copy.deepcopy(
+            input_dataset.EMISSIONS_ARRAY
+        )
         self.region_list = input_dataset.REGION_LIST
 
         self.timestep = time_horizon.timestep
@@ -76,6 +81,8 @@ class AbatementEnerdata:
         if self.timestep != self.data_timestep:
             # Interpolate GDP
             self._interpolate_coefficients()
+            # Interpolate Emissions
+            self._interpolate_emissions()  # Validated
 
         # Start here
 
@@ -144,7 +151,7 @@ class AbatementEnerdata:
             - multiplier_difference * transition_coefficient
         )
 
-    def calculate_abatement(self, timestep, emissions, emission_control_rate):
+    def calculate_abatement(self, scenario, timestep, emission_control_rate):
         """
         This method calculates the abatement for the emissions of a given timestep.
         * y ~ ax + bx^4   --with multiplier-->   y ~ mx (ax + bx^4)
@@ -159,6 +166,11 @@ class AbatementEnerdata:
 
         @return: abatement [Trill 2005 USD / year]
         """
+        # Get economic scenario
+        scenario = get_economic_scenario(scenario)
+
+        # Maybe Check the shape of Emission Control Rate
+        # if len(emission_control_rate.shape) == 1
         # Calculate abatement
         abatement = (
             self.coefficient_multiplier[:, timestep, np.newaxis]
@@ -169,7 +181,10 @@ class AbatementEnerdata:
                 * ((np.power(emission_control_rate, 5)) / 5)  # [:, np.newaxis]
             )
             * (
-                emissions / 1000
+                self.emissions_array_business_as_usual[
+                    :, timestep, scenario, np.newaxis
+                ]
+                / 1000
             )  #   Conversion:  [ G$ ] / 1000 -> [Trill $] #TODO: Check if this should be BAU emissions
         )
         return abatement
@@ -212,6 +227,25 @@ class AbatementEnerdata:
             )
             interp_data_b[i, :] = f(self.model_time_horizon)
         self.abatement_coefficient_b = interp_data_b
+
+    def _interpolate_emissions(self):
+        interp_emissions = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.emissions_array_business_as_usual.shape[2],
+            )
+        )
+
+        for idx in range(self.emissions_array_business_as_usual.shape[0]):
+            for i in range(self.emissions_array_business_as_usual.shape[2]):
+                f = interp1d(
+                    self.data_time_horizon,
+                    self.emissions_array_business_as_usual[idx, :, i],
+                    kind="linear",
+                )
+                interp_emissions[idx, :, i] = f(self.model_time_horizon)
+        self.emissions_array_business_as_usual = interp_emissions
 
     def __getattribute__(self, __name: str) -> Any:
         """
