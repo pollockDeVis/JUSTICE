@@ -72,6 +72,7 @@ def model_wrapper_emodps(**kwargs):
         inequality_aversion=inequality_aversion,
     )
 
+    # getattr(model, "no_of_ensembles")
     no_of_ensembles = model.__getattribute__("no_of_ensembles")
 
     datasets = {}

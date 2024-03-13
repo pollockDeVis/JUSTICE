@@ -168,7 +168,9 @@ class AbatementEnerdata:
                 + self.abatement_coefficient_b[:, timestep, np.newaxis]
                 * ((np.power(emission_control_rate, 5)) / 5)  # [:, np.newaxis]
             )
-            * (emissions / 1000)  #   Conversion:  [ G$ ] / 1000 -> [Trill $]
+            * (
+                emissions / 1000
+            )  #   Conversion:  [ G$ ] / 1000 -> [Trill $] #TODO: Check if this should be BAU emissions
         )
         return abatement
 
