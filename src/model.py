@@ -301,6 +301,7 @@ class JUSTICE:
 
         # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
         if timestep < (len(self.time_horizon.model_time_horizon) - 1):
+
             # Filling in the temperature of the first timestep from FAIR
             if timestep == 0:
                 self.data["global_temperature"][
@@ -330,8 +331,8 @@ class JUSTICE:
                 timestep=timestep,
             )
 
-            # Apply the computed damage to the economic output for the next timestep.
-            self.economy.apply_damage_to_output(timestep=timestep + 1, damage=damage)
+            # Apply the computed damage to the economic output
+            self.economy.apply_damage_to_output(timestep=timestep, damage=damage)
 
             # Abatement cost is only dependent on the emission control rate
             abatement_cost = self.abatement.calculate_abatement(
@@ -347,6 +348,29 @@ class JUSTICE:
             # Store the net economic output for the timestep
             self.data["net_economic_output"][:, timestep, :] = (
                 self.economy.get_net_output_by_timestep(timestep)
+            )
+        elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
+            # No need to calculate temperature for the last timestep because current emissions produce temperature in the next timestep
+            # Calculate damage for the last timestep
+            damage = self.damage_function.calculate_damage(
+                temperature=self.data["regional_temperature"][:, timestep, :],
+                timestep=timestep,
+            )
+            # Apply the damage to the economic output
+            self.economy.apply_damage_to_output(
+                timestep=timestep,
+                damage=damage,
+            )
+            # Calculate the abatement cost
+            abatement_cost = self.abatement.calculate_abatement(
+                scenario=self.scenario,
+                timestep=timestep,
+                emission_control_rate=emission_control_rate,
+            )
+            # Apply the abatement cost to the economic output
+            self.economy.apply_abatement_to_output(
+                timestep=timestep,
+                abatement=abatement_cost,
             )
 
         # Save the data
@@ -394,7 +418,6 @@ class JUSTICE:
             """
             Main loop of the model. This loop runs the model for each timestep.
             """
-
             gross_output = self.economy.run(
                 scenario=self.scenario,
                 timestep=timestep,
@@ -408,7 +431,7 @@ class JUSTICE:
                 emission_control_rate=self.emission_control_rate[:, timestep, :],
             )
 
-            # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
+            # Run the model for all timesteps except the last one
             if timestep < (len(self.time_horizon.model_time_horizon) - 1):
                 # Filling in the temperature of the first timestep from FAIR
                 if timestep == 0:
@@ -435,9 +458,7 @@ class JUSTICE:
                     )
                 )
 
-                # Future Damages is calculated based on current temperature.
-                # Damage is applied to the next timestep in the economy model
-
+                # Damages is calculated based on current temperature
                 damage = self.damage_function.calculate_damage(
                     temperature=self.data["regional_temperature"][:, timestep, :],
                     timestep=timestep,
@@ -450,7 +471,7 @@ class JUSTICE:
                 # )
 
                 self.economy.apply_damage_to_output(
-                    timestep=timestep + 1,
+                    timestep=timestep,
                     damage=damage,
                 )
 
@@ -469,6 +490,29 @@ class JUSTICE:
                 # Store the net economic output for the timestep
                 self.data["net_economic_output"][:, timestep, :] = (
                     self.economy.get_net_output_by_timestep(timestep)
+                )
+            elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
+                # No need to calculate temperature for the last timestep because current emissions produce temperature in the next timestep
+                # Calculate damage for the last timestep
+                damage = self.damage_function.calculate_damage(
+                    temperature=self.data["regional_temperature"][:, timestep, :],
+                    timestep=timestep,
+                )
+                # Apply the damage to the economic output
+                self.economy.apply_damage_to_output(
+                    timestep=timestep,
+                    damage=damage,
+                )
+                # Calculate the abatement cost
+                abatement_cost = self.abatement.calculate_abatement(
+                    scenario=self.scenario,
+                    timestep=timestep,
+                    emission_control_rate=self.emission_control_rate[:, timestep, :],
+                )
+                # Apply the abatement cost to the economic output
+                self.economy.apply_abatement_to_output(
+                    timestep=timestep,
+                    abatement=abatement_cost,
                 )
         # Loading the consumption and consumption per capita from the economy model
         self.data["net_economic_output"] = self.economy.get_net_output()
