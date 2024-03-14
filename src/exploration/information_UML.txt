@@ -1,0 +1,11 @@
+@startuml
+class Information {
+    step()
+    generate_information()
+    generate_climate_information()
+    construct_flsi()
+        justice_model
+    IPCC_report_period
+    __init__()
+}
+@enduml

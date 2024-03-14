@@ -1,0 +1,12 @@
+@startuml
+class Negotiator {
+    international_netzero_proposal()
+    shifting_policy()
+        region_model
+    policy
+    opinion_influence
+    max_cutting_rate_gradient
+    policy
+    __init__()
+}
+@enduml

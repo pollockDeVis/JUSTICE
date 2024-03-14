@@ -1,0 +1,29 @@
+@startuml
+class Region {
+    aggregate_households_opinions()
+    update_regional_opinion()
+    update_from_information()
+    update_from_social_network()
+    update_state_policy_from_constituency()
+    spreading_climate_worries()
+    spreading_abatement_worries()
+    emission_control_rate()
+        twolevelsgame_model
+    id
+    n_households
+    OD_max_iter
+    OD_influence
+    OD_learning
+    OD_agreement
+    OD_lambda_noise
+    OD_threshold_close
+    OD_threshold_far
+    OD_external_worry_decay
+    media_climate_worry
+    extreme_weather_events_worry
+    media_abatement_worry
+    economic_conjuncture_worry
+    negotiator
+    __init__()
+}
+@enduml

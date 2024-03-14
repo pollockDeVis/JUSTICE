@@ -1,0 +1,14 @@
+@startuml
+class TwoLevelsGame {
+    step()
+    update_regions()
+    international_negotiations()
+    update_emission_control_rate()
+    close_files()
+        justice_model
+    N
+    coalitions
+    Y_nego
+    __init__()
+}
+@enduml

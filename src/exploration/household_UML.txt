@@ -1,0 +1,31 @@
+@startuml
+class Household {
+    expected_climate_damages()
+    expected_abatement_costs()
+    filtered_climate_information()
+    update_climate_distrib_beliefs()
+    assess_policy()
+    gaussian_distrib()
+    mean_distribution()
+    belief_to_projection()
+    belief_to_projection_uncertainty()
+        model_region
+    climate_init_mean_beliefs
+    climate_init_var_beliefs
+    climate_distrib_beliefs
+    internal_climate_worry
+    external_climate_worry
+    climate_worry
+    internal_abatement_worry
+    external_abatement_worry
+    abatement_worry
+    perceived_WTC
+    psi_2
+    climate_distrib_beliefs
+    climate_distrib_beliefs
+    climate_distrib_beliefs
+    climate_distrib_beliefs
+    climate_distrib_beliefs
+    __init__()
+}
+@enduml
