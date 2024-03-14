@@ -286,7 +286,7 @@ class JUSTICE:
 
         self.emission_control_rate[:, timestep, :] = emission_control_rate
 
-        self.data["net_economic_output"][:, timestep, :] = self.economy.run(
+        gross_output = self.economy.run(
             scenario=self.scenario,
             timestep=timestep,
             savings_rate=self.savings_rate[:, timestep],
@@ -295,7 +295,7 @@ class JUSTICE:
         self.data["emissions"][:, timestep, :] = self.emissions.run(
             timestep=timestep,
             scenario=self.scenario,
-            output=self.data["net_economic_output"][:, timestep, :],
+            output=gross_output,
             emission_control_rate=self.emission_control_rate[:, timestep, :],
         )
 
@@ -330,18 +330,27 @@ class JUSTICE:
                 timestep=timestep,
             )
 
+            # Apply the computed damage to the economic output for the next timestep.
+            self.economy.apply_damage_to_output(timestep=timestep + 1, damage=damage)
+
+            # Abatement cost is only dependent on the emission control rate
             abatement_cost = self.abatement.calculate_abatement(
                 scenario=self.scenario,
                 timestep=timestep,
                 emission_control_rate=emission_control_rate,
             )
-            # Apply the computed damage and abatement to the economic output for the next timestep.
-            self.economy.apply_damage_to_output(timestep=timestep + 1, damage=damage)
+
             self.economy.apply_abatement_to_output(
-                timestep=timestep + 1, abatement=abatement_cost
+                timestep=timestep, abatement=abatement_cost
+            )
+
+            # Store the net economic output for the timestep
+            self.data["net_economic_output"][:, timestep, :] = (
+                self.economy.get_net_output_by_timestep(timestep)
             )
 
         # Save the data
+        self.data["net_economic_output"] = self.economy.get_net_output()
         self.data["economic_damage"][:, timestep, :] = (self.economy.get_damages())[
             :, timestep, :
         ]
@@ -386,7 +395,7 @@ class JUSTICE:
             Main loop of the model. This loop runs the model for each timestep.
             """
 
-            self.data["net_economic_output"][:, timestep, :] = self.economy.run(
+            gross_output = self.economy.run(
                 scenario=self.scenario,
                 timestep=timestep,
                 savings_rate=self.savings_rate[:, timestep],
@@ -395,7 +404,7 @@ class JUSTICE:
             self.data["emissions"][:, timestep, :] = self.emissions.run(
                 timestep=timestep,
                 scenario=self.scenario,
-                output=self.data["net_economic_output"][:, timestep, :],
+                output=gross_output,
                 emission_control_rate=self.emission_control_rate[:, timestep, :],
             )
 
@@ -426,7 +435,7 @@ class JUSTICE:
                     )
                 )
 
-                # Future Damages and Abatement are calculated based on current temperature.
+                # Future Damages is calculated based on current temperature.
                 # Damage is applied to the next timestep in the economy model
 
                 damage = self.damage_function.calculate_damage(
@@ -434,11 +443,6 @@ class JUSTICE:
                     timestep=timestep,
                 )
 
-                abatement_cost = self.abatement.calculate_abatement(
-                    scenario=self.scenario,
-                    timestep=timestep,
-                    emission_control_rate=self.emission_control_rate[:, timestep, :],
-                )
                 # TODO: Incomplete Implementation
                 # carbon_price = self.abatement.calculate_carbon_price(
                 #     timestep=timestep,
@@ -449,12 +453,25 @@ class JUSTICE:
                     timestep=timestep + 1,
                     damage=damage,
                 )
+
+                # Abatement cost is only dependent on the emission control rate
+                abatement_cost = self.abatement.calculate_abatement(
+                    scenario=self.scenario,
+                    timestep=timestep,
+                    emission_control_rate=self.emission_control_rate[:, timestep, :],
+                )
+                # Setting the abatement cost before net_economic_output is calculated
                 self.economy.apply_abatement_to_output(
-                    timestep=timestep + 1,
+                    timestep=timestep,
                     abatement=abatement_cost,
                 )
-        # Loading the consumption and consumption per capita from the economy model
 
+                # Store the net economic output for the timestep
+                self.data["net_economic_output"][:, timestep, :] = (
+                    self.economy.get_net_output_by_timestep(timestep)
+                )
+        # Loading the consumption and consumption per capita from the economy model
+        self.data["net_economic_output"] = self.economy.get_net_output()
         self.data["consumption"] = self.economy.calculate_consumption(
             savings_rate=self.savings_rate
         )

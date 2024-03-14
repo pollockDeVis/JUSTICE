@@ -169,10 +169,8 @@ class AbatementEnerdata:
         # Get economic scenario
         scenario = get_economic_scenario(scenario)
 
-        # Maybe Check the shape of Emission Control Rate
-        # if len(emission_control_rate.shape) == 1
         # Calculate abatement
-        abatement = (
+        abatement_cost = (
             self.coefficient_multiplier[:, timestep, np.newaxis]
             * (
                 self.abatement_coefficient_a[:, timestep, np.newaxis]
@@ -187,7 +185,7 @@ class AbatementEnerdata:
                 / 1000
             )  #   Conversion:  [ G$ ] / 1000 -> [Trill $] #TODO: Check if this should be BAU emissions
         )
-        return abatement
+        return abatement_cost
 
     def calculate_carbon_price(self, timestep, emission_control_rate):
         """

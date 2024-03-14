@@ -391,6 +391,9 @@ class NeoclassicalEconomyModel:
     def get_net_output(self):
         return self.output
 
+    def get_net_output_by_timestep(self, timestep):
+        return self.output[:, timestep, :]
+
     def get_abatement(self):
         return self.abatement
 
