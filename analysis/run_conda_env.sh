@@ -1,9 +1,9 @@
 #!/bin/bash -l                                                                                                       
 
 #SBATCH --job-name="CPU_Seq_DPS"                                                                                      
-#SBATCH --time=24:00:00
+#SBATCH --time=120:00:00
 #SBATCH --partition=compute-p2
-#SBATCH --ntasks=30
+#SBATCH --ntasks=72
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=16G  
                                                                                                                                                                           

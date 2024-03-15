@@ -298,20 +298,21 @@ class NeoclassicalEconomyModel:
         # Check if the timestep is not zero
         # Check if timestep is 0 or 1
 
-        if timestep == 0 or timestep == 1:  # Damage is zero in the first timestep
-            self.output[:, timestep, :] = self.output[:, timestep, :]
-        else:
-            self.damage[:, timestep, :] = (
-                self.output[:, timestep, :] * self.damage_fraction[:, timestep, :]
-            )
-            # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
-            self.output[:, timestep, :] = (
-                self.output[:, timestep, :] - self.damage[:, timestep, :]
-            )
+        # if timestep == 0 or timestep == 1:  # Damage is zero in the first timestep
+        # if timestep <= 2:
+        #     self.output[:, timestep, :] = self.output[:, timestep, :]
+        # else:
+        # self.damage[:, timestep, :] = (
+        #     self.output[:, timestep, :] * self.damage_fraction[:, timestep, :]
+        # )
+        # # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
+        # self.output[:, timestep, :] = (
+        #     self.output[:, timestep, :] - self.damage[:, timestep, :]
+        # )
         # Subtract abatement from output
-        self.output[:, timestep, :] = (
-            self.output[:, timestep, :] - self.abatement[:, timestep, :]
-        )
+        # self.output[:, timestep, :] = (
+        #     self.output[:, timestep, :] - self.abatement[:, timestep, :]
+        # )
 
     def apply_damage_to_output(self, timestep, damage):
         """
@@ -320,11 +321,23 @@ class NeoclassicalEconomyModel:
         """
         self.damage_fraction[:, timestep, :] = damage
 
+        self.damage[:, timestep, :] = (
+            self.output[:, timestep, :] * self.damage_fraction[:, timestep, :]
+        )
+        # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
+        self.output[:, timestep, :] = (
+            self.output[:, timestep, :] - self.damage[:, timestep, :]
+        )
+
     def apply_abatement_to_output(self, timestep, abatement):
         """
         This method applies abatement to the output.
         """
         self.abatement[:, timestep, :] = abatement
+
+        self.output[:, timestep, :] = (
+            self.output[:, timestep, :] - self.abatement[:, timestep, :]
+        )
 
     def calculate_consumption(self, savings_rate):  # Validated
         """
@@ -390,6 +403,9 @@ class NeoclassicalEconomyModel:
 
     def get_net_output(self):
         return self.output
+
+    def get_net_output_by_timestep(self, timestep):
+        return self.output[:, timestep, :]
 
     def get_abatement(self):
         return self.abatement

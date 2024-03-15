@@ -25,6 +25,7 @@ from ema_workbench import (
     ema_logging,
     MultiprocessingEvaluator,
     SequentialEvaluator,
+    MPIEvaluator,
     Constant,
     Scenario,
 )
@@ -127,7 +128,7 @@ def run_optimization_adaptive(
         EpsilonProgress(),
     ]
 
-    with MultiprocessingEvaluator(model) as evaluator:
+    with MPIEvaluator(model) as evaluator:
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
@@ -422,5 +423,5 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 if __name__ == "__main__":
     ema_logging.log_to_stderr(ema_logging.DEBUG)
     # perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None)
-    # run_optimization_adaptive(n_rbfs=4, n_inputs=2, nfe=5, filename=None, folder=None)
-    run_optimization_static(nfe=5, filename=None, folder=None)
+    run_optimization_adaptive(n_rbfs=4, n_inputs=2, nfe=5, filename=None, folder=None)
+    # run_optimization_static(nfe=5, filename=None, folder=None)
