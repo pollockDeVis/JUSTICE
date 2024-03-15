@@ -330,7 +330,7 @@ if __name__ == "__main__":
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-    tp = str(round(args.gamma, 3)).replace(".","_")
+    tp = str(round(args.time_preference, 3)).replace(".","_")
     ia = str(round(args.inequality_aversion, 3)).replace(".","_")
     torch.save(agent.state_dict(), Path("rl") / "marl" / "checkpoints" / f"{args.exp_name}_TP:{tp}EV:{ia}.pt")
 
