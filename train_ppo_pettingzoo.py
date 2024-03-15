@@ -80,6 +80,8 @@ class Args:
     #experiment values
     inequality_aversion: float = .5
     """normative param"""
+    time_preference: float = .03
+    """discount rate of JUSTICE model"""
     scenario: int = 2
     """SSP RCP combinations"""
 
@@ -162,7 +164,7 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
     
     # env setup
-    CONFIG["pure_rate_of_social_time_preference"] = 1 - args.gamma
+    CONFIG["pure_rate_of_social_time_preference"] = args.time_preference
     CONFIG["inequality_aversion"] = args.inequality_aversion
     CONFIG["scenario"] = args.scenario
     JusticeEnv.pickle_model(CONFIG) # needed to pickle the JUSTICE model
