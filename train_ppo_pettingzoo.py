@@ -36,7 +36,7 @@ class Args:
     """the entity (team) of wandb's project"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 2000
+    total_timesteps: int = 50000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -78,8 +78,6 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
     #experiment values
-    time_preference: float = .02
-    """discount rate of JUSTICE"""
     inequality_aversion: float = .5
     """normative param"""
     scenario: int = 2
@@ -164,7 +162,7 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
     
     # env setup
-    CONFIG["pure_rate_of_social_time_preference"] = args.time_preference
+    CONFIG["pure_rate_of_social_time_preference"] = 1 - args.gamma
     CONFIG["inequality_aversion"] = args.inequality_aversion
     CONFIG["scenario"] = args.scenario
     JusticeEnv.pickle_model(CONFIG) # needed to pickle the JUSTICE model
@@ -330,7 +328,7 @@ if __name__ == "__main__":
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-    tp = str(round(args.time_preference, 3)).replace(".","_")
+    tp = str(round(args.gamma, 3)).replace(".","_")
     ia = str(round(args.inequality_aversion, 3)).replace(".","_")
     torch.save(agent.state_dict(), Path("rl") / "marl" / "checkpoints" / f"{args.exp_name}_TP:{tp}EV:{ia}.pt")
 
