@@ -82,6 +82,8 @@ class Args:
     """discount rate of JUSTICE"""
     inequality_aversion: float = .5
     """normative param"""
+    scenario: int = 2
+    """SSP RCP combinations"""
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
