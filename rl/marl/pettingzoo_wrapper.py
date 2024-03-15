@@ -21,6 +21,8 @@ CONFIG = {
     "num_agents": 57,
     "model_pickle_path": Path("rl") / "marl" / "pickles" / "JUSTICE.pkl",
     "config_pickle_path": Path("rl") / "marl" / "pickles" / "config.pkl",
+    "pure_rate_of_social_time_preference": 0.02,
+    "inequality_aversion":.5
 }
 
 OBSERVATIONS = [
@@ -69,6 +71,8 @@ class JusticeEnv(ParallelEnv):
                 economy_type=env_config["economy_type"],
                 damage_function_type=env_config["damage_function_type"],
                 abatement_type=env_config["abatement_type"],
+                pure_rate_of_social_time_preference=env_config["pure_rate_of_social_time_preference"],
+                inequality_aversion=env_config["inequality_aversion"]
             )
             with model_pickle_path.open("wb") as f:
                 pickle.dump(model, f)
