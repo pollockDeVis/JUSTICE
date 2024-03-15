@@ -166,6 +166,7 @@ if __name__ == "__main__":
     # env setup
     CONFIG["pure_rate_of_social_time_preference"] = args.time_preference
     CONFIG["inequality_aversion"] = args.inequality_aversion
+    CONFIG["scenario"] = args.scenario
     JusticeEnv.pickle_model(CONFIG) # needed to pickle the JUSTICE model
     env = JusticeEnv(CONFIG)
     env = ss.pettingzoo_env_to_vec_env_v1(env)
