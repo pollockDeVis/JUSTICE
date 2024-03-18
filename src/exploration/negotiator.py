@@ -39,7 +39,7 @@ class Negotiator:
         p=policy[0,:-1]>current_time;
         if not p.any():\
             return policy
-        year=np.random.choice(policy[0,:-1],1,p = p/sum(p))[0];
+        year=self.region_model.twolevelsgame_model.justice_model.rng.choice(policy[0,:-1],1,p = p/sum(p))[0];
         year_ind = np.flatnonzero(year==policy[0,:])[0]
         min_p = max(0,np.flatnonzero(policy[0,:-1]>current_time)[0]-1);
         regional_pressure_later_ecr = 0;

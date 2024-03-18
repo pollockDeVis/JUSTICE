@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 
 
 
-def generateAdjacencyMatrix(n, type="random", p=0.1):
+def generateAdjacencyMatrix(n, type="random", p=0.1, rng=np.random.default_rng()):
     match type:
         case "random":
-            A = np.random.random((n,n));
+            A = rng.random((n,n));
             A = A>p;
             A = A+A.T;
             A = A - (A==2).astype(float);
@@ -32,10 +32,10 @@ agreement = 0.001;
 lbd = 0;
 threshold_close = 0.5;
 threshold_far = 1;
+rng = np.random.default_rng(seed=None)
 
-
-Understanding = np.random.choice([-0.75,0.1, 0.75], [n,1], [1/3,1/3,1/3]);
-SocialOpinions = ( np.random.random([n,1])-0.5 ) * 0.1;
+Understanding = rng.choice([-0.75,0.1, 0.75], [n,1], [1/3,1/3,1/3]);
+SocialOpinions = ( rng.random([n,1])-0.5 ) * 0.1;
 Opinions = np.clip(SocialOpinions+Understanding,-1,1);
 
 
@@ -55,7 +55,7 @@ while (current_dispersion>agreement)& (k < max_iter):
 
     Lfar = np.diag(np.sum(L,1))- L;
 
-    L = generateAdjacencyMatrix(n,'random', 1-lbd);
+    L = generateAdjacencyMatrix(n,'random', 1-lbd, rng);
     Lalea = np.diag(np.sum(L,1))- L;
 
     L = Lclose - Lfar + Lalea;

@@ -21,15 +21,12 @@ from src.model import JUSTICE
 from src.exploration.twolevelsgame import TwoLevelsGame
 
 
-class JUSTICE_PROJECTION:
+class JusticeProjection(JUSTICE):
     """
-    This is the JUSTICE model.
+    This is the JusticeProjection class. It redefines the JUSTICE class by overriding the init() method to initialize.
     """
 
-    def __init__(
-        self,
-        justice: JUSTICE
-    ):
+    def __init__(self, justice: JUSTICE):
         """
         @param justice: The reference model
         """
@@ -44,9 +41,12 @@ class JUSTICE_PROJECTION:
         self.data_loader = copy.deepcopy(justice.data_loader)
 
         # Instantiate the TimeHorizon class
-        #Here we don't just call from the original because we are going to run the model until end time and modify the content
+        # Here we don't just call from the original because we are going to run the model until end time and modify the content
         self.time_horizon = TimeHorizon(
-            start_year=justice.time_horizon.start_year, end_year=justice.time_horizon.end_year, data_timestep=5, timestep=justice.time_horizon.timestep
+            start_year=justice.time_horizon.start_year,
+            end_year=justice.time_horizon.end_year,
+            data_timestep=5,
+            timestep=justice.time_horizon.timestep,
         )
 
         self.scenario = justice.scenario
@@ -54,10 +54,8 @@ class JUSTICE_PROJECTION:
         self.climate = copy.deepcopy(justice.climate)
         self.downscaler = justice.downscaler
 
-
         # Check if climate_ensembles is passed as a parameter
         self.no_of_ensembles = justice.no_of_ensembles
-
 
         self.region_list = self.data_loader.REGION_LIST
 
@@ -82,9 +80,7 @@ class JUSTICE_PROJECTION:
         # if self.economy_type == Economy.NEOCLASSICAL:
         self.economy = copy.deepcopy(justice.economy)
 
-
         self.emissions = justice.emissions
-
 
         # Create a data dictionary to store the data
         self.data = {
@@ -174,14 +170,14 @@ class JUSTICE_PROJECTION:
                 )
             ),
             "welfare_utilitarian": np.zeros((self.no_of_ensembles,)),
-            "emission_cutting_rate":  np.zeros(
+            "emission_cutting_rate": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
                     self.no_of_ensembles,
                 )
             ),
-            "opinion_share":  np.zeros(
+            "opinion_share": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
@@ -190,135 +186,3 @@ class JUSTICE_PROJECTION:
             ),
         }
 
-
-    def __getattribute__(self, __name: str) -> Any:
-        """
-        This method returns the value of the attribute of the class.
-        """
-        return object.__getattribute__(self, __name)
-
-    def run(
-        self,
-        emission_control_rate,
-        savings_rate=None,
-        endogenous_savings_rate=False,
-    ):
-        """
-        Run the model.
-        """
-        if endogenous_savings_rate == True:
-            self.savings_rate = self.fixed_savings_rate
-        else:
-            self.savings_rate = savings_rate
-
-        # Check the shape of the emission_control_rate whether 1D or 2D
-        if len(emission_control_rate.shape) == 2:
-            emission_control_rate = np.tile(
-                emission_control_rate[:, :, np.newaxis], (1, 1, self.no_of_ensembles)
-            )
-
-        self.emission_control_rate = emission_control_rate
-
-        for timestep in range(len(self.time_horizon.model_time_horizon)):
-            """
-            Main loop of the model. This loop runs the model for each timestep.
-            """
-
-            output = self.economy.run(
-                scenario=self.scenario,
-                timestep=timestep,
-                savings_rate=self.savings_rate[:, timestep],
-            )
-
-            emissions_array = self.emissions.run(
-                timestep=timestep,
-                scenario=self.scenario,
-                output=output,
-                emission_control_rate=self.emission_control_rate[:, timestep, :],
-            )
-
-            # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
-            if timestep < (len(self.time_horizon.model_time_horizon) - 1):
-                global_temperature = self.climate.compute_temperature_from_emission(
-                    timestep, emissions_array
-                )
-
-                regional_temperature = self.downscaler.get_regional_temperature(
-                    global_temperature
-                )
-
-                # Save the regional temperature
-                self.data["regional_temperature"][:, timestep, :] = regional_temperature
-
-                damage = self.damage_function.calculate_damage(
-                    temperature=regional_temperature, timestep=timestep
-                )
-
-                abatement_cost = self.abatement.calculate_abatement(
-                    timestep=timestep,
-                    emissions=emissions_array,
-                    emission_control_rate=self.emission_control_rate[:, timestep, :],
-                )
-                # TODO: Incomplete Implementation
-                # carbon_price = self.abatement.calculate_carbon_price(
-                #     timestep=timestep,
-                #     emission_control_rate=self.emissions_control_rate[:, timestep],
-                # )
-
-                self.economy.apply_damage_to_output(
-                    timestep=timestep + 1, damage=damage
-                )
-                self.economy.apply_abatement_to_output(
-                    timestep=timestep + 1, abatement=abatement_cost
-                )
-            elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
-                self.data["global_temperature"][timestep, :] = (
-                    self.climate.get_justice_temperature_array()
-                )[timestep, :]
-
-                regional_temperature = self.downscaler.get_regional_temperature(
-                    self.data["global_temperature"][timestep, :]
-                )
-                # Save the regional temperature
-                self.data["regional_temperature"][:, timestep, :] = regional_temperature
-
-    def evaluate(
-        self,
-    ):
-        """
-        Evaluate the model.
-        """
-        # Fill the data dictionary
-        self.data["net_economic_output"] = self.economy.get_net_output()
-        self.data["consumption"] = self.economy.calculate_consumption(
-            savings_rate=self.savings_rate
-        )
-        self.data["consumption_per_capita"] = self.economy.get_consumption_per_capita(
-            scenario=self.scenario,
-            savings_rate=self.savings_rate,
-        )
-
-        self.data["emissions"] = self.emissions.get_emissions()
-        self.data["economic_damage"] = self.economy.get_damages()
-        self.data["abatement_cost"] = self.economy.get_abatement()
-        self.data["global_temperature"] = self.climate.get_justice_temperature_array()
-
-        # TODO: to be implemented later. Checking the enums doesn't work well with EMA #need to make it self.welfare_function?
-        # if welfare_function == WelfareFunction.UTILITARIAN:
-
-        (
-            self.data["disentangled_utility"],
-            self.data["welfare_utilitarian_regional_temporal"],
-            self.data["welfare_utilitarian_temporal"],
-            self.data["welfare_utilitarian_regional"],
-            self.data["welfare_utilitarian"],
-        ) = self.welfare_function.calculate_welfare(
-            consumption_per_capita=self.data["consumption_per_capita"]
-        )
-        return self.data
-
-    def get_outcome_names(self):
-        """
-        Get the list of outcomes of the model.
-        """
-        return self.data.keys()

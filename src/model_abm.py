@@ -63,15 +63,13 @@ class ABM_JUSTICE:
         )
 
         self.scenario = scenario
-        
-   
 
-        #INSTANTIATION OF POLICY MODULE 
+        # INSTANTIATION OF POLICY MODULE
         print("   -> Instantiation of policy module")
-        self.two_levels_game = TwoLevelsGame(self, timestep=timestep);
+        self.two_levels_game = TwoLevelsGame(self, timestep=timestep)
         print("      OK")
 
-        #Instantiate FaIR
+        # Instantiate FaIR
         print("   -> Setting up CoupledFaIR")
         self.climate = CoupledFAIR(ch4_method="Thornhill2021")
         self.downscaler = TemperatureDownscaler(input_dataset=self.data_loader)
@@ -270,14 +268,14 @@ class ABM_JUSTICE:
                 )
             ),
             "welfare_utilitarian": np.zeros((self.no_of_ensembles,)),
-            "emission_cutting_rate":  np.zeros(
+            "emission_cutting_rate": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
                     self.no_of_ensembles,
                 )
             ),
-            "opinion_share":  np.zeros(
+            "opinion_share": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
@@ -286,22 +284,24 @@ class ABM_JUSTICE:
             ),
         }
         print("      OK")
-        
-        
-        #INSTANTIATE INFORMATION MODULE
+
+        # INSTANTIATE INFORMATION MODULE
         print("   -> Loading information")
-        self.information_model = Information(self, start_year=2015,  # Model is only tested for start year 2015
-                                            end_year=2300,  # Model is only tested for end year 2300
-                                          timestep=1,  # Model is only tested for timestep 1
-                                          scenario=0,
-                                          climate_ensembles=None,
-                                          economy_type=Economy.NEOCLASSICAL,
-                                          damage_function_type=DamageFunction.KALKUHL,
-                                          abatement_type=Abatement.ENERDATA,
-                                          social_welfare_function=WelfareFunction.UTILITARIAN,
-                                          **kwargs,)
-        
-        self.information_model.generate_information(self, self.emission_control_rate);
+        self.information_model = Information(
+            self,
+            start_year=2015,  # Model is only tested for start year 2015
+            end_year=2300,  # Model is only tested for end year 2300
+            timestep=1,  # Model is only tested for timestep 1
+            scenario=0,
+            climate_ensembles=None,
+            economy_type=Economy.NEOCLASSICAL,
+            damage_function_type=DamageFunction.KALKUHL,
+            abatement_type=Abatement.ENERDATA,
+            social_welfare_function=WelfareFunction.UTILITARIAN,
+            **kwargs,
+        )
+
+        self.information_model.generate_information(self, self.emission_control_rate)
         print("      OK")
 
     def __getattribute__(self, __name: str) -> Any:
@@ -317,6 +317,8 @@ class ABM_JUSTICE:
         endogenous_savings_rate=False,
     ):
         """
+        Note that emission_control_rate have been removed from the args as it in endogeneous 
+        
         This method is used for Reinforcement Learning (RL) applications.
 
         Run the model timestep by timestep and return the outcomes every timestep
@@ -325,10 +327,10 @@ class ABM_JUSTICE:
         @param savings_rate: The savings rate for each timestep. So shape will be (no_of_regions,)
         @param emission_control_rate: The emissions control rate for each timestep. So shape will be (no_of_regions,)
         """
-        
-        self.information_model.step(timestep);
-        self.two_levels_game.step(timestep);
-        emission_control_rate = self.emission_control_rate[:, timestep];
+
+        self.information_model.step(timestep)
+        self.two_levels_game.step(timestep)
+        emission_control_rate = self.emission_control_rate[:, timestep]
 
         # Error check on the inputs
         assert timestep >= 0 and timestep <= len(
@@ -348,39 +350,55 @@ class ABM_JUSTICE:
 
         self.emission_control_rate[:, timestep, :] = emission_control_rate
 
-        output = self.economy.run(
+        gross_output = self.economy.run(
             scenario=self.scenario,
             timestep=timestep,
             savings_rate=self.savings_rate[:, timestep],
         )
 
-        emissions_array = self.emissions.run(
+        self.data["emissions"][:, timestep, :] = self.emissions.run(
             timestep=timestep,
             scenario=self.scenario,
-            output=output,
+            output=gross_output,
             emission_control_rate=self.emission_control_rate[:, timestep, :],
         )
 
         # Run the model for all timesteps except the last one. Damages and Abatement applies to the next timestep
         if timestep < (len(self.time_horizon.model_time_horizon) - 1):
-            global_temperature = self.climate.compute_temperature_from_emission(
-                timestep, emissions_array
+            # Filling in the temperature of the first timestep from FAIR
+            if timestep == 0:
+                self.data["global_temperature"][
+                    0, :
+                ] = self.climate.get_justice_initial_temperature()
+
+                self.data["regional_temperature"][:, 0, :] = (
+                    self.downscaler.get_regional_temperature(
+                        self.data["global_temperature"][0, :]
+                    )
+                )
+
+            self.data["global_temperature"][(timestep + 1), :] = (
+                self.climate.compute_temperature_from_emission(
+                    timestep, self.data["emissions"][:, timestep, :]
+                )
             )
 
-            regional_temperature = self.downscaler.get_regional_temperature(
-                global_temperature
-            )
 
             # Save the regional temperature
-            self.data["regional_temperature"][:, timestep, :] = regional_temperature
+            self.data["regional_temperature"][:, (timestep + 1), :] = (
+                self.downscaler.get_regional_temperature(
+                    self.data["global_temperature"][(timestep + 1), :]
+                )
+            )
 
             damage = self.damage_function.calculate_damage(
-                temperature=regional_temperature, timestep=timestep
+                temperature=self.data["regional_temperature"][:, timestep, :],
+                timestep=timestep,
             )
 
             abatement_cost = self.abatement.calculate_abatement(
                 timestep=timestep,
-                emissions=emissions_array,
+                scenario=self.scenario,
                 emission_control_rate=emission_control_rate,
             )
             # Apply the computed damage and abatement to the economic output for the next timestep.
@@ -418,15 +436,15 @@ class ABM_JUSTICE:
         self.data["global_temperature"][timestep, :] = (
             self.climate.get_justice_temperature_array()
         )[timestep, :]
-        self.data["consumption"][
-            :, timestep, :
-        ] = self.economy.calculate_consumption_per_timestep(
-            self.savings_rate[:, timestep], timestep
+        self.data["consumption"][:, timestep, :] = (
+            self.economy.calculate_consumption_per_timestep(
+                self.savings_rate[:, timestep], timestep
+            )
         )
-        self.data["consumption_per_capita"][
-            :, timestep, :
-        ] = self.economy.get_consumption_per_capita_per_timestep(
-            self.scenario, self.savings_rate[:, timestep], timestep
+        self.data["consumption_per_capita"][:, timestep, :] = (
+            self.economy.get_consumption_per_capita_per_timestep(
+                self.scenario, self.savings_rate[:, timestep], timestep
+            )
         )
 
     def run(
@@ -591,4 +609,4 @@ class ABM_JUSTICE:
         return self.data.keys()
 
     def close_files(self):
-        self.two_levels_game.close_files();
+        self.two_levels_game.close_files()

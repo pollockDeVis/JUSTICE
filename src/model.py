@@ -50,8 +50,9 @@ class JUSTICE:
         self.welfare_function = social_welfare_function
 
         # Load the data
+        print("      -> Loading data")
         self.data_loader = DataLoader()
-
+        print("         OK")
         # Instantiate the TimeHorizon class
         self.time_horizon = TimeHorizon(
             start_year=start_year, end_year=end_year, data_timestep=5, timestep=timestep
@@ -59,10 +60,13 @@ class JUSTICE:
 
         self.scenario = scenario
 
+        print("      -> Setting up CoupledFaIR")
         self.climate = CoupledFAIR(ch4_method="Thornhill2021")
         self.downscaler = TemperatureDownscaler(input_dataset=self.data_loader)
+        print("         OK")
 
         # Check if climate_ensembles is passed as a parameter
+        print("      -> Climate ensembles")
         if climate_ensembles is not None:
             self.no_of_ensembles = self.climate.fair_justice_run_init(
                 time_horizon=self.time_horizon,
@@ -73,10 +77,14 @@ class JUSTICE:
             self.no_of_ensembles = self.climate.fair_justice_run_init(
                 time_horizon=self.time_horizon, scenarios=self.scenario
             )
+        print("         OK")
 
+        print("      -> Loading regions")
         self.region_list = self.data_loader.REGION_LIST
+        print("         OK")
 
         # Set the savings rate and emissions control rate levers
+        print("      -> Policy levers")
         self.fixed_savings_rate = np.zeros(
             (
                 len(self.data_loader.REGION_LIST),
@@ -99,11 +107,13 @@ class JUSTICE:
                 self.no_of_ensembles,
             )
         )
+        print("         OK")
 
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
         # I think it is failing because I am checking self.economy_type instead of economy_type, which is passed as a parameter
         # TODO: Incomplete Implementation
         # if self.damage_function_type == DamageFunction.KALKUHL:
+        print("      -> Setting up the economy and damage functions")
         self.damage_function = DamageKalkuhl(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
@@ -145,16 +155,20 @@ class JUSTICE:
             time_horizon=self.time_horizon,
             climate_ensembles=self.no_of_ensembles,
         )
+        print("         OK")
 
         # TODO: Incomplete Implementation
         # if self.social_welfare_function == WelfareFunction.UTILITARIAN:
+        print("      -> Instantiation of the Welfare function")
         self.welfare_function = Utilitarian(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
             population=self.economy.get_population(scenario=self.scenario),
             **kwargs,
         )
+        print("         OK")
 
+        print("      -> Building data saving structure")
         # Create a data dictionary to store the data
         self.data = {
             "net_economic_output": np.zeros(
@@ -244,6 +258,8 @@ class JUSTICE:
             ),
             "welfare_utilitarian": np.zeros((self.no_of_ensembles,)),
         }
+
+    print("         OK")
 
     def __getattribute__(self, __name: str) -> Any:
         """

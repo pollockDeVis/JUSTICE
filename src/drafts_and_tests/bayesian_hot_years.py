@@ -6,12 +6,15 @@ Created on Mon Mar  4 14:42:26 2024
 """
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams['figure.dpi'] = 300
 
 distrib_resolution = 0.01;#In Celsius
 distrib_x_axis = np.arange(-2,8,0.01)
 time_max = 100
 years = np.linspace(0,time_max,time_max)
 temperature = np.linspace(1,2.5,time_max);
+rng = np.random.default_rng(seed=None)
 
 
 def gaussian_distrib(g_mean=0, g_std=1, min_val=-2, max_val=8, step=distrib_resolution):
@@ -36,7 +39,7 @@ def belief_to_projection(distrib_beliefs, belief_year_offset):
     
     return temperature_projection
 
-def belief_to_projection_uncertainty(distrib_beliefs, belief_year_offset):
+def belief_to_projection_uncertainty(distrib_beliefs, belief_year_offset, rng):
     temperature_projection = np.array([]);
     year = belief_year_offset[0];
     temp0 = mean_distribution(distrib_beliefs[0])
@@ -46,7 +49,7 @@ def belief_to_projection_uncertainty(distrib_beliefs, belief_year_offset):
         lin_proj = []
         if step != 0:
             lin_proj = np.arange(temp0, temp, step);
-            projection = lin_proj - temp + np.random.choice(np.arange(-2,8,0.01), len(lin_proj), p=distrib_beliefs[i])
+            projection = lin_proj - temp + rng.choice(np.arange(-2,8,0.01), len(lin_proj), p=distrib_beliefs[i])
         
         
         
@@ -61,7 +64,7 @@ def belief_to_projection_uncertainty(distrib_beliefs, belief_year_offset):
 # 1 --- Parameters of the agent
 belief_year_offset = np.array([0,10,50,99])
 initial_mean_beliefs =  np.array([1, 1.5, 1.7, 2.]);#Temperature now and in 10, 50, 100 years
-initial_var_beliefs =  np.array([0.01, 0.05,0.15,0.3]);
+initial_var_beliefs =  np.array([0.01, 0.01,0.05,0.01]);
 nb_beliefs = len(initial_mean_beliefs)
 
 # 2 --- Compute belief distribution over all possible values
@@ -88,8 +91,8 @@ for i in range(nb_beliefs):
     plt.title("For "+str(belief_year_offset[i])+" years in the future")
 
 plt.figure()
-plt.plot(belief_to_projection(distrib_beliefs, belief_year_offset),'o',markersize=0.1)
-plt.plot(belief_to_projection_uncertainty(distrib_beliefs, belief_year_offset),'o',markersize=0.1)
+plt.plot(belief_to_projection(distrib_beliefs, belief_year_offset),'ok',markersize=0.1, alpha=1)
+plt.plot(belief_to_projection_uncertainty(distrib_beliefs, belief_year_offset),'or',markersize=0.1, alpha=1)
 plt.plot(temperature)
 plt.legend(["Beliefs baseline", "Beliefs uncertainty", "Information"])
 plt.title("Temperature projection based on beliefs (Before learning)")
@@ -102,7 +105,7 @@ f1 = plt.figure()
 for learning in range(10): #We are going to learn 10 times (here the info flfin doesn't change, but in JUSTICE it would/could!)
     p_encounter_info = 0.5;
     gamma = 0.3;
-    p = np.random.rand();
+    p = rng.rand();
     if p < p_encounter_info:
         #Updating with info
         distrib_beliefs = distrib_beliefs *  distrib_flfin;
@@ -127,14 +130,16 @@ for learning in range(10): #We are going to learn 10 times (here the info flfin 
 
     # SOME PLOTS
     plt.figure(f1)
-    plt.plot(distrib_x_axis,distrib_beliefs[3])
-    plt.plot(distrib_x_axis,distrib_flfin[3])
+    plt.plot(distrib_x_axis[400:500],distrib_beliefs[3][400:500], alpha=1/10*(learning+1))
+    plt.plot(distrib_x_axis[400:500],distrib_flfin[3][400:500], ":")
     plt.legend(["Belief", "Information"])
     plt.title("Evolution of belief for 100 years in the future")
 
 plt.figure()
-plt.plot(belief_to_projection(distrib_beliefs, belief_year_offset),'o',markersize=0.1)
-plt.plot(belief_to_projection_uncertainty(distrib_beliefs, belief_year_offset),'o',markersize=0.1)
+plt.plot(belief_to_projection(distrib_beliefs, belief_year_offset),'ok',markersize=0.1, alpha=1)
+plt.plot(belief_to_projection_uncertainty(distrib_beliefs, belief_year_offset),'or',markersize=0.1, alpha=1)
 plt.plot(temperature)
 plt.legend(["Beliefs baseline", "Beliefs uncertainty", "Information"])
 plt.title("Temperature projection based on beliefs (After learning)")
+
+plt.show()

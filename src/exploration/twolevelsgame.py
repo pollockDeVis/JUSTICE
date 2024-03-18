@@ -2,6 +2,7 @@
 This is the negotiations module that determines the emission rates for next run step(s)
 #'CO2 emissions in [GtCO2/year]'
 """
+
 import os
 from typing import Any
 import numpy as np
@@ -10,91 +11,105 @@ import copy
 from src.exploration.region import Region
 import csv
 from datetime import datetime
-        
 
 
-class TwoLevelsGame():
+class TwoLevelsGame:
     """
-    This class defines a model for a regional policy using a two-level game 
+    This class defines a model for a regional policy using a two-level game
     approach, taking into consideration both the local constituencies and the international
     negotiations.
     """
 
-    def __init__(self, justice_model, number_regions = 57, population_size_by_region=10, timestep=0):
+    def __init__(
+        self, justice_model, number_regions=57, population_size_by_region=10, timestep=0
+    ):
         """
         justice_model is a reference to the overarching justice model
         number_of_region refers to the number of regions in the model
         population_size_by_region refers to the number of households in each opinion dynamics model
         """
 
-        #Saving data (TODO APN: Create a class for saving methods and structures)
+        # Saving data (TODO APN: Create a class for saving methods and structures)
         # -> Create folder for current simulation
-        path = 'data/output/'+datetime.now().strftime("SAVE_%Y_%m_%d_%H%M")+"/";
-        os.makedirs(path, exist_ok=True);
+        path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
+        os.makedirs(path, exist_ok=True)
 
-        f1 = open(path+'regions.csv', 'w',newline='')
-        self.f_region = (f1, csv.writer(f1, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL));
-        f2 = open(path+'policy.csv', 'w',newline='')
-        self.f_policy = (f2, csv.writer(f2, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL));
-        #self.f_policy[1].writerow(['Region ID', 'Timestep', 'Policy Size', 'Policy Values', 'Policy Years'])
-        f3 = open(path+'negotiator.csv', 'w',newline='')
-        self.f_negotiator = (f3, csv.writer(f3, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL));
-        f4 = open(path+'information.csv', 'w',newline='')
-        self.f_information = (f4, csv.writer(f4, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL));
-        f5 = open(path+'household.csv', 'w',newline='')
-        self.f_household = (f5, csv.writer(f5, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL));
-        f6 = open(path+'emissions.csv', 'w',newline='')
-        self.f_emissions = (f6, csv.writer(f6, delimiter=';', quotechar='|', quoting=csv.QUOTE_MINIMAL));
+        f1 = open(path + "regions.csv", "w", newline="")
+        self.f_region = (
+            f1,
+            csv.writer(f1, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        f2 = open(path + "policy.csv", "w", newline="")
+        self.f_policy = (
+            f2,
+            csv.writer(f2, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        # self.f_policy[1].writerow(['Region ID', 'Timestep', 'Policy Size', 'Policy Values', 'Policy Years'])
+        f3 = open(path + "negotiator.csv", "w", newline="")
+        self.f_negotiator = (
+            f3,
+            csv.writer(f3, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        f4 = open(path + "information.csv", "w", newline="")
+        self.f_information = (
+            f4,
+            csv.writer(f4, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        f5 = open(path + "household.csv", "w", newline="")
+        self.f_household = (
+            f5,
+            csv.writer(f5, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        f6 = open(path + "emissions.csv", "w", newline="")
+        self.f_emissions = (
+            f6,
+            csv.writer(f6, delimiter=";", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
 
+        # Initialise Agents (ie. regions)
+        self.justice_model = justice_model
+        self.N = number_regions
+        self.regions = [
+            Region(self, i, population_size_by_region, timestep) for i in range(self.N)
+        ]
 
-
-        #Initialise Agents (ie. regions)
-        self.justice_model = justice_model;
-        self.N = number_regions;
-        self.regions = [Region(self, i, population_size_by_region, timestep) for i in range(self.N)];
-        
-
-        #Coalitions (ad hoc, now a cycle graph)
+        # Coalitions (ad hoc, now a cycle graph)
         """ Coalitions could appear in the context of international agreement. They would result from a change in the 
         structure of the network graph linking all regions together. By default the graph is a connected graph of
         valency 2 (eg. a cycle graph).
         This is not used yet. """
-        edges = np.array([[i, (i+1)%self.N] for i in range(self.N)]);
-        self.coalitions = np.zeros((edges.max()+1, edges.max()+1));
-        self.coalitions[edges[:,0], edges[:,1]] = 1;
-        self.coalitions[edges[:,1], edges[:,0]] = 1;
-    
-        #Parameters for international negotiations
-        self.Y_nego = 1000;#How many years between a new set of international negotiation rounds
+        edges = np.array([[i, (i + 1) % self.N] for i in range(self.N)])
+        self.coalitions = np.zeros((edges.max() + 1, edges.max() + 1))
+        self.coalitions[edges[:, 0], edges[:, 1]] = 1
+        self.coalitions[edges[:, 1], edges[:, 0]] = 1
 
-
-
-
-
+        # Parameters for international negotiations
+        self.Y_nego = 1000
+        # How many years between a new set of international negotiation rounds
 
     def step(self, timestep):
         """
-        Defines a step for the Policy() class. 
+        Defines a step for the Policy() class.
         """
         # 1 - Updating the Opinions of the constituencies for all regions
-        self.update_regions(timestep);
+        self.update_regions(timestep)
 
         # 2 - Negotiating an international agreement (every Y_nego years)
-        if timestep%self.Y_nego == 0:
-            self.international_negotiations();
-        
-        # 3 - Deduce an emission control for all region depending on constituency, international agreement, and inertia 
-        self.update_emission_control_rate(timestep);
-        
+        if timestep % self.Y_nego == 0:
+            self.international_negotiations()
+
+        # 3 - Deduce an emission control for all region depending on constituency, international agreement, and inertia
+        self.update_emission_control_rate(timestep)
+
     def update_regions(self, timestep):
         """
         Updates opinions of constituencies for all regions
             - Taking into account information from climate models
             - Taking into account opinion dynamics
-            - Assessing the current policy 
+            - Assessing the current policy
         """
         for a in self.regions:
-            a.update_regional_opinion();
+            a.update_regional_opinion()
             a.update_state_policy_from_constituency(timestep)
 
     def international_negotiations(self):
@@ -103,12 +118,9 @@ class TwoLevelsGame():
         Each negotiator have to come up with a target year associated to a cutting rate goal.
         Pledges are assumed to be linear by other negotiators in their implementation.
         """
-        
+
         # For now nothing happens
-        
-    
-    
-        
+
         # """
         # International negotiations as a simple (DeGroot) Opinion Dynamics model.
         # """
@@ -117,14 +129,14 @@ class TwoLevelsGame():
         # eps = 0.1;
         # I = np.eye(self.N);
         # iter = 0;
-        # #For each region, draw an international proposal 
+        # #For each region, draw an international proposal
         # proposal = np.zeros((self.N, max_iter));
         # proposal[:,0] = np.array([p.negotiator.proposal() for p in self.regions]);
 
         # #Adjacent matrix (ie. coalitions) to Laplacian
         # L = np.diag(np.sum(self.coalitions, 0))-self.coalitions;
         # d = np.max(np.abs(proposal[:,iter] @ np.ones((self.N, self.N)) - proposal[:,iter]))
-        
+
         # while (d > d_min) and (iter < max_iter-1):
         #     iter += 1;
         #     proposal[:,iter] = (I - eps*L)@proposal[:,iter-1];
@@ -134,29 +146,32 @@ class TwoLevelsGame():
         # for i in range(self.N):
         #     self.regions[i].negotiator.zero_emissions_target_year = proposal[i,iter];
         #     self.regions[i].policy[2] = proposal[i,iter];
-        
+
         return
 
     def update_emission_control_rate(self, timestep):
         """
         Updates the emission control rate for each regions for future timesteps based on the current regional policies.
         """
-        #TODO OPTIM See if we really need to compute all the curve or only next step
+        # TODO OPTIM See if we really need to compute all the curve or only next step
         for a in self.regions:
             ecr = a.emission_control_rate()
-            self.justice_model.emission_control_rate[a.id,timestep:,:]=ecr[timestep:,:];
+            self.justice_model.emission_control_rate[a.id, timestep:, :] = ecr[
+                timestep:, :
+            ]
 
-            self.f_emissions[1].writerow([a.id]
-                                        + [em for em in self.justice_model.emission_control_rate[a.id,:,0]])#ECR are all the same for all ensemble, hence we onyl register the one for ensemble 0
-        self.justice_model.data["emission_cutting_rate"][:, timestep, :] = self.justice_model.emission_control_rate[:, timestep, :];
+            self.f_emissions[1].writerow(
+                [a.id]
+                + [em for em in self.justice_model.emission_control_rate[a.id, :, 0]]
+            )  # ECR are all the same for all ensemble, hence we onyl register the one for ensemble 0
+        self.justice_model.data["emission_cutting_rate"][:, timestep, :] = (
+            self.justice_model.emission_control_rate[:, timestep, :]
+        )
 
     def close_files(self):
-        self.f_policy[0].close();
-        self.f_region[0].close();
-        self.f_household[0].close();
-        self.f_negotiator[0].close();
-        self.f_information[0].close();
+        self.f_policy[0].close()
+        self.f_region[0].close()
+        self.f_household[0].close()
+        self.f_negotiator[0].close()
+        self.f_information[0].close()
         return
-    
-
-

@@ -37,14 +37,14 @@ Another way to think about the international level is the carbon budget. Can com
 """
 
 ### FUNCTION ###
-def shifting_policy(policy, shift_year, max_policy_rate, current_time):    
+def shifting_policy(policy, shift_year, max_policy_rate, current_time, rng):
     
     #Choosing a year to modify at random (The year must be in the future)
     p=policy[0,:-1]>current_time;
     if not p.any():
         print("Too far in the future, policy left unchanged")
         return policy
-    year=np.random.choice(policy[0,:-1],1,p = p/sum(p))[0];
+    year=rng.choice(policy[0,:-1],1,p = p/sum(p))[0];
     year_ind = np.flatnonzero(year==policy[0,:])[0]
     min_p = max(0,np.flatnonzero(policy[0,:-1]>current_time)[0]-1);
     regional_pressure_later_ecr = 0;
