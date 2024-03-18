@@ -20,7 +20,7 @@ from ema_workbench import (
     RealParameter,
     ArrayOutcome,
     ScalarOutcome,
-    TimeSeriesOutcome,
+    # TimeSeriesOutcome,
     CategoricalParameter,
     ema_logging,
     MultiprocessingEvaluator,
@@ -33,7 +33,7 @@ from ema_workbench.util.utilities import save_results, load_results
 from ema_workbench.em_framework.optimization import (
     ArchiveLogger,
     EpsilonProgress,
-    HyperVolume,
+    # HyperVolume,
 )
 
 
@@ -146,7 +146,7 @@ def run_optimization_adaptive(
         # else:
         #     target_directory = os.path.join(folder, file_name)
 
-        # save_results(results, file_name=target_directory)
+        # save_results(results, file_name="./data/output/adaptive_optimization.tar.gz")
 
     # Hyperparameters -deap
 

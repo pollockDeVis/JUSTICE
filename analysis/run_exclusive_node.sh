@@ -1,18 +1,19 @@
 #!/bin/bash -l                                                                                                       
 
-#SBATCH --job-name="CPU_Seq_DPS"                                                                                      
+#SBATCH --job-name="100k_DPS"                                                                                      
 #SBATCH --time=120:00:00
 #SBATCH --partition=compute-p2
-#SBATCH --ntasks=72
-#SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=16G  
-                                                                                                                                                                          
+
+
+#SBATCH --nodes=1                                                                                                    
+#SBATCH --exclusive                                                                                                  
+#SBATCH --mem=0     
+                 
 
 #SBATCH --account=research-tpm-mas                                                                                   
 
 module load 2023r1
 module load openmpi
-module load py-mpi4py
 module load miniconda3
 
 
