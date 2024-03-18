@@ -15,7 +15,7 @@ def download_fair_config(url, name, hash):
     root_directory = os.path.dirname(os.path.dirname(current_directory))
 
     # Create the data file path
-    data_file_path = os.path.join(root_directory, "data")
+    data_file_path = os.path.join(root_directory, "data/input")
 
     print(data_file_path)
 

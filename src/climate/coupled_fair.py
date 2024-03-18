@@ -1168,32 +1168,32 @@ class CoupledFAIR(FAIR):
         # Filling in climate configs
         fill(
             self.climate_configs["ocean_heat_capacity"],
-            df_configs.loc[:, "c1":"c3"].values,
+            df_configs.loc[:, "clim_c1":"clim_c3"].values,
         )
         fill(
             self.climate_configs["ocean_heat_transfer"],
-            df_configs.loc[:, "kappa1":"kappa3"].values,
+            df_configs.loc[:, "clim_kappa1":"clim_kappa3"].values,
         )
         fill(
             self.climate_configs["deep_ocean_efficacy"],
-            df_configs["epsilon"].values.squeeze(),
+            df_configs["clim_epsilon"].values.squeeze(),
         )
         fill(
             self.climate_configs["gamma_autocorrelation"],
-            df_configs["gamma"].values.squeeze(),
+            df_configs["clim_gamma"].values.squeeze(),
         )
         fill(
             self.climate_configs["sigma_eta"],
-            df_configs["sigma_eta"].values.squeeze(),
+            df_configs["clim_sigma_eta"].values.squeeze(),
         )
         fill(
             self.climate_configs["sigma_xi"],
-            df_configs["sigma_xi"].values.squeeze(),
+            df_configs["clim_sigma_xi"].values.squeeze(),
         )
         fill(self.climate_configs["seed"], df_configs["seed"])
         fill(self.climate_configs["stochastic_run"], True)
         fill(self.climate_configs["use_seed"], True)
-        fill(self.climate_configs["forcing_4co2"], df_configs["F_4xCO2"])
+        fill(self.climate_configs["forcing_4co2"], df_configs["clim_F_4xCO2"])
 
         self.fill_species_configs(
             filename=data_file_path + "/species_configs_properties_calibration.csv"
@@ -1202,40 +1202,40 @@ class CoupledFAIR(FAIR):
         # carbon cycle
         fill(
             self.species_configs["iirf_0"],
-            df_configs["r0"].values.squeeze(),
+            df_configs["cc_r0"].values.squeeze(),
             specie="CO2",
         )
         fill(
             self.species_configs["iirf_airborne"],
-            df_configs["rA"].values.squeeze(),
+            df_configs["cc_rA"].values.squeeze(),
             specie="CO2",
         )
         fill(
             self.species_configs["iirf_uptake"],
-            df_configs["rU"].values.squeeze(),
+            df_configs["cc_rU"].values.squeeze(),
             specie="CO2",
         )
         fill(
             self.species_configs["iirf_temperature"],
-            df_configs["rT"].values.squeeze(),
+            df_configs["cc_rT"].values.squeeze(),
             specie="CO2",
         )
 
         # aerosol indirect
-        fill(self.species_configs["aci_scale"], df_configs["beta"].values.squeeze())
+        fill(self.species_configs["aci_scale"], df_configs["aci_beta"].values.squeeze())
         fill(
             self.species_configs["aci_shape"],
-            df_configs["shape Sulfur"].values.squeeze(),
+            df_configs["aci_shape_so2"].values.squeeze(),
             specie="Sulfur",
         )
         fill(
             self.species_configs["aci_shape"],
-            df_configs["shape BC"].values.squeeze(),
+            df_configs["aci_shape_bc"].values.squeeze(),
             specie="BC",
         )
         fill(
             self.species_configs["aci_shape"],
-            df_configs["shape OC"].values.squeeze(),
+            df_configs["aci_shape_oc"].values.squeeze(),
             specie="OC",
         )
 
@@ -1253,7 +1253,7 @@ class CoupledFAIR(FAIR):
         ]:
             fill(
                 self.species_configs["erfari_radiative_efficiency"],
-                df_configs[f"ari {specie}"],
+                df_configs[f"ari_{specie}"],
                 specie=specie,
             )
 
@@ -1269,7 +1269,7 @@ class CoupledFAIR(FAIR):
         ]:
             fill(
                 self.species_configs["forcing_scale"],
-                df_configs[f"scale {specie}"].values.squeeze(),
+                df_configs[f"fscale_{specie}"].values.squeeze(),
                 specie=specie,
             )
         # the halogenated gases all take the same scale factor
@@ -1317,7 +1317,7 @@ class CoupledFAIR(FAIR):
         ]:
             fill(
                 self.species_configs["forcing_scale"],
-                df_configs["scale minorGHG"].values.squeeze(),
+                df_configs["fscale_minorGHG"].values.squeeze(),
                 specie=specie,
             )
 
@@ -1332,14 +1332,14 @@ class CoupledFAIR(FAIR):
         ]:
             fill(
                 self.species_configs["ozone_radiative_efficiency"],
-                df_configs[f"o3 {specie}"],
+                df_configs[f"o3_{specie}"],
                 specie=specie,
             )
 
         # initial value of CO2 concentration (but not baseline for forcing calculations)
         fill(
             self.species_configs["baseline_concentration"],
-            df_configs["co2_concentration_1750"].values.squeeze(),
+            df_configs["cc_co2_concentration_1750"].values.squeeze(),
             specie="CO2",
         )
 
