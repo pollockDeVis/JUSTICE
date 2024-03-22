@@ -52,6 +52,8 @@ class JUSTICE:
         # Load the data
         self.data_loader = DataLoader()
 
+        # TODO: Need to do the data slicing here for different start and end years
+
         # Instantiate the TimeHorizon class
         self.time_horizon = TimeHorizon(
             start_year=start_year, end_year=end_year, data_timestep=5, timestep=timestep
@@ -326,13 +328,15 @@ class JUSTICE:
                 )
             )
 
-            damage = self.damage_function.calculate_damage(
+            damage_fraction = self.damage_function.calculate_damage(
                 temperature=self.data["regional_temperature"][:, timestep, :],
                 timestep=timestep,
             )
 
             # Apply the computed damage to the economic output
-            self.economy.apply_damage_to_output(timestep=timestep, damage=damage)
+            self.economy.apply_damage_to_output(
+                timestep=timestep, damage=damage_fraction
+            )
 
             # Abatement cost is only dependent on the emission control rate
             abatement_cost = self.abatement.calculate_abatement(
@@ -352,14 +356,14 @@ class JUSTICE:
         elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
             # No need to calculate temperature for the last timestep because current emissions produce temperature in the next timestep
             # Calculate damage for the last timestep
-            damage = self.damage_function.calculate_damage(
+            damage_fraction = self.damage_function.calculate_damage(
                 temperature=self.data["regional_temperature"][:, timestep, :],
                 timestep=timestep,
             )
             # Apply the damage to the economic output
             self.economy.apply_damage_to_output(
                 timestep=timestep,
-                damage=damage,
+                damage=damage_fraction,
             )
             # Calculate the abatement cost
             abatement_cost = self.abatement.calculate_abatement(
@@ -459,7 +463,7 @@ class JUSTICE:
                 )
 
                 # Damages is calculated based on current temperature
-                damage = self.damage_function.calculate_damage(
+                damage_fraction = self.damage_function.calculate_damage(
                     temperature=self.data["regional_temperature"][:, timestep, :],
                     timestep=timestep,
                 )
@@ -472,7 +476,7 @@ class JUSTICE:
 
                 self.economy.apply_damage_to_output(
                     timestep=timestep,
-                    damage=damage,
+                    damage=damage_fraction,
                 )
 
                 # Abatement cost is only dependent on the emission control rate
@@ -494,14 +498,14 @@ class JUSTICE:
             elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
                 # No need to calculate temperature for the last timestep because current emissions produce temperature in the next timestep
                 # Calculate damage for the last timestep
-                damage = self.damage_function.calculate_damage(
+                damage_fraction = self.damage_function.calculate_damage(
                     temperature=self.data["regional_temperature"][:, timestep, :],
                     timestep=timestep,
                 )
                 # Apply the damage to the economic output
                 self.economy.apply_damage_to_output(
                     timestep=timestep,
-                    damage=damage,
+                    damage=damage_fraction,
                 )
                 # Calculate the abatement cost
                 abatement_cost = self.abatement.calculate_abatement(

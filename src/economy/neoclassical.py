@@ -91,8 +91,12 @@ class NeoclassicalEconomyModel:
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initializing the output array
-        self.output = np.zeros(
+        # Initializing the gross output array
+        self.gross_output = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        )
+
+        self.net_output = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
@@ -212,7 +216,7 @@ class NeoclassicalEconomyModel:
             # Calculate the Output based on gross output
             self._calculate_output(timestep, scenario)
 
-        return self.output[:, timestep, :]
+        return self.gross_output[:, timestep, :]
 
     def get_optimal_long_run_savings_rate(
         self,
@@ -284,7 +288,7 @@ class NeoclassicalEconomyModel:
     def _calculate_output(self, timestep, scenario):
         # Calculate the Output based on gross output
 
-        self.output[:, timestep, :] = self.tfp[:, timestep, :] * (
+        self.gross_output[:, timestep, :] = self.tfp[:, timestep, :] * (
             np.power(
                 self.capital_tfp[:, timestep, :],
                 self.capital_elasticity_in_production_function,
@@ -294,25 +298,6 @@ class NeoclassicalEconomyModel:
                 (1 - self.capital_elasticity_in_production_function),
             )
         )
-        # Apply damages to output
-        # Check if the timestep is not zero
-        # Check if timestep is 0 or 1
-
-        # if timestep == 0 or timestep == 1:  # Damage is zero in the first timestep
-        # if timestep <= 2:
-        #     self.output[:, timestep, :] = self.output[:, timestep, :]
-        # else:
-        # self.damage[:, timestep, :] = (
-        #     self.output[:, timestep, :] * self.damage_fraction[:, timestep, :]
-        # )
-        # # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
-        # self.output[:, timestep, :] = (
-        #     self.output[:, timestep, :] - self.damage[:, timestep, :]
-        # )
-        # Subtract abatement from output
-        # self.output[:, timestep, :] = (
-        #     self.output[:, timestep, :] - self.abatement[:, timestep, :]
-        # )
 
     def apply_damage_to_output(self, timestep, damage):
         """
@@ -321,12 +306,13 @@ class NeoclassicalEconomyModel:
         """
         self.damage_fraction[:, timestep, :] = damage
 
-        self.damage[:, timestep, :] = (
-            self.output[:, timestep, :] * self.damage_fraction[:, timestep, :]
-        )
         # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
-        self.output[:, timestep, :] = (
-            self.output[:, timestep, :] - self.damage[:, timestep, :]
+        self.damage[:, timestep, :] = (
+            self.gross_output[:, timestep, :] * self.damage_fraction[:, timestep, :]
+        )
+
+        self.net_output[:, timestep, :] = (
+            self.gross_output[:, timestep, :] - self.damage[:, timestep, :]
         )
 
     def apply_abatement_to_output(self, timestep, abatement):
@@ -335,19 +321,20 @@ class NeoclassicalEconomyModel:
         """
         self.abatement[:, timestep, :] = abatement
 
-        self.output[:, timestep, :] = (
-            self.output[:, timestep, :] - self.abatement[:, timestep, :]
+        self.net_output[:, timestep, :] = (
+            self.gross_output[:, timestep, :] - self.abatement[:, timestep, :]
         )
 
     def calculate_consumption(self, savings_rate):  # Validated
         """
         This method calculates the consumption.
         """
+        # TODO: Should be net output
         # Reshape savings rate from 2D to 3D
         savings_rate = savings_rate[:, :, np.newaxis]
 
-        investment = savings_rate * self.output
-        consumption = self.output - investment
+        investment = savings_rate * self.gross_output
+        consumption = self.gross_output - investment
 
         return consumption
 
@@ -355,11 +342,12 @@ class NeoclassicalEconomyModel:
         """
         This method calculates the consumption per timestep.
         """
+        # TODO: Should be net output
         # Reshape savings rate from 1D to 2D
         savings_rate = savings_rate[:, np.newaxis]
 
-        investment = savings_rate * self.output[:, timestep, :]
-        consumption_per_timestep = self.output[:, timestep, :] - investment
+        investment = savings_rate * self.gross_output[:, timestep, :]
+        consumption_per_timestep = self.gross_output[:, timestep, :] - investment
 
         return consumption_per_timestep
 
@@ -402,10 +390,10 @@ class NeoclassicalEconomyModel:
         return social_cost_of_carbon
 
     def get_net_output(self):
-        return self.output
+        return self.net_output
 
     def get_net_output_by_timestep(self, timestep):
-        return self.output[:, timestep, :]
+        return self.net_output[:, timestep, :]
 
     def get_abatement(self):
         return self.abatement
@@ -433,7 +421,7 @@ class NeoclassicalEconomyModel:
         # Reshape savings rate from 2D to 3D
         savings_rate = savings_rate[:, :, np.newaxis]
 
-        investment = savings_rate * self.output
+        investment = savings_rate * self.gross_output
         capital_stock = np.zeros(
             (
                 len(self.region_list),
