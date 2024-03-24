@@ -169,8 +169,8 @@ class JUSTICE:
             pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
             inequality_aversion=self.inequality_aversion,
         )
-
-        self.fixed_savings_rate = self.economy.get_fixed_savings_rate()
+        # NOTE : FIX THIS QUICKLY
+        self.fixed_savings_rate = 0  # TODO: This should happen in economy self.economy._get_fixed_savings_rate()
 
         # Create a data dictionary to store the data
         self.data = {
