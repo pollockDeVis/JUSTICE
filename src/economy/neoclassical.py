@@ -84,7 +84,7 @@ class NeoclassicalEconomyModel:
 
         # TODO: Remove Later. self.fixed_savings_rate = self._get_fixed_savings_rate(self.data_time_horizon)
         # Initializing the capital and TFP array #TODO: This will be of the same shape as data with 5 year timestep
-        self.capital_tfp = np.zeros(
+        self.capital_tfp_data = np.zeros(
             (len(self.region_list), len(self.data_time_horizon))
         )
 
@@ -264,11 +264,13 @@ class NeoclassicalEconomyModel:
         # Calculate the investment_tfp
         investment_tfp = fixed_savings_rate * self.gdp_array[:, :, scenario]
 
-        self.capital_tfp[:, 0] = (self.capital_init_arr * self.mer_to_ppp).reshape(-1)
+        self.capital_tfp_data[:, 0] = (self.capital_init_arr * self.mer_to_ppp).reshape(
+            -1
+        )
 
         for timestep in range(1, len(self.data_time_horizon)):
             # Calculate the capital_tfp
-            self.capital_tfp[:, timestep] = self.capital_tfp[
+            self.capital_tfp_data[:, timestep] = self.capital_tfp_data[
                 :, timestep - 1
             ] * np.power(
                 (1 - self.depreciation_rate_capital),
@@ -302,7 +304,7 @@ class NeoclassicalEconomyModel:
                 (1 - self.capital_elasticity_in_production_function),
             )
             * np.power(
-                self.capital_tfp,
+                self.capital_tfp_data,
                 self.capital_elasticity_in_production_function,
             )
         )
