@@ -21,7 +21,10 @@ class NeoclassicalEconomyModel:
         self,
         input_dataset,
         time_horizon,
+        scenario,
         climate_ensembles,
+        elasticity_of_marginal_utility_of_consumption,
+        pure_rate_of_social_time_preference,
         **kwargs,  # variable keyword argument so that we can analyze uncertainty range of any parameters
     ):  # TODO maybe move the kwargs to the calculate economy
         # Create an instance of EconomyDefaults
@@ -29,6 +32,9 @@ class NeoclassicalEconomyModel:
 
         # Saving the climate ensembles
         self.NUM_OF_ENSEMBLES = climate_ensembles
+
+        # Saving the scenario
+        self.scenario = get_economic_scenario(scenario)
 
         # Fetch the defaults for neoclassical submodule
         econ_neoclassical_defaults = econ_defaults.get_defaults(
@@ -51,9 +57,15 @@ class NeoclassicalEconomyModel:
             econ_neoclassical_defaults["elasticity_of_output_to_capital"],
         )
 
+        self.elasticity_of_marginal_utility_of_consumption = (
+            elasticity_of_marginal_utility_of_consumption
+        )
+
+        self.pure_rate_of_social_time_preference = pure_rate_of_social_time_preference
+
         self.region_list = input_dataset.REGION_LIST
         self.gdp_array = copy.deepcopy(input_dataset.GDP_ARRAY)
-        self.population_arr = copy.deepcopy(input_dataset.POPULATION_ARRAY)
+        self.population_array = copy.deepcopy(input_dataset.POPULATION_ARRAY)
 
         self.capital_init_arr = input_dataset.CAPITAL_INIT_ARRAY
         self.savings_rate_init_arr = (
@@ -77,17 +89,25 @@ class NeoclassicalEconomyModel:
             self._interpolate_gdp()
             self._interpolate_population()
 
-        # Initializing the capital and TFP array
+        # Initializing the capital and TFP array #TODO: Can cancel the number of ensembles
         self.capital_tfp = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon))
+        )
+
+        # Initializing the investment array #TODO: Can cancel the number of ensembles
+        self.investment_tfp = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon))
+        )
+        # Initializing the TFP array #TODO: Can cancel the number of ensembles
+        self.tfp = np.zeros((len(self.region_list), len(self.model_time_horizon)))
+
+        # Initializing the capital array
+        self.capital = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initializing the investment array
-        self.investment_tfp = np.zeros(
-            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
-        )
-        # Initializing the TFP array
-        self.tfp = np.zeros(
+        # Intializing the investment array
+        self.investment = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
@@ -97,13 +117,6 @@ class NeoclassicalEconomyModel:
         )
 
         self.net_output = np.zeros(
-            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
-        )
-
-        # TODO: Create a Gross Output array instead of damage fraction array
-
-        # Initializing the damage fraction array # TODO: Need to remove this
-        self.damage_fraction = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
@@ -117,7 +130,7 @@ class NeoclassicalEconomyModel:
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initial 4D array for gdp and population.
+        # Initial 4D array for gdp and population. # TODO: Does it need number of ensembles?
         self.gdp = np.zeros(
             (
                 len(self.region_list),
@@ -126,12 +139,13 @@ class NeoclassicalEconomyModel:
                 self.gdp_array.shape[2],
             )
         )
+        # TODO: Does it need number of ensembles?
         self.population = np.zeros(
             (
                 len(self.region_list),
                 len(self.model_time_horizon),
                 self.NUM_OF_ENSEMBLES,
-                self.population_arr.shape[2],
+                self.population_array.shape[2],
             )
         )
 
@@ -141,12 +155,12 @@ class NeoclassicalEconomyModel:
                 len(self.region_list),
                 len(self.model_time_horizon),
                 self.NUM_OF_ENSEMBLES,
-                self.population_arr.shape[2],
+                self.population_array.shape[2],
             )
         )
         # Assert that the number of scenarios in GDP and Population are the same.
         assert (
-            self.gdp_array.shape[2] == self.population_arr.shape[2]
+            self.gdp_array.shape[2] == self.population_array.shape[2]
         ), "Number of scenarios in GDP and Population are not the same."
 
         # Loop through the scenarios to broadcast each one to the ensemble dimension.
@@ -160,41 +174,48 @@ class NeoclassicalEconomyModel:
                 ),
             )
             self.population[:, :, :, idx] = np.broadcast_to(
-                self.population_arr[:, :, idx, np.newaxis],
+                self.population_array[:, :, idx, np.newaxis],
                 (
-                    self.population_arr.shape[0],
-                    self.population_arr.shape[1],
+                    self.population_array.shape[0],
+                    self.population_array.shape[1],
                     self.NUM_OF_ENSEMBLES,
                 ),
             )
+        self.fixed_savings_rate = self.get_fixed_savings_rate()
+
+        # Calculate the baseline TFP
+
+        self.initialize_tfp(
+            scenario=self.scenario, fixed_savings_rate=self.fixed_savings_rate
+        )
 
         # Calculate the baseline per capita growth #TODO to be used in the complex version of Damage Function
         self.calculate_baseline_per_capita_growth()
 
-    def run(self, scenario, timestep, savings_rate):  # **kwargs
-        scenario = get_economic_scenario(scenario)
+    def run(self, timestep, savings_rate):  # **kwargs
+        # scenario = get_economic_scenario(scenario)
         # Reshaping savings rate
         if len(savings_rate.shape) == 1:
             savings_rate = savings_rate.reshape(-1, 1)
 
         if timestep == 0:
             self.investment_tfp[:, 0, :] = (
-                self.savings_rate_init_arr * self.gdp[:, 0, :, scenario]
+                self.savings_rate_init_arr * self.gdp[:, 0, :, self.scenario]
             )
 
             # Initalize capital tfp
             self.capital_tfp[:, 0, :] = self.capital_init_arr * self.mer_to_ppp
 
             # Calculate the TFP
-            self._calculate_tfp(timestep, scenario)
+            self._calculate_tfp(timestep, self.scenario)
 
             # Calculate the Output
-            self._calculate_output(timestep, scenario)
+            self._calculate_output(timestep, self.scenario)
 
         else:
             # Calculate the investment_tfp
             self.investment_tfp[:, timestep, :] = (
-                savings_rate * self.gdp[:, timestep, :, scenario]
+                savings_rate * self.gdp[:, timestep, :, self.scenario]
             )
 
             # Calculate capital_tfp
@@ -211,18 +232,14 @@ class NeoclassicalEconomyModel:
             )
 
             # Calculate the TFP
-            self._calculate_tfp(timestep, scenario)
+            self._calculate_tfp(timestep, self.scenario)
 
             # Calculate the Output based on gross output
-            self._calculate_output(timestep, scenario)
+            self._calculate_output(timestep, self.scenario)
 
         return self.gross_output[:, timestep, :]
 
-    def get_optimal_long_run_savings_rate(
-        self,
-        elasticity_of_marginal_utility_of_consumption,
-        pure_rate_of_social_time_preference,
-    ):
+    def get_optimal_long_run_savings_rate(self):
         """
         This method returns the optimal long run savings rate.
         """
@@ -233,32 +250,77 @@ class NeoclassicalEconomyModel:
             / (
                 self.depreciation_rate_capital
                 + self.elasticity_of_output_to_capital
-                * elasticity_of_marginal_utility_of_consumption
-                + pure_rate_of_social_time_preference
+                * self.elasticity_of_marginal_utility_of_consumption
+                + self.pure_rate_of_social_time_preference
             )
         ) * self.capital_elasticity_in_production_function
 
         return optimal_long_run_savings_rate
 
-    def get_fixed_savings_rate(
-        self,
-        elasticity_of_marginal_utility_of_consumption,
-        pure_rate_of_social_time_preference,
-    ):
+    def initialize_tfp(self, scenario, fixed_savings_rate):
+        """
+        This method initializes the TFP.
+        """
+        # Calculate the investment_tfp
+        self.investment_tfp = fixed_savings_rate * self.gdp_array[:, :, scenario]
+
+        self.capital_tfp[:, 0] = (self.capital_init_arr * self.mer_to_ppp).reshape(-1)
+
+        for timestep in range(1, len(self.model_time_horizon)):
+            # Calculate the capital_tfp
+            self.capital_tfp[:, timestep] = self.capital_tfp[
+                :, timestep - 1
+            ] * np.power(
+                (1 - self.depreciation_rate_capital),
+                (self.timestep / self.data_timestep),
+            ) + self.investment_tfp[
+                :, timestep - 1
+            ] * (
+                (self.timestep / self.data_timestep)
+            )
+
+            # # Calculate the TFP
+            # self.tfp[:, timestep] = self.gdp_array[
+            #     :, timestep, scenario
+            # ] / (
+            #     np.power(
+            #         (
+            #             self.population_array[:, timestep, scenario] / 1000
+            #         ),
+            #         (1 - self.capital_elasticity_in_production_function),
+            #     )
+            #     * np.power(
+            #         self.capital_tfp[:, timestep],
+            #         self.capital_elasticity_in_production_function,
+            #     )
+            # )
+
+        # Calculate the TFP
+        self.tfp = self.gdp_array[:, :, scenario] / (
+            np.power(
+                (self.population_array[:, :, scenario] / 1000),
+                (1 - self.capital_elasticity_in_production_function),
+            )
+            * np.power(
+                self.capital_tfp,
+                self.capital_elasticity_in_production_function,
+            )
+        )
+
+    def get_fixed_savings_rate(self):
         """
         This method returns the fixed savings rate. It takes the intial savings rate and increases
         it linearly to the optimal long run savings rate.
         """
+        # TODO make this more efficient. Calculate once and save it as self.fixed_savings_rate
+
         # Calculate the Optimal long-run Savings Rate
         # This will depend on the input paramters. This is also a upper limit of the savings rate
 
         fixed_savings_rate = np.copy(self.savings_rate_init_arr).reshape(-1, 1)
         # fixed_savings_rate Validated with RICE50 for timestep 1 and 5
 
-        optimal_long_run_savings_rate = self.get_optimal_long_run_savings_rate(
-            elasticity_of_marginal_utility_of_consumption,
-            pure_rate_of_social_time_preference,
-        )
+        optimal_long_run_savings_rate = self.get_optimal_long_run_savings_rate()
 
         # for i, years in enumerate(set_year):
         for i in range(len(self.model_time_horizon)):
@@ -299,16 +361,15 @@ class NeoclassicalEconomyModel:
             )
         )
 
-    def apply_damage_to_output(self, timestep, damage):
+    def apply_damage_to_output(self, timestep, damage_fraction):
         """
         This method applies damage to the output.
         Damage calculated
         """
-        self.damage_fraction[:, timestep, :] = damage
 
         # Mutiplying damage to get Net Output # YGROSS(t,n) * (1 - DAMFRAC_UNBOUNDED(t,n))
         self.damage[:, timestep, :] = (
-            self.gross_output[:, timestep, :] * self.damage_fraction[:, timestep, :]
+            self.gross_output[:, timestep, :] * damage_fraction
         )
 
         self.net_output[:, timestep, :] = (
@@ -489,20 +550,22 @@ class NeoclassicalEconomyModel:
     def _interpolate_population(self):
         interp_data = np.zeros(
             (
-                self.population_arr.shape[0],
+                self.population_array.shape[0],
                 len(self.model_time_horizon),
-                self.population_arr.shape[2],
+                self.population_array.shape[2],
             )
         )
 
-        for i in range(self.population_arr.shape[0]):
-            for j in range(self.population_arr.shape[2]):
+        for i in range(self.population_array.shape[0]):
+            for j in range(self.population_array.shape[2]):
                 f = interp1d(
-                    self.data_time_horizon, self.population_arr[i, :, j], kind="linear"
+                    self.data_time_horizon,
+                    self.population_array[i, :, j],
+                    kind="linear",
                 )
                 interp_data[i, :, j] = f(self.model_time_horizon)
 
-        self.population_arr = interp_data
+        self.population_array = interp_data
 
     def calculate_baseline_per_capita_growth(self):
         """

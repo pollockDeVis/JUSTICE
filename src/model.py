@@ -16,6 +16,7 @@ from src.climate.coupled_fair import CoupledFAIR
 from src.climate.temperature_downscaler import TemperatureDownscaler
 from src.abatement.abatement_enerdata import AbatementEnerdata
 from src.welfare.utilitarian import Utilitarian
+from config.default_parameters import SocialWelfareDefaults
 
 
 class JUSTICE:
@@ -102,6 +103,30 @@ class JUSTICE:
             )
         )
 
+        # Instantiate the SocialWelfareDefaults class
+        social_welfare_defaults = SocialWelfareDefaults()
+
+        # TODO: Incomplete Implementation
+        # if self.social_welfare_function == WelfareFunction.UTILITARIAN:
+
+        # Fetch the defaults for UTILITARIAN
+        utilitarian_defaults = social_welfare_defaults.get_defaults(
+            WelfareFunction.UTILITARIAN.name
+        )
+
+        # Assign the defaults to the class attributes
+        self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
+            "elasticity_of_marginal_utility_of_consumption",
+            utilitarian_defaults["elasticity_of_marginal_utility_of_consumption"],
+        )
+        self.pure_rate_of_social_time_preference = kwargs.get(
+            "pure_rate_of_social_time_preference",
+            utilitarian_defaults["pure_rate_of_social_time_preference"],
+        )
+        self.inequality_aversion = kwargs.get(
+            "inequality_aversion", utilitarian_defaults["inequality_aversion"]
+        )
+
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
         # I think it is failing because I am checking self.economy_type instead of economy_type, which is passed as a parameter
         # TODO: Incomplete Implementation
@@ -122,25 +147,11 @@ class JUSTICE:
         self.economy = NeoclassicalEconomyModel(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
+            scenario=self.scenario,
             climate_ensembles=self.no_of_ensembles,
+            elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
+            pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
         )
-
-        # Checking if the savings rate is endogenous or exogenous by checking kwargs
-        if (
-            "elasticity_of_marginal_utility_of_consumption" in kwargs
-            and "pure_rate_of_social_time_preference" in kwargs
-        ):
-            elasticity_of_marginal_utility_of_consumption = kwargs[
-                "elasticity_of_marginal_utility_of_consumption"
-            ]
-            pure_rate_of_social_time_preference = kwargs[
-                "pure_rate_of_social_time_preference"
-            ]
-
-            self.fixed_savings_rate = self.economy.get_fixed_savings_rate(
-                elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
-                pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
-            )
 
         self.emissions = OutputToEmissions(
             input_dataset=self.data_loader,
@@ -154,8 +165,12 @@ class JUSTICE:
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
             population=self.economy.get_population(scenario=self.scenario),
-            **kwargs,
+            elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
+            pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
+            inequality_aversion=self.inequality_aversion,
         )
+
+        self.fixed_savings_rate = self.economy.get_fixed_savings_rate()
 
         # Create a data dictionary to store the data
         self.data = {
@@ -289,7 +304,7 @@ class JUSTICE:
         self.emission_control_rate[:, timestep, :] = emission_control_rate
 
         gross_output = self.economy.run(
-            scenario=self.scenario,
+            # scenario=self.scenario,
             timestep=timestep,
             savings_rate=self.savings_rate[:, timestep],
         )
@@ -335,7 +350,7 @@ class JUSTICE:
 
             # Apply the computed damage to the economic output
             self.economy.apply_damage_to_output(
-                timestep=timestep, damage=damage_fraction
+                timestep=timestep, damage_fraction=damage_fraction
             )
 
             # Abatement cost is only dependent on the emission control rate
@@ -363,7 +378,7 @@ class JUSTICE:
             # Apply the damage to the economic output
             self.economy.apply_damage_to_output(
                 timestep=timestep,
-                damage=damage_fraction,
+                damage_fraction=damage_fraction,
             )
             # Calculate the abatement cost
             abatement_cost = self.abatement.calculate_abatement(
@@ -423,7 +438,7 @@ class JUSTICE:
             Main loop of the model. This loop runs the model for each timestep.
             """
             gross_output = self.economy.run(
-                scenario=self.scenario,
+                # scenario=self.scenario,
                 timestep=timestep,
                 savings_rate=self.savings_rate[:, timestep],
             )
@@ -476,7 +491,7 @@ class JUSTICE:
 
                 self.economy.apply_damage_to_output(
                     timestep=timestep,
-                    damage=damage_fraction,
+                    damage_fraction=damage_fraction,
                 )
 
                 # Abatement cost is only dependent on the emission control rate
@@ -505,7 +520,7 @@ class JUSTICE:
                 # Apply the damage to the economic output
                 self.economy.apply_damage_to_output(
                     timestep=timestep,
-                    damage=damage_fraction,
+                    damage_fraction=damage_fraction,
                 )
                 # Calculate the abatement cost
                 abatement_cost = self.abatement.calculate_abatement(
