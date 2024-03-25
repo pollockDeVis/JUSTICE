@@ -27,7 +27,8 @@ class NeoclassicalEconomyModel:
         elasticity_of_marginal_utility_of_consumption,
         pure_rate_of_social_time_preference,
         **kwargs,  # variable keyword argument so that we can analyze uncertainty range of any parameters
-    ):  # TODO maybe move the kwargs to the calculate economy
+    ):
+
         # Create an instance of EconomyDefaults
         econ_defaults = EconomyDefaults()
 
@@ -43,7 +44,6 @@ class NeoclassicalEconomyModel:
         )
 
         # Assign retrieved values to instance variables if kwargs is empty
-
         self.capital_elasticity_in_production_function = kwargs.get(
             "capital_elasticity_in_production_function",
             econ_neoclassical_defaults["capital_elasticity_in_production_function"],
@@ -52,7 +52,6 @@ class NeoclassicalEconomyModel:
             "depreciation_rate_capital",
             econ_neoclassical_defaults["depreciation_rate_capital"],
         )
-
         self.elasticity_of_output_to_capital = kwargs.get(
             "elasticity_of_output_to_capital",
             econ_neoclassical_defaults["elasticity_of_output_to_capital"],
@@ -61,12 +60,14 @@ class NeoclassicalEconomyModel:
         self.elasticity_of_marginal_utility_of_consumption = (
             elasticity_of_marginal_utility_of_consumption
         )
-
         self.pure_rate_of_social_time_preference = pure_rate_of_social_time_preference
 
         self.region_list = input_dataset.REGION_LIST
         self.gdp_array = copy.deepcopy(input_dataset.GDP_ARRAY)
         self.population_array = copy.deepcopy(input_dataset.POPULATION_ARRAY)
+        # Selecting only the required scenario
+        self.gdp_array = self.gdp_array[:, :, self.scenario]
+        self.population_array = self.population_array[:, :, self.scenario]
 
         self.capital_init_arr = input_dataset.CAPITAL_INIT_ARRAY
         self.savings_rate_init_arr = (
@@ -74,7 +75,6 @@ class NeoclassicalEconomyModel:
         )  # Probably won't be used. Can be passed while setting up the Savings Rate Lever
         self.ppp_to_mer = input_dataset.PPP_TO_MER_CONVERSION_FACTOR
         self.mer_to_ppp = 1 / self.ppp_to_mer  # Conversion of MER to PPP
-
         # mer_to_ppp is a 2D array. Need to convert it to (regions, 1)
         self.mer_to_ppp = self.mer_to_ppp[:, 0:1]
 
@@ -84,6 +84,7 @@ class NeoclassicalEconomyModel:
         self.model_time_horizon = time_horizon.model_time_horizon
 
         # Initializing the capital and TFP array #TODO: This will be of the same shape as data with 5 year timestep
+        # TODO check if this is needed
         self.capital_tfp_data = np.zeros(
             (len(self.region_list), len(self.data_time_horizon))
         )
@@ -97,7 +98,6 @@ class NeoclassicalEconomyModel:
 
         # Calculate the baseline TFP
         self.tfp = self.initialize_tfp(
-            scenario=self.scenario,
             fixed_savings_rate=self._get_fixed_savings_rate(self.data_time_horizon),
         )
 
@@ -199,12 +199,13 @@ class NeoclassicalEconomyModel:
 
     def run(self, timestep, savings_rate):  # **kwargs
         # scenario = get_economic_scenario(scenario)
+        # TODO: Check savings rate shape for 2D or 3D
         # Reshaping savings rate
         if len(savings_rate.shape) == 1:
             savings_rate = savings_rate.reshape(-1, 1)
 
         if timestep == 0:
-            self.investment_tfp[:, 0, :] = (
+            self.investment[:, 0, :] = (
                 self.savings_rate_init_arr * self.gdp[:, 0, :, self.scenario]
             )
 
@@ -262,12 +263,12 @@ class NeoclassicalEconomyModel:
 
         return optimal_long_run_savings_rate
 
-    def initialize_tfp(self, scenario, fixed_savings_rate):
+    def initialize_tfp(self, fixed_savings_rate):
         """
         This method initializes the TFP.
         """
         # Calculate the investment_tfp
-        investment_tfp = fixed_savings_rate * self.gdp_array[:, :, scenario]
+        investment_tfp = fixed_savings_rate * self.gdp_array  # [:, :, scenario]
 
         self.capital_tfp_data[:, 0] = (self.capital_init_arr * self.mer_to_ppp).reshape(
             -1
@@ -279,33 +280,17 @@ class NeoclassicalEconomyModel:
                 :, timestep - 1
             ] * np.power(
                 (1 - self.depreciation_rate_capital),
-                (self.data_timestep),  # self.timestep / self.data_timestep
+                (self.data_timestep),
             ) + investment_tfp[
                 :, timestep - 1
             ] * (
-                (self.data_timestep)  # self.timestep / self.data_timestep
+                (self.data_timestep)
             )
 
-            # # Calculate the TFP
-            # self.tfp[:, timestep] = self.gdp_array[
-            #     :, timestep, scenario
-            # ] / (
-            #     np.power(
-            #         (
-            #             self.population_array[:, timestep, scenario] / 1000
-            #         ),
-            #         (1 - self.capital_elasticity_in_production_function),
-            #     )
-            #     * np.power(
-            #         self.capital_tfp[:, timestep],
-            #         self.capital_elasticity_in_production_function,
-            #     )
-            # )
-
         # Calculate the TFP
-        tfp = self.gdp_array[:, :, scenario] / (
+        tfp = self.gdp_array / (  # [:, :, scenario]
             np.power(
-                (self.population_array[:, :, scenario] / 1000),
+                (self.population_array / 1000),  # [:, :, scenario]
                 (1 - self.capital_elasticity_in_production_function),
             )
             * np.power(
@@ -321,14 +306,12 @@ class NeoclassicalEconomyModel:
         This method returns the fixed savings rate. It takes the intial savings rate and increases
         it linearly to the optimal long run savings rate.
         """
-        # TODO make this more efficient. Calculate once and save it as self.fixed_savings_rate
+
+        # fixed_savings_rate Validated with RICE50 for timestep 1 and 5
+        fixed_savings_rate = np.copy(self.savings_rate_init_arr).reshape(-1, 1)
 
         # Calculate the Optimal long-run Savings Rate
         # This will depend on the input paramters. This is also a upper limit of the savings rate
-
-        fixed_savings_rate = np.copy(self.savings_rate_init_arr).reshape(-1, 1)
-        # fixed_savings_rate Validated with RICE50 for timestep 1 and 5
-
         optimal_long_run_savings_rate = self.get_optimal_long_run_savings_rate()
 
         # for i, years in enumerate(set_year):
@@ -355,6 +338,14 @@ class NeoclassicalEconomyModel:
                 self.capital_elasticity_in_production_function,
             )
         )
+
+    # TODO
+    def _calculate_investment():
+        pass
+
+    # TODO
+    def _calculate_capital():
+        pass
 
     def _calculate_output(self, timestep, scenario):
         # Calculate the Output based on gross output
@@ -471,10 +462,12 @@ class NeoclassicalEconomyModel:
     def get_damages(self):
         return self.damage
 
+    # TODO: Need to update
     def get_population(self, scenario):
         scenario = get_economic_scenario(scenario)
         return self.population[:, :, :, scenario]
 
+    # TODO: Need to update
     def get_consumption_per_capita(self, scenario, savings_rate):
         scenario = get_economic_scenario(scenario)
         consumption = self.calculate_consumption(savings_rate)
@@ -482,6 +475,7 @@ class NeoclassicalEconomyModel:
 
         return consumption_per_capita
 
+    # TODO: Need to update
     def get_capital_stock(self, scenario, savings_rate):
         """
         This method returns the capital stock.
@@ -543,16 +537,16 @@ class NeoclassicalEconomyModel:
             (
                 self.gdp_array.shape[0],
                 len(self.model_time_horizon),
-                self.gdp_array.shape[2],
+                # self.gdp_array.shape[2],
             )
         )
 
         for i in range(self.gdp_array.shape[0]):
-            for j in range(self.gdp_array.shape[2]):
-                f = interp1d(
-                    self.data_time_horizon, self.gdp_array[i, :, j], kind="linear"
-                )
-                interp_data[i, :, j] = f(self.model_time_horizon)
+            # for j in range(self.gdp_array.shape[2]):
+            f = interp1d(
+                self.data_time_horizon, self.gdp_array[i, :], kind="linear"  # , j
+            )
+            interp_data[i, :] = f(self.model_time_horizon)  # , j
 
         self.gdp_array = interp_data
 
@@ -561,18 +555,18 @@ class NeoclassicalEconomyModel:
             (
                 self.population_array.shape[0],
                 len(self.model_time_horizon),
-                self.population_array.shape[2],
+                # self.population_array.shape[2],
             )
         )
 
         for i in range(self.population_array.shape[0]):
-            for j in range(self.population_array.shape[2]):
-                f = interp1d(
-                    self.data_time_horizon,
-                    self.population_array[i, :, j],
-                    kind="linear",
-                )
-                interp_data[i, :, j] = f(self.model_time_horizon)
+            # for j in range(self.population_array.shape[2]):
+            f = interp1d(
+                self.data_time_horizon,
+                self.population_array[i, :],  # , j
+                kind="linear",
+            )
+            interp_data[i, :] = f(self.model_time_horizon)  # , j
 
         self.population_array = interp_data
 
