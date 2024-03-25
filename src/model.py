@@ -80,6 +80,7 @@ class JUSTICE:
         self.region_list = self.data_loader.REGION_LIST
 
         # Set the savings rate and emissions control rate levers
+        # TODO: check if we need this
         self.fixed_savings_rate = np.zeros(
             (
                 len(self.data_loader.REGION_LIST),

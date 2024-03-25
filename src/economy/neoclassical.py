@@ -82,7 +82,6 @@ class NeoclassicalEconomyModel:
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
 
-        # TODO: Remove Later. self.fixed_savings_rate = self._get_fixed_savings_rate(self.data_time_horizon)
         # Initializing the capital and TFP array #TODO: This will be of the same shape as data with 5 year timestep
         self.capital_tfp_data = np.zeros(
             (len(self.region_list), len(self.data_time_horizon))
@@ -107,6 +106,8 @@ class NeoclassicalEconomyModel:
             # Interpolate GDP
             self._interpolate_gdp()
             self._interpolate_population()
+            self._interpolate_tfp()
+            # TODO interpolate maybe Capital too
 
         # Initializing the capital array
         self.capital = np.zeros(
@@ -327,14 +328,14 @@ class NeoclassicalEconomyModel:
         optimal_long_run_savings_rate = self.get_optimal_long_run_savings_rate()
 
         # for i, years in enumerate(set_year):
-        for i in range(len(time_horizon)):
-            t = i + 1  # index starts at 0, so add 1 to get the year
-            if t != 1:  # no need to repeat for the first year
-                next_rate = self.savings_rate_init_arr + (
-                    optimal_long_run_savings_rate - self.savings_rate_init_arr
-                ) * ((t - 1) / (len(time_horizon) - 1))
-                # append to the fixed savings rate array for each year
-                fixed_savings_rate = np.column_stack((fixed_savings_rate, next_rate))
+        for t in range(2, (len(time_horizon) + 1)):
+            # t = i + 1  # index starts at 0, so add 1 to get the year
+            # if t != 1:  # no need to repeat for the first year
+            next_rate = self.savings_rate_init_arr + (
+                optimal_long_run_savings_rate - self.savings_rate_init_arr
+            ) * ((t - 1) / (len(time_horizon) - 1))
+            # append to the fixed savings rate array for each year
+            fixed_savings_rate = np.column_stack((fixed_savings_rate, next_rate))
 
         return fixed_savings_rate
 
@@ -570,6 +571,24 @@ class NeoclassicalEconomyModel:
                 interp_data[i, :, j] = f(self.model_time_horizon)
 
         self.population_array = interp_data
+
+    def _interpolate_tfp(self):
+        interp_data = np.zeros(
+            (
+                self.tfp.shape[0],
+                len(self.model_time_horizon),
+            )
+        )
+
+        for i in range(self.tfp.shape[0]):
+            f = interp1d(
+                self.data_time_horizon,
+                self.tfp[i, :],
+                kind="linear",
+            )
+            interp_data[i, :] = f(self.model_time_horizon)
+
+        self.tfp = interp_data
 
     def calculate_baseline_per_capita_growth(self):
         """
