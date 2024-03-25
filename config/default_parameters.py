@@ -14,7 +14,7 @@ class EconomyDefaults:
             "NEOCLASSICAL": {
                 # Defines the capital elasticity in the production function. #also named gamma and alpha
                 "capital_elasticity_in_production_function": 0.3,
-                # The annual depreciation rate on capital. #abbreviated to dk
+                # The annual depreciation rate on capital. This is yearly, however in RICE50 it is raised to the power of 5 #abbreviated to dk
                 "depreciation_rate_capital": 0.1,
                 # The Elasticity of Output with respect to Capital. #Zeta in paper, not named in code (hardcoded)
                 "elasticity_of_output_to_capital": 0.004,

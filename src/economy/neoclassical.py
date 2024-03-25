@@ -48,6 +48,7 @@ class NeoclassicalEconomyModel:
             "capital_elasticity_in_production_function",
             econ_neoclassical_defaults["capital_elasticity_in_production_function"],
         )
+        # NOTE: Depreciation rate is for every year
         self.depreciation_rate_capital = kwargs.get(
             "depreciation_rate_capital",
             econ_neoclassical_defaults["depreciation_rate_capital"],
@@ -65,6 +66,12 @@ class NeoclassicalEconomyModel:
         self.region_list = input_dataset.REGION_LIST
         self.gdp_array = copy.deepcopy(input_dataset.GDP_ARRAY)
         self.population_array = copy.deepcopy(input_dataset.POPULATION_ARRAY)
+
+        # Assert that the number of scenarios in GDP and Population are the same.
+        assert (
+            self.gdp_array.shape[2] == self.population_array.shape[2]
+        ), "Number of scenarios in GDP and Population are not the same."
+
         # Selecting only the required scenario
         self.gdp_array = self.gdp_array[:, :, self.scenario]
         self.population_array = self.population_array[:, :, self.scenario]
@@ -89,29 +96,18 @@ class NeoclassicalEconomyModel:
             (len(self.region_list), len(self.data_time_horizon))
         )
 
-        # Initializing the investment array #TODO: Can cancel the number of ensembles
-        # self.investment_tfp = np.zeros(
-        #     (len(self.region_list), len(self.model_time_horizon))
-        # )
-        # # Initializing the TFP array #TODO: Can cancel the number of ensembles
-        # self.tfp = np.zeros((len(self.region_list), len(self.model_time_horizon)))
-
         # Calculate the baseline TFP
         self.tfp = self.initialize_tfp(
-            fixed_savings_rate=self._get_fixed_savings_rate(self.data_time_horizon),
+            fixed_savings_rate=self.get_fixed_savings_rate(self.data_time_horizon),
         )
 
         # Check if timestep is not equal to data timestep #If not, then interpolate
 
         if self.timestep != self.data_timestep:
             # Interpolate GDP
-            self._calculate_adjusted_capital_depreciation_rate_exponent()
             self._interpolate_tfp()
             self._interpolate_gdp()
             self._interpolate_population()
-
-            # TODO: adjusted capital growth rate
-            # TODO interpolate maybe Capital too
 
         # Initializing the capital array
         self.capital = np.zeros(
@@ -142,106 +138,49 @@ class NeoclassicalEconomyModel:
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initial 4D array for gdp and population. # TODO: Does it need number of ensembles?
-        self.gdp = np.zeros(
-            (
-                len(self.region_list),
-                len(self.model_time_horizon),
-                self.NUM_OF_ENSEMBLES,
-                self.gdp_array.shape[2],
-            )
-        )
-        # TODO: Does it need number of ensembles?
-        self.population = np.zeros(
-            (
-                len(self.region_list),
-                len(self.model_time_horizon),
-                self.NUM_OF_ENSEMBLES,
-                self.population_array.shape[2],
-            )
-        )
-
         # Initializing the 4D array for baseline per capita growth
         self.baseline_per_capita_growth = np.zeros(
             (
                 len(self.region_list),
                 len(self.model_time_horizon),
                 self.NUM_OF_ENSEMBLES,
-                self.population_array.shape[2],
             )
         )
-        # Assert that the number of scenarios in GDP and Population are the same.
-        assert (
-            self.gdp_array.shape[2] == self.population_array.shape[2]
-        ), "Number of scenarios in GDP and Population are not the same."
-
-        # Loop through the scenarios to broadcast each one to the ensemble dimension.
-        for idx in range(self.gdp_array.shape[2]):
-            self.gdp[:, :, :, idx] = np.broadcast_to(
-                self.gdp_array[:, :, idx, np.newaxis],
-                (
-                    self.gdp_array.shape[0],
-                    self.gdp_array.shape[1],
-                    self.NUM_OF_ENSEMBLES,
-                ),
-            )
-            self.population[:, :, :, idx] = np.broadcast_to(
-                self.population_array[:, :, idx, np.newaxis],
-                (
-                    self.population_array.shape[0],
-                    self.population_array.shape[1],
-                    self.NUM_OF_ENSEMBLES,
-                ),
-            )
 
         # Calculate the baseline per capita growth #TODO to be used in the complex version of Damage Function
         # self.calculate_baseline_per_capita_growth()
 
-    def run(self, timestep, savings_rate):  # **kwargs
-        # scenario = get_economic_scenario(scenario)
+    def run(self, timestep, savings_rate):
         # TODO: Check savings rate shape for 2D or 3D
         # Reshaping savings rate
         if len(savings_rate.shape) == 1:
             savings_rate = savings_rate.reshape(-1, 1)
 
         if timestep == 0:
-            self.investment[:, 0, :] = (
-                self.savings_rate_init_arr * self.gdp[:, 0, :, self.scenario]
-            )
+            self.investment[:, 0, :] = self.savings_rate_init_arr * self.gdp_array[
+                :, 0
+            ].reshape(-1, 1)
 
             # Initalize capital tfp
-            self.capital_tfp[:, 0, :] = self.capital_init_arr * self.mer_to_ppp
-
-            # Calculate the TFP
-            self._calculate_tfp(timestep, self.scenario)
+            self.capital[:, 0, :] = self.capital_init_arr * self.mer_to_ppp
 
             # Calculate the Output
-            self._calculate_output(timestep, self.scenario)
+            self._calculate_output(timestep)
 
         else:
             # Calculate the investment_tfp
-            self.investment_tfp[:, timestep, :] = (
-                savings_rate * self.gdp[:, timestep, :, self.scenario]
-            )
+            self.investment[:, timestep, :] = savings_rate * self.gdp_array[
+                :, timestep
+            ].reshape(-1, 1)
 
             # Calculate capital_tfp
-
-            self.capital_tfp[:, timestep, :] = self.capital_tfp[
-                :, timestep - 1, :
-            ] * np.power(
+            self.capital[:, timestep, :] = self.capital[:, timestep - 1, :] * np.power(
                 (1 - self.depreciation_rate_capital),
-                (self.timestep / self.data_timestep),
-            ) + self.investment_tfp[
-                :, timestep - 1, :
-            ] * (
-                (self.timestep / self.data_timestep)
-            )
-
-            # Calculate the TFP
-            self._calculate_tfp(timestep, self.scenario)
+                (self.timestep),
+            ) + self.investment[:, timestep - 1, :] * ((self.timestep))
 
             # Calculate the Output based on gross output
-            self._calculate_output(timestep, self.scenario)
+            self._calculate_output(timestep)
 
         return self.gross_output[:, timestep, :]
 
@@ -268,7 +207,7 @@ class NeoclassicalEconomyModel:
         This method initializes the TFP.
         """
         # Calculate the investment_tfp
-        investment_tfp = fixed_savings_rate * self.gdp_array  # [:, :, scenario]
+        investment_tfp = fixed_savings_rate * self.gdp_array
 
         self.capital_tfp_data[:, 0] = (self.capital_init_arr * self.mer_to_ppp).reshape(
             -1
@@ -288,9 +227,9 @@ class NeoclassicalEconomyModel:
             )
 
         # Calculate the TFP
-        tfp = self.gdp_array / (  # [:, :, scenario]
+        tfp = self.gdp_array / (
             np.power(
-                (self.population_array / 1000),  # [:, :, scenario]
+                (self.population_array / 1000),
                 (1 - self.capital_elasticity_in_production_function),
             )
             * np.power(
@@ -301,7 +240,7 @@ class NeoclassicalEconomyModel:
 
         return tfp
 
-    def _get_fixed_savings_rate(self, time_horizon):
+    def get_fixed_savings_rate(self, time_horizon):
         """
         This method returns the fixed savings rate. It takes the intial savings rate and increases
         it linearly to the optimal long run savings rate.
@@ -316,8 +255,6 @@ class NeoclassicalEconomyModel:
 
         # for i, years in enumerate(set_year):
         for t in range(2, (len(time_horizon) + 1)):
-            # t = i + 1  # index starts at 0, so add 1 to get the year
-            # if t != 1:  # no need to repeat for the first year
             next_rate = self.savings_rate_init_arr + (
                 optimal_long_run_savings_rate - self.savings_rate_init_arr
             ) * ((t - 1) / (len(time_horizon) - 1))
@@ -325,19 +262,6 @@ class NeoclassicalEconomyModel:
             fixed_savings_rate = np.column_stack((fixed_savings_rate, next_rate))
 
         return fixed_savings_rate
-
-    def _calculate_tfp(self, timestep, scenario):
-        # Calculate the TFP
-        self.tfp[:, timestep, :] = self.gdp[:, timestep, :, scenario] / (
-            np.power(
-                (self.population[:, timestep, :, scenario] / 1000),
-                (1 - self.capital_elasticity_in_production_function),
-            )
-            * np.power(
-                self.capital_tfp[:, timestep, :],
-                self.capital_elasticity_in_production_function,
-            )
-        )
 
     # TODO
     def _calculate_investment():
@@ -347,16 +271,16 @@ class NeoclassicalEconomyModel:
     def _calculate_capital():
         pass
 
-    def _calculate_output(self, timestep, scenario):
+    def _calculate_output(self, timestep):
         # Calculate the Output based on gross output
 
-        self.gross_output[:, timestep, :] = self.tfp[:, timestep, :] * (
+        self.gross_output[:, timestep, :] = self.tfp[:, timestep, np.newaxis] * (
             np.power(
-                self.capital_tfp[:, timestep, :],
+                self.capital[:, timestep, :],
                 self.capital_elasticity_in_production_function,
             )
             * np.power(
-                (self.population[:, timestep, :, scenario] / 1000),
+                (self.population_array[:, timestep, np.newaxis] / 1000),
                 (1 - self.capital_elasticity_in_production_function),
             )
         )
@@ -386,6 +310,7 @@ class NeoclassicalEconomyModel:
             self.gross_output[:, timestep, :] - self.abatement[:, timestep, :]
         )
 
+    # TODO: fix this
     def calculate_consumption(self, savings_rate):  # Validated
         """
         This method calculates the consumption.
@@ -399,6 +324,7 @@ class NeoclassicalEconomyModel:
 
         return consumption
 
+    # TODO: fix this
     def calculate_consumption_per_timestep(self, savings_rate, timestep):  #
         """
         This method calculates the consumption per timestep.
@@ -412,6 +338,7 @@ class NeoclassicalEconomyModel:
 
         return consumption_per_timestep
 
+    # TODO: fix this
     def get_consumption_per_capita_per_timestep(self, scenario, savings_rate, timestep):
         scenario = get_economic_scenario(scenario)
         consumption_per_timestep = self.calculate_consumption_per_timestep(
@@ -422,33 +349,6 @@ class NeoclassicalEconomyModel:
         )
 
         return consumption_per_capita_per_timestep
-
-    def calculate_social_cost_of_carbon(
-        self, fossil_and_land_use_emissions, savings_rate, regional=True
-    ):
-        """
-        This method calculates the social cost of carbon.
-        """
-        # TODO: Calculations are currently not correct. Need to fix it.
-
-        # total_emissions = emissions + land_use_emissions
-        # print("Total Emissions", fossil_and_land_use_emissions.shape)
-
-        consumption = self.calculate_consumption(savings_rate)
-        # print("consumption", consumption.shape)
-
-        # Calculate the social cost of carbon
-        #  scc[t, n] = (-1000 * eq_E[t, n]) / eq_cc[t, n]
-
-        emissions_marginal = np.diff(fossil_and_land_use_emissions, axis=1)
-        consumption_marginal = np.diff(consumption, axis=1)
-
-        # print("emissions_marginal", emissions_marginal[0, 0, 0])
-        # print("consumption_marginal", consumption_marginal[0, 0, 0])
-
-        social_cost_of_carbon = (emissions_marginal / consumption_marginal) * -1000
-
-        return social_cost_of_carbon
 
     def get_net_output(self):
         return self.net_output
@@ -462,10 +362,20 @@ class NeoclassicalEconomyModel:
     def get_damages(self):
         return self.damage
 
-    # TODO: Need to update
-    def get_population(self, scenario):
-        scenario = get_economic_scenario(scenario)
-        return self.population[:, :, :, scenario]
+    def get_population(self):
+
+        population = self.population_array
+        # Convert population to 3D by broadcasting across climate ensembles
+        population = population[:, :, np.newaxis]
+        population = np.broadcast_to(
+            population,
+            (
+                population.shape[0],
+                population.shape[1],
+                self.NUM_OF_ENSEMBLES,
+            ),
+        )
+        return population
 
     # TODO: Need to update
     def get_consumption_per_capita(self, scenario, savings_rate):
@@ -474,63 +384,6 @@ class NeoclassicalEconomyModel:
         consumption_per_capita = 1e3 * consumption / self.population[:, :, :, scenario]
 
         return consumption_per_capita
-
-    # TODO: Need to update
-    def get_capital_stock(self, scenario, savings_rate):
-        """
-        This method returns the capital stock.
-        """
-
-        scenario = get_economic_scenario(scenario)
-        # Reshape savings rate from 2D to 3D
-        savings_rate = savings_rate[:, :, np.newaxis]
-
-        investment = savings_rate * self.gross_output
-        capital_stock = np.zeros(
-            (
-                len(self.region_list),
-                len(self.model_time_horizon),
-                self.NUM_OF_ENSEMBLES,
-            )
-        )
-
-        # Setting the initial capital stock
-        capital_stock[:, 1, :] = self.capital_tfp[:, 0, :]
-        # print(capital_stock[0, 1, 0])
-
-        for t in range(2, len(self.model_time_horizon)):
-            capital_stock[:, t, :] = (
-                capital_stock[:, t - 1, :]
-                * (
-                    (1 - (self.depreciation_rate_capital / self.data_timestep))
-                    ** self.data_timestep
-                )
-            ) + (investment[:, t - 1, :] * self.timestep)
-
-        return capital_stock
-
-    def get_interest_rate(
-        self,
-        scenario,
-        savings_rate,
-        pure_rate_of_social_time_preference,
-        elasticity_of_marginal_utility_of_consumption,
-    ):
-        """
-        This method returns the interest rate.
-        """
-
-        consumption_per_capita = self.get_consumption_per_capita(
-            scenario=scenario, savings_rate=savings_rate
-        )
-
-        interest_rate = (
-            (1 + pure_rate_of_social_time_preference)
-            * (consumption_per_capita[:, 1:, :] / consumption_per_capita[:, :-1, :])
-            ** (elasticity_of_marginal_utility_of_consumption / self.timestep)
-        ) - 1
-
-        return interest_rate
 
     def _interpolate_gdp(self):
         interp_data = np.zeros(
@@ -588,33 +441,53 @@ class NeoclassicalEconomyModel:
 
         self.tfp = interp_data
 
-    def _calculate_adjusted_capital_depreciation_rate_exponent(self):
-        """
-        This method calculates the adjusted depreciation rate.
-        """
-        # Calculate the adjusted depreciation rate
-        self.adjusted_capital_depreciation_rate_exponent = math.log(
-            (np.power((1 - self.depreciation_rate_capital), self.data_timestep))
-            / self.data_timestep
-        ) / math.log((1 - self.depreciation_rate_capital))
+    # NOTE: Not implemented yet
+    # def calculate_baseline_per_capita_growth(self):
+    #     """
+    #     This method calculates the baseline per capita growth.
+    #     """
+    #     # TODO : needs modification after change of gdp 4D array
+    #     # Calculate the baseline per capita growth
+    #     self.baseline_per_capita_growth = self.gdp / self.population
 
-    def calculate_baseline_per_capita_growth(self):
-        """
-        This method calculates the baseline per capita growth.
-        """
-        # Calculate the baseline per capita growth
-        self.baseline_per_capita_growth = self.gdp / self.population
+    #     # Divide all t+1 timestep by preceding timestep
+    #     self.baseline_per_capita_growth[:, 1:, :, :] /= self.baseline_per_capita_growth[
+    #         :, :-1, :, :
+    #     ]
+    #     # Take the power of 1/timestep and subtract 1
+    #     self.baseline_per_capita_growth **= 1 / self.timestep
+    #     self.baseline_per_capita_growth -= 1
 
-        # Divide all t+1 timestep by preceding timestep
-        self.baseline_per_capita_growth[:, 1:, :, :] /= self.baseline_per_capita_growth[
-            :, :-1, :, :
-        ]
-        # Take the power of 1/timestep and subtract 1
-        self.baseline_per_capita_growth **= 1 / self.timestep
-        self.baseline_per_capita_growth -= 1
+    #     # Set the first timestep to zero
+    #     self.baseline_per_capita_growth[:, 0, :, :] = 0
 
-        # Set the first timestep to zero
-        self.baseline_per_capita_growth[:, 0, :, :] = 0
+    # NOTE: Not implemented yet
+    # def calculate_social_cost_of_carbon(
+    #     self, fossil_and_land_use_emissions, savings_rate, regional=True
+    # ):
+    #     """
+    #     This method calculates the social cost of carbon.
+    #     """
+    #     # TODO: Calculations are currently not correct. Need to fix it.
+
+    #     # total_emissions = emissions + land_use_emissions
+    #     # print("Total Emissions", fossil_and_land_use_emissions.shape)
+
+    #     consumption = self.calculate_consumption(savings_rate)
+    #     # print("consumption", consumption.shape)
+
+    #     # Calculate the social cost of carbon
+    #     #  scc[t, n] = (-1000 * eq_E[t, n]) / eq_cc[t, n]
+
+    #     emissions_marginal = np.diff(fossil_and_land_use_emissions, axis=1)
+    #     consumption_marginal = np.diff(consumption, axis=1)
+
+    #     # print("emissions_marginal", emissions_marginal[0, 0, 0])
+    #     # print("consumption_marginal", consumption_marginal[0, 0, 0])
+
+    #     social_cost_of_carbon = (emissions_marginal / consumption_marginal) * -1000
+
+    #     return social_cost_of_carbon
 
     def __getattribute__(self, __name: str) -> Any:
         """

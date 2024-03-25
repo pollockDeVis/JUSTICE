@@ -165,13 +165,16 @@ class JUSTICE:
         self.welfare_function = Utilitarian(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
-            population=self.economy.get_population(scenario=self.scenario),
+            population=self.economy.get_population(),
             elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
             pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
             inequality_aversion=self.inequality_aversion,
         )
-        # NOTE : FIX THIS QUICKLY
-        self.fixed_savings_rate = 0  # TODO: This should happen in economy self.economy._get_fixed_savings_rate()
+
+        # Get the fixed savings rate for model time horizon
+        self.fixed_savings_rate = self.economy.get_fixed_savings_rate(
+            self.time_horizon.model_time_horizon
+        )
 
         # Create a data dictionary to store the data
         self.data = {
@@ -439,7 +442,6 @@ class JUSTICE:
             Main loop of the model. This loop runs the model for each timestep.
             """
             gross_output = self.economy.run(
-                # scenario=self.scenario,
                 timestep=timestep,
                 savings_rate=self.savings_rate[:, timestep],
             )
