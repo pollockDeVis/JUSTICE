@@ -6,7 +6,6 @@ from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
 import copy
-import math
 
 
 from config.default_parameters import EconomyDefaults
@@ -138,16 +137,15 @@ class NeoclassicalEconomyModel:
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initializing the 4D array for baseline per capita growth
-        self.baseline_per_capita_growth = np.zeros(
-            (
-                len(self.region_list),
-                len(self.model_time_horizon),
-                self.NUM_OF_ENSEMBLES,
-            )
-        )
-
         # Calculate the baseline per capita growth #TODO to be used in the complex version of Damage Function
+        # Initializing the 4D array for baseline per capita growth
+        # self.baseline_per_capita_growth = np.zeros(
+        #     (
+        #         len(self.region_list),
+        #         len(self.model_time_horizon),
+        #         self.NUM_OF_ENSEMBLES,
+        #     )
+        # )
         # self.calculate_baseline_per_capita_growth()
 
     def run(self, timestep, savings_rate):
@@ -156,30 +154,19 @@ class NeoclassicalEconomyModel:
         if len(savings_rate.shape) == 1:
             savings_rate = savings_rate.reshape(-1, 1)
 
-        if timestep == 0:
-            self.investment[:, 0, :] = self.savings_rate_init_arr * self.gdp_array[
-                :, 0
-            ].reshape(-1, 1)
+        if timestep == 0:  # Initialize the capital and investment
 
-            # Initalize capital tfp
-            self.capital[:, 0, :] = self.capital_init_arr * self.mer_to_ppp
+            # Initialize the investment
+            self._calculate_investment(timestep, savings_rate)
+
+            # Initialize the capital
+            self._calculate_capital(timestep)
 
             # Calculate the Output
             self._calculate_output(timestep)
 
         else:
-            # Calculate the investment_tfp
-            self.investment[:, timestep, :] = savings_rate * self.gdp_array[
-                :, timestep
-            ].reshape(-1, 1)
-
-            # Calculate capital_tfp
-            self.capital[:, timestep, :] = self.capital[:, timestep - 1, :] * np.power(
-                (1 - self.depreciation_rate_capital),
-                (self.timestep),
-            ) + self.investment[:, timestep - 1, :] * ((self.timestep))
-
-            # Calculate the Output based on gross output
+            # Calculate the gross output
             self._calculate_output(timestep)
 
         return self.gross_output[:, timestep, :]
@@ -264,15 +251,53 @@ class NeoclassicalEconomyModel:
         return fixed_savings_rate
 
     # TODO
-    def _calculate_investment():
-        pass
+    def _calculate_investment(self, timestep, savings_rate):
+        if len(savings_rate.shape) == 1:
+            savings_rate = savings_rate.reshape(-1, 1)
+
+        if timestep == 0:
+            self.investment[:, timestep, :] = (
+                self.savings_rate_init_arr * self.gdp_array[:, timestep].reshape(-1, 1)
+            )
+        else:
+            self.investment[:, timestep, :] = (
+                savings_rate * self.net_output[:, timestep, :]
+            )
 
     # TODO
-    def _calculate_capital():
-        pass
+    def _calculate_capital(self, timestep):  # Capital is calculated one timestep ahead
+        if timestep <= len(self.model_time_horizon):
+            if timestep == 0:
+                # Initalize capital tfp
+                self.capital[:, timestep, :] = self.capital_init_arr * self.mer_to_ppp
+
+                self.capital[:, timestep + 1, :] = self.capital[
+                    :, timestep, :
+                ] * np.power(
+                    (1 - self.depreciation_rate_capital),
+                    (self.timestep),
+                ) + self.investment[
+                    :, timestep, :
+                ] * (
+                    (self.timestep)
+                )
+            else:
+                # Calculate capital
+                self.capital[:, timestep + 1, :] = self.capital[
+                    :, timestep, :
+                ] * np.power(
+                    (1 - self.depreciation_rate_capital),
+                    (self.timestep),
+                ) + self.investment[
+                    :, timestep, :
+                ] * (
+                    (self.timestep)
+                )
 
     def _calculate_output(self, timestep):
         # Calculate the Output based on gross output
+        tfp = self.tfp[:, timestep, np.newaxis]
+        population = self.population_array[:, timestep, np.newaxis] / 1000
 
         self.gross_output[:, timestep, :] = self.tfp[:, timestep, np.newaxis] * (
             np.power(
@@ -284,6 +309,8 @@ class NeoclassicalEconomyModel:
                 (1 - self.capital_elasticity_in_production_function),
             )
         )
+        # Setting net output to gross output before any damage or abatement
+        self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
 
     def apply_damage_to_output(self, timestep, damage_fraction):
         """
@@ -296,9 +323,7 @@ class NeoclassicalEconomyModel:
             self.gross_output[:, timestep, :] * damage_fraction
         )
 
-        self.net_output[:, timestep, :] = (
-            self.gross_output[:, timestep, :] - self.damage[:, timestep, :]
-        )
+        self.net_output[:, timestep, :] -= self.damage[:, timestep, :]
 
     def apply_abatement_to_output(self, timestep, abatement):
         """
@@ -306,9 +331,18 @@ class NeoclassicalEconomyModel:
         """
         self.abatement[:, timestep, :] = abatement
 
-        self.net_output[:, timestep, :] = (
-            self.gross_output[:, timestep, :] - self.abatement[:, timestep, :]
-        )
+        self.net_output[:, timestep, :] -= self.abatement[:, timestep, :]
+
+    def calculate_capital_and_investment_net_output(self, timestep, savings_rate):
+        """
+        This method calculates the capital and investment.
+        """
+
+        # Calculate the investment
+        self._calculate_investment(timestep, savings_rate)
+
+        # Calculate the capital
+        self._calculate_capital(timestep)
 
     # TODO: fix this
     def calculate_consumption(self, savings_rate):  # Validated

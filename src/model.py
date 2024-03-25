@@ -509,6 +509,13 @@ class JUSTICE:
                     abatement=abatement_cost,
                 )
 
+                # Trigger the Investment & Capital Calculation
+                # NOTE This is necessary to calculate the capital and investment for the next timestep
+                # It closes the loop of the economy model
+                self.economy.calculate_capital_and_investment_net_output(
+                    timestep, self.savings_rate[:, timestep]
+                )
+
                 # Store the net economic output for the timestep
                 self.data["net_economic_output"][:, timestep, :] = (
                     self.economy.get_net_output_by_timestep(timestep)
