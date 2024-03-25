@@ -6,6 +6,7 @@ from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
 import copy
+import math
 
 
 from config.default_parameters import EconomyDefaults
@@ -104,9 +105,12 @@ class NeoclassicalEconomyModel:
 
         if self.timestep != self.data_timestep:
             # Interpolate GDP
+            self._calculate_adjusted_capital_depreciation_rate_exponent()
+            self._interpolate_tfp()
             self._interpolate_gdp()
             self._interpolate_population()
-            self._interpolate_tfp()
+
+            # TODO: adjusted capital growth rate
             # TODO interpolate maybe Capital too
 
         # Initializing the capital array
@@ -589,6 +593,16 @@ class NeoclassicalEconomyModel:
             interp_data[i, :] = f(self.model_time_horizon)
 
         self.tfp = interp_data
+
+    def _calculate_adjusted_capital_depreciation_rate_exponent(self):
+        """
+        This method calculates the adjusted depreciation rate.
+        """
+        # Calculate the adjusted depreciation rate
+        self.adjusted_capital_depreciation_rate_exponent = math.log(
+            (np.power((1 - self.depreciation_rate_capital), self.data_timestep))
+            / self.data_timestep
+        ) / math.log((1 - self.depreciation_rate_capital))
 
     def calculate_baseline_per_capita_growth(self):
         """
