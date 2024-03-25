@@ -259,7 +259,6 @@ class JUSTICE:
             "welfare_utilitarian": np.zeros((self.no_of_ensembles,)),
         }
 
-    print("         OK")
 
     def __getattribute__(self, __name: str) -> Any:
         """

@@ -80,7 +80,7 @@ class JusticeProjection(JUSTICE):
         # if self.economy_type == Economy.NEOCLASSICAL:
         self.economy = copy.deepcopy(justice.economy)
 
-        self.emissions = justice.emissions
+        self.emissions = copy.deepcopy(justice.emissions)
 
         # Create a data dictionary to store the data
         self.data = {
@@ -170,19 +170,5 @@ class JusticeProjection(JUSTICE):
                 )
             ),
             "welfare_utilitarian": np.zeros((self.no_of_ensembles,)),
-            "emission_cutting_rate": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
-                )
-            ),
-            "opinion_share": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
-                )
-            ),
         }
 

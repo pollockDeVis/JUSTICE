@@ -17,7 +17,7 @@ class AbmJustice(JUSTICE):
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=WelfareFunction.UTILITARIAN,
-        seed=0,
+        seed=None,
         **kwargs,
     ):
         # INSTANTIATE JUSTICE MODULE
@@ -55,7 +55,7 @@ class AbmJustice(JUSTICE):
             **kwargs,
         )
 
-        self.information_model.generate_information(self, self.emission_control_rate)
+        self.information_model.generate_information()
         print("      OK")
         print("--> ABM-JUSTICE MODEL INSTANTIATED: OK")
 
@@ -69,10 +69,10 @@ class AbmJustice(JUSTICE):
         self.two_levels_game.step(timestep)
         emission_control_rate = self.emission_control_rate[:, timestep]
         self.stepwise_run(
-            emission_control_rate,
-            timestep,
-            savings_rate=None,
-            endogenous_savings_rate=False,
+            emission_control_rate=emission_control_rate,
+            timestep=timestep,
+            savings_rate=savings_rate,
+            endogenous_savings_rate=endogenous_savings_rate,
         )
 
     def close_files(self):

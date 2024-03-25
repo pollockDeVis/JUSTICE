@@ -32,7 +32,7 @@ for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
 
 
 
-scenarios = 2
+scenarios = 7
 model = AbmJustice(
     start_year=2015,  # Model is only tested for start year 2015
     end_year=2300,  # Model is only tested for end year 2300
@@ -46,8 +46,7 @@ model = AbmJustice(
     # Declaring for endogenous fixed savings rate
     elasticity_of_marginal_utility_of_consumption=1.45,
     pure_rate_of_social_time_preference=0.015,
-    inequality_aversion=0,
-    seed=0,
+    seed=None,
 )
 
 

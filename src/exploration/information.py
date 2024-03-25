@@ -62,20 +62,18 @@ class Information:
             [[] for i in range(Household.N_CLIMATE_BELIEFS)] for r in range(57)
         ]
         # Estimations of future temperature elevation (ground) at local scale at future years BELIEF_YEAR_OFFSET
-        # TODO APN:m 57 is the number of regions: use global var or get from JUSTICE model
+        # TODO APN: 57 is the number of regions: use global var or get from JUSTICE model
 
     def step(self, timestep):
 
         # TODO APN: don't use timestep as it may not correspond 1::1 to a year increment
         if timestep % self.IPCC_report_period == 0:
-            self.generate_information(
-                self.justice_model, self.justice_model.emission_control_rate
-            )
+            self.generate_information()
         self.construct_flsi(timestep)
 
         return
 
-    def generate_information(self, justice_model, emissions_control_rate):
+    def generate_information(self):
         """
         Take into account a JUSTICE model and future emissions control rate for all regions.
         Return the full set of data for the execution of the JUSTICE model under these conditions.
@@ -98,9 +96,9 @@ class Information:
         # information_model = JUSTICE()
         print("      -> RUNNING PROJECTION MODEL")
         information_model = JusticeProjection(self.justice_model)
-        # TODO possibility to override deepcopy function to only deepcopy what matters to me (the remaining staying linked to the original)
         information_model.run(
-            emission_control_rate=emissions_control_rate, endogenous_savings_rate=True
+            emission_control_rate=self.justice_model.emission_control_rate,
+            endogenous_savings_rate=True
         )
         datasets = (
             information_model.evaluate()
@@ -114,6 +112,7 @@ class Information:
             "C!)",
         )
 
+        #print(datasets["consumption_per_capita"])
         return
 
     def generate_climate_information(self, g_temp, l_temp):
