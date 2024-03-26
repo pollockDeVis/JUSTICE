@@ -349,12 +349,13 @@ class NeoclassicalEconomyModel:
         """
         This method calculates the consumption.
         """
-        # TODO: Should be net output
+        # TODO: Check shape of savings rate
+
         # Reshape savings rate from 2D to 3D
         savings_rate = savings_rate[:, :, np.newaxis]
 
-        investment = savings_rate * self.gross_output
-        consumption = self.gross_output - investment
+        investment = savings_rate * self.net_output
+        consumption = self.net_output - investment
 
         return consumption
 
@@ -367,19 +368,21 @@ class NeoclassicalEconomyModel:
         # Reshape savings rate from 1D to 2D
         savings_rate = savings_rate[:, np.newaxis]
 
-        investment = savings_rate * self.gross_output[:, timestep, :]
-        consumption_per_timestep = self.gross_output[:, timestep, :] - investment
+        investment = savings_rate * self.net_output[:, timestep, :]
+        consumption_per_timestep = self.net_output[:, timestep, :] - investment
 
         return consumption_per_timestep
 
     # TODO: fix this
-    def get_consumption_per_capita_per_timestep(self, scenario, savings_rate, timestep):
+    def get_consumption_per_capita_per_timestep(self, savings_rate, timestep):
         scenario = get_economic_scenario(scenario)
         consumption_per_timestep = self.calculate_consumption_per_timestep(
             savings_rate, timestep
         )
         consumption_per_capita_per_timestep = (
-            1e3 * consumption_per_timestep / self.population[:, timestep, :, scenario]
+            1e3
+            * consumption_per_timestep
+            / self.population_array[:, timestep]  # TODO: Need to fix indexing
         )
 
         return consumption_per_capita_per_timestep
@@ -412,10 +415,11 @@ class NeoclassicalEconomyModel:
         return population
 
     # TODO: Need to update
-    def get_consumption_per_capita(self, scenario, savings_rate):
-        scenario = get_economic_scenario(scenario)
+    def get_consumption_per_capita(self, savings_rate):
         consumption = self.calculate_consumption(savings_rate)
-        consumption_per_capita = 1e3 * consumption / self.population[:, :, :, scenario]
+        consumption_per_capita = (
+            1e3 * consumption / self.population_array[:, :, np.newaxis]
+        )
 
         return consumption_per_capita
 

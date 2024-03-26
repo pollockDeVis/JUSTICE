@@ -411,7 +411,7 @@ class JUSTICE:
         )
         self.data["consumption_per_capita"][:, timestep, :] = (
             self.economy.get_consumption_per_capita_per_timestep(
-                self.scenario, self.savings_rate[:, timestep], timestep
+                self.savings_rate[:, timestep], timestep
             )
         )
 
@@ -492,6 +492,8 @@ class JUSTICE:
                 #     emission_control_rate=self.emissions_control_rate[:, timestep],
                 # )
 
+                # TODO: Couple all these functions together in one method
+
                 self.economy.apply_damage_to_output(
                     timestep=timestep,
                     damage_fraction=damage_fraction,
@@ -549,7 +551,6 @@ class JUSTICE:
             savings_rate=self.savings_rate
         )
         self.data["consumption_per_capita"] = self.economy.get_consumption_per_capita(
-            scenario=self.scenario,
             savings_rate=self.savings_rate,
         )
 
