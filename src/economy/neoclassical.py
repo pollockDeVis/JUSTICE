@@ -250,7 +250,6 @@ class NeoclassicalEconomyModel:
 
         return fixed_savings_rate
 
-    # TODO
     def _calculate_investment(self, timestep, savings_rate):
         if len(savings_rate.shape) == 1:
             savings_rate = savings_rate.reshape(-1, 1)
@@ -264,7 +263,6 @@ class NeoclassicalEconomyModel:
                 savings_rate * self.net_output[:, timestep, :]
             )
 
-    # TODO
     def _calculate_capital(self, timestep):  # Capital is calculated one timestep ahead
         if timestep <= len(self.model_time_horizon):
             if timestep == 0:
