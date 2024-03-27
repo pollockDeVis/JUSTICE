@@ -92,7 +92,7 @@ class JusticeEnv(ParallelEnv):
         return Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(OBSERVATIONS + GLOBAL_OBSERVATIONS),),
+            shape=(len(OBSERVATIONS + GLOBAL_OBSERVATIONS + self.possible_agents),),
             dtype=np.float32,
         )
 
@@ -127,18 +127,18 @@ class JusticeEnv(ParallelEnv):
         data = self.model.stepwise_evaluate(timestep=self.timestep)
 
         infos = {agent: {} for agent in self.agents}
-        obs = self.generate_observations(data)
+        obs = self.generate_observations(data, np.zeros(len(self.agents)))
         return obs, infos
     
     def generate_reward(self, vector):
         rews = np.full((self.num_agents,), vector[self.timestep, 0], dtype=np.float32)
         return rews
 
-    def generate_observations(self, data):
+    def generate_observations(self, data, emissions_rates):
         global_obs = np.array([data[key][self.timestep, 0] for key in GLOBAL_OBSERVATIONS], dtype=np.float32)
         local_obs = np.array([data[key][:, self.timestep, 0] for key in OBSERVATIONS], dtype=np.float32).T
 
-        obs = {agent: np.concatenate((local_obs[i], global_obs)) for i, agent in enumerate(self.agents)}
+        obs = {agent: np.concatenate((local_obs[i], global_obs, emissions_rates)) for i, agent in enumerate(self.agents)}
 
         return obs
 
@@ -162,7 +162,7 @@ class JusticeEnv(ParallelEnv):
 
         data = self.model.stepwise_evaluate(timestep=self.timestep)
 
-        obs = self.generate_observations(data)
+        obs = self.generate_observations(data, emissions_rate)
 
         done = self.start_year + self.timestep >= self.end_year
         truncated = {agent: done for agent in self.agents}
