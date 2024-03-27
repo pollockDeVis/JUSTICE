@@ -80,7 +80,7 @@ class AbatementEnerdata:
 
         if self.timestep != self.data_timestep:
             # Interpolate GDP
-            self._interpolate_coefficients()
+            self._interpolate_coefficients()  # Validated for coefficients A and B
             # Interpolate Emissions
             self._interpolate_emissions()  # Validated
 
@@ -89,18 +89,26 @@ class AbatementEnerdata:
         # Backstop Calculation
 
         if self.timestep != self.data_timestep:
-            backstop_cost_decline_rate = np.power(
-                1 - self.backstop_cost_decline_rate_per_5_year, 1 / self.data_timestep
-            )
-        else:
-            backstop_cost_decline_rate = 1 - self.backstop_cost_decline_rate_per_5_year
 
-        # This is pbacktime in RICE50
+            # Convert the 5 year rate to the timestep rate by decompounding
+
+            self.backstop_cost_decline_rate = np.power(
+                (1 - self.backstop_cost_decline_rate_per_5_year),
+                1 / self.data_timestep,
+            )
+
+        else:
+            self.backstop_cost_decline_rate = (
+                1 - self.backstop_cost_decline_rate_per_5_year
+            )
+
+        # This is pbacktime in RICE50 #Validated
         global_backstop_cost_curve = self.backstop_cost * np.power(
-            backstop_cost_decline_rate, np.arange(len(self.model_time_horizon))
+            self.backstop_cost_decline_rate,
+            np.arange(len(self.model_time_horizon)),
         )
 
-        # Calculate calibrated_correction_multiplier
+        # Calculate calibrated_correction_multiplier #Mxpback in RICE50 #Validated
         calibrated_correction_multiplier = global_backstop_cost_curve[np.newaxis, :] / (
             self.abatement_coefficient_a + self.abatement_coefficient_b
         )
@@ -110,6 +118,7 @@ class AbatementEnerdata:
             (len(self.region_list), len(self.model_time_horizon)),
             self.calibrated_correction_multiplier_starting_value,
         )
+        # Validated # Mxdiff in RICE50
         multiplier_difference = np.maximum(
             calibrated_correction_multiplier_starting_value_arr
             - calibrated_correction_multiplier,
@@ -146,6 +155,7 @@ class AbatementEnerdata:
             )
         )
 
+        # Validated #mx in RICE50
         self.coefficient_multiplier = (
             calibrated_correction_multiplier_starting_value_arr
             - multiplier_difference * transition_coefficient
@@ -167,23 +177,25 @@ class AbatementEnerdata:
         @return: abatement [Trill 2005 USD / year]
         """
         # Get economic scenario
-        scenario = get_economic_scenario(scenario)
+        scenario = get_economic_scenario(
+            scenario
+        )  # TODO: do this during initialization
 
         # Calculate abatement
         abatement_cost = (
             self.coefficient_multiplier[:, timestep, np.newaxis]
             * (
                 self.abatement_coefficient_a[:, timestep, np.newaxis]
-                * ((np.power(emission_control_rate, 2)) / 2)  # [:, np.newaxis]
+                * ((np.power(emission_control_rate, 2)) / 2)
                 + self.abatement_coefficient_b[:, timestep, np.newaxis]
-                * ((np.power(emission_control_rate, 5)) / 5)  # [:, np.newaxis]
+                * ((np.power(emission_control_rate, 5)) / 5)
             )
             * (
                 self.emissions_array_business_as_usual[
                     :, timestep, scenario, np.newaxis
                 ]
                 / 1000
-            )  #   Conversion:  [ G$ ] / 1000 -> [Trill $] #TODO: Check if this should be BAU emissions
+            )  #   Conversion:  [ G$ ] / 1000 -> [Trill $]
         )
         return abatement_cost
 
