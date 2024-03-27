@@ -292,6 +292,11 @@ class NeoclassicalEconomyModel:
                     (self.timestep)
                 )
 
+            # Check if any element is negative in capital
+            # Need to do this because capital can negative with very high abatement rates leading to
+            # propagation of nan values in gross output, net output, consumption and utility
+            self.capital = np.where(self.capital < 0, 0, self.capital)
+
     def _calculate_output(self, timestep):
         # Calculate the Output based on gross output
 
@@ -340,7 +345,6 @@ class NeoclassicalEconomyModel:
         # Calculate the capital
         self._calculate_capital(timestep)
 
-    # TODO: fix this
     def calculate_consumption(self, savings_rate):  # Validated
         """
         This method calculates the consumption.

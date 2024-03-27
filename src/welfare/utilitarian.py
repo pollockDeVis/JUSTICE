@@ -69,6 +69,13 @@ class Utilitarian:
         """
         This method calculates the utilitarian welfare.
         """
+        # New feature: consumption_per_capita is checked to have negative values
+        # If there are negative values, they are replaced with 1e-6. -inf if it becomes 0 # 0.1025329474
+        # This is essential to calculate utility that's not a NaN (or complex number)
+        consumption_per_capita = np.where(
+            consumption_per_capita < 0, 1e-6, consumption_per_capita
+        )
+
         # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
         consumption_per_capita_inequality_aversion = np.power(  # Validated
             consumption_per_capita, 1 - self.inequality_aversion
