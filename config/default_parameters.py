@@ -113,7 +113,7 @@ class AbatementDefaults:
                 # MxKali #calibrated correction multiplier starting value
                 "calibrated_correction_multiplier_starting_value": 0.492373,
                 # pback #Cost of backstop 2010$ per tCO2 in 2015 #DICE2013: 344     #DICE2016: 550 #DICE2023: 515 # This is dependent on the SSP scenarios
-                "backstop_cost": 515,
+                "backstop_cost": 550,  # 515, #TODO using 550 temporarily
                 # gback #Initial cost decline backstop cost per period #DICE2013: 0.05    #DICE2016: 0.025 #DICE2023: 0.01 (2020-2050) 0.001 (2050 onwards)
                 "backstop_cost_decline_rate_per_5_year": 0.025,
                 # tstart_pbtransition #first timestep without Enerdata projections
