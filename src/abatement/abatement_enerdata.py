@@ -108,7 +108,7 @@ class AbatementEnerdata:
             np.arange(len(self.model_time_horizon)),
         )
 
-        # Calculate calibrated_correction_multiplier
+        # Calculate calibrated_correction_multiplier #Mxpback in RICE50 #Validated
         calibrated_correction_multiplier = global_backstop_cost_curve[np.newaxis, :] / (
             self.abatement_coefficient_a + self.abatement_coefficient_b
         )
@@ -118,7 +118,7 @@ class AbatementEnerdata:
             (len(self.region_list), len(self.model_time_horizon)),
             self.calibrated_correction_multiplier_starting_value,
         )
-        # TODO: Check
+        # Validated # Mxdiff in RICE50
         multiplier_difference = np.maximum(
             calibrated_correction_multiplier_starting_value_arr
             - calibrated_correction_multiplier,
@@ -155,7 +155,7 @@ class AbatementEnerdata:
             )
         )
 
-        # TODO: Check
+        # Validated #mx in RICE50
         self.coefficient_multiplier = (
             calibrated_correction_multiplier_starting_value_arr
             - multiplier_difference * transition_coefficient
