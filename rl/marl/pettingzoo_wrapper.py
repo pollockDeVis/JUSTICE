@@ -24,7 +24,8 @@ CONFIG = {
     "pure_rate_of_social_time_preference": 0.015,
     "inequality_aversion":.5,
     "climate_ensembles":570,
-    "elasticity_of_marginal_utility_of_consumption":1.45
+    "elasticity_of_marginal_utility_of_consumption":1.45,
+    "pct_change":True
 
 }
 
@@ -55,7 +56,7 @@ class JusticeEnv(ParallelEnv):
         self.timestep = 0
         self.start_year = env_config["start_year"]
         self.end_year = env_config["end_year"]
-        self.pct_change = False
+        self.pct_change = env_config["pct_change"]
 
     @staticmethod
     def pickle_model(env_config):
@@ -92,7 +93,7 @@ class JusticeEnv(ParallelEnv):
         return Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(OBSERVATIONS + GLOBAL_OBSERVATIONS),),
+            shape=(len(OBSERVATIONS + GLOBAL_OBSERVATIONS + self.possible_agents),),
             dtype=np.float32,
         )
 
@@ -127,18 +128,18 @@ class JusticeEnv(ParallelEnv):
         data = self.model.stepwise_evaluate(timestep=self.timestep)
 
         infos = {agent: {} for agent in self.agents}
-        obs = self.generate_observations(data)
+        obs = self.generate_observations(data, np.zeros(len(self.agents)))
         return obs, infos
     
     def generate_reward(self, vector):
         rews = np.full((self.num_agents,), vector[self.timestep, 0], dtype=np.float32)
         return rews
 
-    def generate_observations(self, data):
+    def generate_observations(self, data, emissions_rates):
         global_obs = np.array([data[key][self.timestep, 0] for key in GLOBAL_OBSERVATIONS], dtype=np.float32)
         local_obs = np.array([data[key][:, self.timestep, 0] for key in OBSERVATIONS], dtype=np.float32).T
 
-        obs = {agent: np.concatenate((local_obs[i], global_obs)) for i, agent in enumerate(self.agents)}
+        obs = {agent: np.concatenate((local_obs[i], global_obs, emissions_rates)) for i, agent in enumerate(self.agents)}
 
         return obs
 
@@ -151,6 +152,8 @@ class JusticeEnv(ParallelEnv):
     def step(self, actions: dict):
         # emissions_rate = np.array([actions[agent][0] for agent in self.agents], dtype=np.float32)
         # emissions_rate = np.clip(emissions_rate, a_min=0.00001, a_max=.999999)
+         # NOTE: update timestep after stepwise_run?
+        
         savings_rate = np.array([actions[agent][0] for agent in self.agents], dtype=np.float32)
         emissions_rate = np.array([actions[agent][1] for agent in self.agents], dtype=np.float32)
 
@@ -162,22 +165,27 @@ class JusticeEnv(ParallelEnv):
 
         data = self.model.stepwise_evaluate(timestep=self.timestep)
 
-        obs = self.generate_observations(data)
+        obs = self.generate_observations(data, emissions_rate)
 
         done = self.start_year + self.timestep >= self.end_year
         truncated = {agent: done for agent in self.agents}
         terminated = {agent: done for agent in self.agents}
 
+        if self.timestep == 0:
+            rewards_pct = {agent: 0.000001 for i, agent in enumerate(self.agents)}
+        else:
+            pct_change = self.calc_reward_diff(data[REWARD])
+            rewards_pct = {agent: pct_change[i, 0] for i, agent in enumerate(self.agents)}
+
         if self.pct_change:
-            if self.timestep == 0:
-                rewards = {agent: 0.000001 for i, agent in enumerate(self.agents)}
-            else:
-                pct_change = self.calc_reward_diff(data[REWARD])
-                rewards = {agent: pct_change[i, 0] for i, agent in enumerate(self.agents)}
+            rewards = rewards_pct
         else:
             rewards = {agent: data[REWARD][i,self.timestep, 0] for i, agent in enumerate(self.agents)}
 
-        infos = {agent: {"mean_reward":np.mean([data[REWARD][i,self.timestep, 0] for i, agent in enumerate(self.agents)])} 
+        infos = {agent: {"mean_reward":np.mean([data[REWARD][j,self.timestep, 0] for j, _ in enumerate(self.agents)]),
+                         "pct_change_reward":rewards_pct[agent],
+                         "absolute_reward":data[REWARD][i,self.timestep, 0]} 
                  for i, agent in enumerate(self.agents)}
-        self.timestep += 1  # NOTE: update timestep after stepwise_run?
+
+        self.timestep += 1 
         return obs, rewards, terminated, truncated, infos
