@@ -264,7 +264,7 @@ class NeoclassicalEconomyModel:
             )
 
     def _calculate_capital(self, timestep):  # Capital is calculated one timestep ahead
-        if timestep <= len(self.model_time_horizon):
+        if timestep < (len(self.model_time_horizon) - 1):
             if timestep == 0:
                 # Initalize capital tfp
                 self.capital[:, timestep, :] = self.capital_init_arr * self.mer_to_ppp
@@ -334,10 +334,19 @@ class NeoclassicalEconomyModel:
 
         self.net_output[:, timestep, :] -= self.abatement[:, timestep, :]
 
-    def calculate_capital_and_investment_net_output(self, timestep, savings_rate):
+    def feedback_loop_for_economic_output(
+        self, timestep, savings_rate, damage_fraction, abatement
+    ):
         """
         This method calculates the capital and investment.
         """
+        # TODO: Add checks for whether damage and abatement are enabled
+        # TODO: Check shape of savings rate
+        # Apply damage to the output
+        self.apply_damage_to_output(timestep, damage_fraction)
+
+        # Apply abatement to the output
+        self.apply_abatement_to_output(timestep, abatement)
 
         # Calculate the investment
         self._calculate_investment(timestep, savings_rate)
