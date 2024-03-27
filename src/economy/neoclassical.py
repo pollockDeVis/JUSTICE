@@ -296,8 +296,6 @@ class NeoclassicalEconomyModel:
 
     def _calculate_output(self, timestep):
         # Calculate the Output based on gross output
-        tfp = self.tfp[:, timestep, np.newaxis]
-        population = self.population_array[:, timestep, np.newaxis] / 1000
 
         self.gross_output[:, timestep, :] = self.tfp[:, timestep, np.newaxis] * (
             np.power(
@@ -352,10 +350,12 @@ class NeoclassicalEconomyModel:
         # TODO: Check shape of savings rate
 
         # Reshape savings rate from 2D to 3D
-        savings_rate = savings_rate[:, :, np.newaxis]
+        savings_rate = savings_rate[:, :, np.newaxis]  # Validated
 
-        investment = savings_rate * self.net_output
-        consumption = self.net_output - investment
+        investment = (
+            savings_rate * self.net_output
+        )  # Validated - Net output nan on region 25
+        consumption = self.net_output - investment  # Valdated - Shape (57, 286, 1001)
 
         return consumption
 
@@ -364,7 +364,7 @@ class NeoclassicalEconomyModel:
         """
         This method calculates the consumption per timestep.
         """
-        # TODO: Should be net output
+        # TODO: Check shape of savings rate
         # Reshape savings rate from 1D to 2D
         savings_rate = savings_rate[:, np.newaxis]
 
@@ -399,7 +399,7 @@ class NeoclassicalEconomyModel:
     def get_damages(self):
         return self.damage
 
-    def get_population(self):
+    def get_population(self):  # Validated
 
         population = self.population_array
         # Convert population to 3D by broadcasting across climate ensembles
@@ -417,7 +417,7 @@ class NeoclassicalEconomyModel:
     # TODO: Need to update
     def get_consumption_per_capita(self, savings_rate):
         consumption = self.calculate_consumption(savings_rate)
-        consumption_per_capita = (
+        consumption_per_capita = (  # Validated
             1e3 * consumption / self.population_array[:, :, np.newaxis]
         )
 

@@ -45,7 +45,7 @@ class Utilitarian:
             0, len(time_horizon.model_time_horizon), time_horizon.timestep
         )
 
-        # Calculate the discount rate
+        # Calculate the discount rate # Validated
         discount_rate = 1 / (
             np.power(
                 (1 + self.pure_rate_of_social_time_preference),
@@ -54,15 +54,15 @@ class Utilitarian:
         )
 
         # Regionalize the discount rate
-        discount_rate = np.tile(discount_rate, (len(self.region_list), 1))
+        discount_rate = np.tile(discount_rate, (len(self.region_list), 1))  # Validated
 
-        # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1)
+        # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1) # Validated Shape (57, 286, 1)
         self.discount_rate = discount_rate[:, :, np.newaxis]
 
-        # Calculate the total population for each timestep
+        # Calculate the total population for each timestep # Validated
         total_population = np.sum(population, axis=0)
 
-        # Calculate the population ratio for each timestep
+        # Calculate the population ratio for each timestep # Validated
         self.population_ratio = population / total_population
 
     def calculate_welfare(self, consumption_per_capita):
@@ -70,7 +70,7 @@ class Utilitarian:
         This method calculates the utilitarian welfare.
         """
         # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
-        consumption_per_capita_inequality_aversion = np.power(
+        consumption_per_capita_inequality_aversion = np.power(  # Validated
             consumption_per_capita, 1 - self.inequality_aversion
         )
 
@@ -79,10 +79,12 @@ class Utilitarian:
             self.population_ratio * consumption_per_capita_inequality_aversion
         )
 
-        # Calculate the disentangled utility
-        disentangled_utility = population_weighted_consumption_per_capita
+        # Calculate the disentangled utility # Validated
+        disentangled_utility = (
+            population_weighted_consumption_per_capita  # # has nans 25th region
+        )
 
-        # Calculate the regional disentangled utility powered - For regional welfare calculation
+        # Calculate the regional disentangled utility powered - For regional welfare calculation # has nans 25th region
         disentangled_utility_regional_powered = np.power(
             disentangled_utility,
             (
@@ -91,6 +93,7 @@ class Utilitarian:
             ),
         )
 
+        # TODO: BUG - Something is wrong with the calculation of the disentangled utility summed
         # Sum the disentangled utility
         disentangled_utility_summed = np.sum(
             population_weighted_consumption_per_capita, axis=0
