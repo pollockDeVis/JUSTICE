@@ -1,9 +1,10 @@
-import os
 import random
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
-from tqdm import tqdm
+
 import gymnasium as gym
 import numpy as np
 import supersuit as ss
@@ -11,16 +12,56 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import tyro
+from torch import Tensor
 from torch.distributions import Normal
 from torch.utils.tensorboard import SummaryWriter
-from datetime import datetime
-from rl.marl.pettingzoo_wrapper import CONFIG, JusticeEnv
+from tqdm import tqdm
+
+from rl.distributions import MultiCategorical
+from rl.marl.pettingzoo_wrapper import JusticeEnv
+from src.util.enumerations import Abatement, DamageFunction, Economy
 
 
 @dataclass
+class EnvConfig:
+    start_year: int = 2015
+    end_year: int = 2300
+    timestep: int = 1
+    scenario: int = 7
+    economy_type: Enum = Economy.NEOCLASSICAL
+    damage_function_type: Enum = DamageFunction.KALKUHL
+    abatement_type: Enum = Abatement.ENERDATA
+    num_agents: int = 57
+    model_pickle_path: Path = Path("rl") / "marl" / "pickles" / "JUSTICE.pkl"
+    config_pickle_path: Path = Path("rl") / "marl" / "pickles" / "config.pkl"
+    pure_rate_of_social_time_preference: float = 0.02
+    elasticity_of_marginal_utility_of_consumption: float = 1.45
+    climate_ensembles: int = 570
+
+    inequality_aversion: float = .5
+    """normative param"""
+    time_preference: float = .015
+    """discount rate of JUSTICE model"""
+    scenario: int = 2
+    """SSP RCP combinations"""
+    continuous_actions: bool = False
+    """whether to use discrete actions in the agent"""
+    pct_change: bool = False
+    """whether to use percentage change reward compared to last step"""
+    num_discrete_actions: int = 9
+    """the number of discrete bins used to discretize the actions"""
+    actions_clip: tuple[float, float] = (0.1, 0.9)
+    """min and max values of actions"""
+    num_years_per_step: int = 1
+    """the number of environment steps that will be taken per agent step"""
+
+@dataclass
 class Args:
-    exp_name: str = os.path.basename(__file__)[: -len(".py")]\
-        +"_"+datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    # evironment configuration
+    env_config: EnvConfig
+
+    # Experiment specific arguments 
+    exp_name: str = f"{Path(__file__).stem}_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -32,58 +73,52 @@ class Args:
     """if toggled, this experiment will be tracked with Weights and Biases"""
     wandb_project_name: str = "JusticeEnv"
     """the wandb's project name"""
-    wandb_entity: str = "brenting"
+    wandb_entity: str = "justice-rl"
     """the entity (team) of wandb's project"""
+    slurm_task_id: None | int = None
+    """id of the trail used to run grip search on cluster"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 50000000
+    total_timesteps: int = 10_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 8
+    num_envs: int = 1
     """the number of parallel game environments"""
-    num_steps: int = 30
-    """the number of steps to run in each environment per policy rollout"""
     anneal_lr: bool = True
     """Toggle learning rate annealing for policy and value networks"""
     gamma: float = 0.99
     """the discount factor gamma"""
     gae_lambda: float = 0.95
     """the lambda for the general advantage estimation"""
-    num_minibatches: int = 20
+    num_minibatches: int = 50
     """the number of mini-batches"""
-    update_epochs: int = 4
+    update_epochs: int = 20
     """the K epochs to update the policy"""
-    norm_adv: bool = True
+    norm_adv: bool = False
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.01
+    ent_coef: float = 0.001
     """coefficient of the entropy"""
-    vf_coef: float = 0.5
+    vf_coef: float = 1
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
-    target_kl: float = None
+    target_kl: float | None = None
     """the target KL divergence threshold"""
 
     # to be filled in runtime
+    num_steps: int = 0
+    """the number of steps to run in each environment per policy rollout"""
     batch_size: int = 0
     """the batch size (computed in runtime)"""
     minibatch_size: int = 0
     """the mini-batch size (computed in runtime)"""
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
-
-    #experiment values
-    inequality_aversion: float = .5
-    """normative param"""
-    time_preference: float = .03
-    """discount rate of JUSTICE model"""
-    scenario: int = 2
-    """SSP RCP combinations"""
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -92,37 +127,53 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 
-class Agent(nn.Module):
+class AgentBase(nn.Module):
     def __init__(self, envs):
         super().__init__()
         self.network = nn.Sequential(
-            layer_init(nn.Linear(envs.single_observation_space.shape[0], 32)),
-            nn.ReLU(),
-            layer_init(nn.Linear(32, 32)),
-            nn.ReLU(),
+            layer_init(nn.Linear(envs.single_observation_space.shape[0], 64)),
+            nn.Tanh(),
+            layer_init(nn.Linear(64, 64)),
+            nn.Tanh(),
         )
         self.critic = nn.Sequential(
-            # layer_init(nn.Linear(envs.single_observation_space.shape[0], 32)),
-            # nn.ReLU(),
-            # layer_init(nn.Linear(32, 32)),
-            # nn.ReLU(),
-            layer_init(nn.Linear(32, 1), std=1.0),
+            layer_init(nn.Linear(64, 1), std=1.0),
         )
-        self.actor_mean = nn.Sequential(
-            # layer_init(nn.Linear(envs.single_observation_space.shape[0], 32)),
-            # nn.ReLU(),
-            # layer_init(nn.Linear(32, 32)),
-            # nn.ReLU(),
-            layer_init(nn.Linear(32, envs.single_action_space.shape[0]), std=0.01),
-        )
-        self.actor_logstd = nn.Parameter(torch.zeros(1, envs.single_action_space.shape[0]))
 
-    def get_value(self, x):
+    def get_value(self, x) -> Tensor:
         return self.critic(self.network(x))
+
+    
+class AgentDiscrete(AgentBase):
+    def __init__(self, envs):
+        super().__init__(envs)
+        self.action_nvec = tuple(envs.single_action_space.nvec)
+        self.actor = nn.Sequential(
+            layer_init(nn.Linear(64, sum(self.action_nvec)), std=0.01),
+        )
 
     def get_action_and_value(self, x, action=None):
         network_output = self.network(x)
-        action_mean = self.actor_mean(network_output)
+        action_logits = self.actor(network_output)
+        probs = MultiCategorical(action_logits, self.action_nvec)
+
+        if action is None:
+            action = probs.sample()
+        return action, probs.log_prob(action), probs.entropy(), self.critic(self.network(x))
+    
+
+class AgentContinuous(AgentBase):
+    def __init__(self, envs):
+        super().__init__(envs)
+        self.actor_logstd = nn.Parameter(torch.zeros(1, envs.single_action_space.shape[0]))
+
+        self.actor = nn.Sequential(
+            layer_init(nn.Linear(64, envs.single_action_space.shape[0]), std=0.01),
+        )
+
+    def get_action_and_value(self, x, action=None):
+        network_output = self.network(x)
+        action_mean = self.actor(network_output)
         action_logstd = self.actor_logstd.expand_as(action_mean)
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std)
@@ -133,8 +184,10 @@ class Agent(nn.Module):
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
-    args.batch_size = int(args.num_envs * CONFIG["num_agents"] * args.num_steps)
-    args.minibatch_size = int(args.batch_size // args.num_minibatches)
+    # ensure a full episode in the batch
+    args.num_steps = (args.env_config.end_year - args.env_config.start_year) // args.env_config.num_years_per_step
+    args.batch_size = args.num_envs * args.env_config.num_agents * args.num_steps
+    args.minibatch_size = args.batch_size // args.num_minibatches
     args.num_iterations = args.total_timesteps // args.batch_size
 
     run_name = f"{args.exp_name}"
@@ -145,7 +198,7 @@ if __name__ == "__main__":
             project=args.wandb_project_name,
             entity=args.wandb_entity,
             sync_tensorboard=True,
-            config=vars(args),
+            config=asdict(args),
             name=run_name,
             save_code=True,
         )
@@ -164,21 +217,20 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
     
     # env setup
-    CONFIG["pure_rate_of_social_time_preference"] = args.time_preference
-    CONFIG["inequality_aversion"] = args.inequality_aversion
-    CONFIG["scenario"] = args.scenario
-    JusticeEnv.pickle_model(CONFIG) # needed to pickle the JUSTICE model
-    env = JusticeEnv(CONFIG)
+    env_config = asdict(args.env_config)
+    JusticeEnv.pickle_model(env_config) # needed to pickle the JUSTICE model
+    env = JusticeEnv(env_config)
     env = ss.pettingzoo_env_to_vec_env_v1(env)
-    env = gym.wrappers.ClipAction(env)
+    if args.env_config.continuous_actions:
+        env = gym.wrappers.ClipAction(env)
     envs = ss.concat_vec_envs_v1(env, args.num_envs, num_cpus=args.num_envs, base_class="gymnasium")
     envs.single_observation_space = envs.observation_space
     envs.single_action_space = envs.action_space
     envs.is_vector_env = True
 
-    agent = Agent(envs).to(device)
+    agent_class = AgentContinuous if args.env_config.continuous_actions else AgentDiscrete
+    agent = agent_class(envs).to(device)    
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    obs, _ = envs.reset(seed=args.seed)
 
     # ALGO Logic: Storage setup
     obs: torch.Tensor = torch.zeros((args.num_steps, envs.num_envs) + envs.single_observation_space.shape).to(device)
@@ -199,7 +251,7 @@ if __name__ == "__main__":
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(envs.num_envs).to(device)
 
-    for iteration in tqdm(range(1, args.num_iterations + 1)):
+    for iteration in range(1, args.num_iterations + 1):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (iteration - 1.0) / args.num_iterations
