@@ -21,9 +21,11 @@ CONFIG = {
     "num_agents": 57,
     "model_pickle_path": Path("rl") / "marl" / "pickles" / "JUSTICE.pkl",
     "config_pickle_path": Path("rl") / "marl" / "pickles" / "config.pkl",
-    "pure_rate_of_social_time_preference": 0.02,
+    "pure_rate_of_social_time_preference": 0.015,
     "inequality_aversion":.5,
-    "climate_ensembles":570
+    "climate_ensembles":570,
+    "elasticity_of_marginal_utility_of_consumption":1.45
+
 }
 
 OBSERVATIONS = [
@@ -49,10 +51,11 @@ class JusticeEnv(ParallelEnv):
         self.render_mode = render_mode
 
         self.model_pickle_path: Path = env_config["model_pickle_path"]
-
+        self.env_config = env_config
         self.timestep = 0
         self.start_year = env_config["start_year"]
         self.end_year = env_config["end_year"]
+        self.pct_change = False
 
     @staticmethod
     def pickle_model(env_config):
@@ -63,7 +66,7 @@ class JusticeEnv(ParallelEnv):
                 pickle_config = pickle.load(f)
         else:
             pickle_config = None
-        if not model_pickle_path.exists() or pickle_config != env_config:
+        if pickle_config != env_config:
             model = JUSTICE(
                 start_year=env_config["start_year"],
                 end_year=env_config["end_year"],
@@ -74,7 +77,8 @@ class JusticeEnv(ParallelEnv):
                 abatement_type=env_config["abatement_type"],
                 pure_rate_of_social_time_preference=env_config["pure_rate_of_social_time_preference"],
                 inequality_aversion=env_config["inequality_aversion"],
-                climate_ensembles=env_config["climate_ensembles"]
+                climate_ensembles=env_config["climate_ensembles"],
+                elasticity_of_marginal_utility_of_consumption = env_config["elasticity_of_marginal_utility_of_consumption"]
             )
             with model_pickle_path.open("wb") as f:
                 pickle.dump(model, f)
@@ -95,15 +99,28 @@ class JusticeEnv(ParallelEnv):
     # If your spaces change over time, remove this line (disable caching).
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent):
-        return Box(0.0001, 0.9999, shape=(1,), dtype=np.float32)
+        return Box(0.0001, 0.9999, shape=(2,), dtype=np.float32)
 
     def reset(self, seed=None, options=None):
         if seed is not None:
             self._np_random, seed = seeding.np_random(seed)
 
         # TODO: add JUSTICE reset
-        with self.model_pickle_path.open("rb") as f:
-            self.model = pickle.load(f)
+        # with self.model_pickle_path.open("rb") as f:
+        #     self.model = pickle.load(f)
+        ensemble = np.random.randint(1,1001)
+        self.model = JUSTICE(
+                start_year=self.env_config["start_year"],
+                end_year=self.env_config["end_year"],
+                timestep=self.env_config["timestep"],
+                scenario=self.env_config["scenario"],
+                economy_type=self.env_config["economy_type"],
+                damage_function_type=self.env_config["damage_function_type"],
+                abatement_type=self.env_config["abatement_type"],
+                pure_rate_of_social_time_preference=self.env_config["pure_rate_of_social_time_preference"],
+                inequality_aversion=self.env_config["inequality_aversion"],
+                climate_ensembles=ensemble
+            )
 
         self.agents = self.possible_agents
         self.timestep = 0
@@ -125,25 +142,42 @@ class JusticeEnv(ParallelEnv):
 
         return obs
 
+    def calc_reward_diff(self, rewards):
+        current_rewards = rewards[:,self.timestep]
+        previous_rewards = rewards[:,self.timestep-1]
+        pct_change = (current_rewards - previous_rewards) / previous_rewards
+        return pct_change
+
     def step(self, actions: dict):
-        emissions_rate = np.array([actions[agent][0] for agent in self.agents], dtype=np.float32)
-        emissions_rate = np.clip(emissions_rate, a_min=0.00001, a_max=.999999)
+        # emissions_rate = np.array([actions[agent][0] for agent in self.agents], dtype=np.float32)
+        # emissions_rate = np.clip(emissions_rate, a_min=0.00001, a_max=.999999)
+        savings_rate = np.array([actions[agent][0] for agent in self.agents], dtype=np.float32)
+        emissions_rate = np.array([actions[agent][1] for agent in self.agents], dtype=np.float32)
 
         self.model.stepwise_run(
             emission_control_rate=emissions_rate,
             timestep=self.timestep,
-            endogenous_savings_rate = True
+            savings_rate = savings_rate
         )
 
         data = self.model.stepwise_evaluate(timestep=self.timestep)
+
         obs = self.generate_observations(data)
 
         done = self.start_year + self.timestep >= self.end_year
         truncated = {agent: done for agent in self.agents}
         terminated = {agent: done for agent in self.agents}
 
-        rewards = {agent: data[REWARD][i,self.timestep, 0] for i, agent in enumerate(self.agents)}
-        infos = {agent: {} for agent in self.agents}
+        if self.pct_change:
+            if self.timestep == 0:
+                rewards = {agent: 0.000001 for i, agent in enumerate(self.agents)}
+            else:
+                pct_change = self.calc_reward_diff(data[REWARD])
+                rewards = {agent: pct_change[i, 0] for i, agent in enumerate(self.agents)}
+        else:
+            rewards = {agent: data[REWARD][i,self.timestep, 0] for i, agent in enumerate(self.agents)}
 
+        infos = {agent: {"mean_reward":np.mean([data[REWARD][i,self.timestep, 0] for i, agent in enumerate(self.agents)])} 
+                 for i, agent in enumerate(self.agents)}
         self.timestep += 1  # NOTE: update timestep after stepwise_run?
         return obs, rewards, terminated, truncated, infos
