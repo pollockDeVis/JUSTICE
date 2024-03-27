@@ -6,7 +6,8 @@ from torch.distributions.kl import kl_divergence
 
 
 class MultiCategorical(Distribution):
-    def __init__(self, multi_logits, nvec, validate_args=None):
+
+    def __init__(self, multi_logits, nvec, validate_args=False):
         self.cats = [
             Categorical(logits=logits)
             for logits in torch.split(multi_logits, nvec, dim=-1)
