@@ -178,6 +178,13 @@ class JUSTICE:
 
         # Create a data dictionary to store the data
         self.data = {
+            "gross_economic_output": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
             "net_economic_output": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
@@ -352,11 +359,6 @@ class JUSTICE:
                 timestep=timestep,
             )
 
-            # Apply the computed damage to the economic output
-            self.economy.apply_damage_to_output(
-                timestep=timestep, damage_fraction=damage_fraction
-            )
-
             # Abatement cost is only dependent on the emission control rate
             abatement_cost = self.abatement.calculate_abatement(
                 scenario=self.scenario,
@@ -364,39 +366,49 @@ class JUSTICE:
                 emission_control_rate=emission_control_rate,
             )
 
-            self.economy.apply_abatement_to_output(
-                timestep=timestep, abatement=abatement_cost
+            # This applies damages and abatement costs and triggers the Investment & Capital Calculation
+            # NOTE This is necessary to calculate the capital and investment for the next timestep
+            # It closes the loop of the economy model
+            self.economy.feedback_loop_for_economic_output(
+                timestep=timestep,
+                savings_rate=self.savings_rate[:, timestep],
+                damage_fraction=damage_fraction,
+                abatement=abatement_cost,
             )
 
             # Store the net economic output for the timestep
             self.data["net_economic_output"][:, timestep, :] = (
                 self.economy.get_net_output_by_timestep(timestep)
             )
-        elif timestep == (len(self.time_horizon.model_time_horizon) - 1):
+        elif timestep == (
+            len(self.time_horizon.model_time_horizon) - 1
+        ):  # Last timestep
             # No need to calculate temperature for the last timestep because current emissions produce temperature in the next timestep
             # Calculate damage for the last timestep
             damage_fraction = self.damage_function.calculate_damage(
                 temperature=self.data["regional_temperature"][:, timestep, :],
                 timestep=timestep,
             )
-            # Apply the damage to the economic output
-            self.economy.apply_damage_to_output(
-                timestep=timestep,
-                damage_fraction=damage_fraction,
-            )
+
             # Calculate the abatement cost
             abatement_cost = self.abatement.calculate_abatement(
                 scenario=self.scenario,
                 timestep=timestep,
                 emission_control_rate=emission_control_rate,
             )
-            # Apply the abatement cost to the economic output
-            self.economy.apply_abatement_to_output(
+
+            # This applies damages and abatement costs and triggers the Investment & Capital Calculation
+            # NOTE This is necessary to calculate the capital and investment for the next timestep
+            # It closes the loop of the economy model
+            self.economy.feedback_loop_for_economic_output(
                 timestep=timestep,
+                savings_rate=self.savings_rate[:, timestep],
+                damage_fraction=damage_fraction,
                 abatement=abatement_cost,
             )
 
         # Save the data
+        self.data["gross_economic_output"] = self.economy.get_gross_output()
         self.data["net_economic_output"] = self.economy.get_net_output()
         self.data["economic_damage"][:, timestep, :] = (self.economy.get_damages())[
             :, timestep, :
@@ -540,6 +552,7 @@ class JUSTICE:
                     abatement=abatement_cost,
                 )
         # Loading the consumption and consumption per capita from the economy model
+        self.data["gross_economic_output"] = self.economy.get_gross_output()
         self.data["net_economic_output"] = self.economy.get_net_output()
         self.data["consumption"] = self.economy.calculate_consumption(
             savings_rate=self.savings_rate

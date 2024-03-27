@@ -89,7 +89,7 @@ class NeoclassicalEconomyModel:
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
 
-        # Initializing the capital and TFP array #TODO: This will be of the same shape as data with 5 year timestep
+        # Initializing the capital and TFP array This will be of the same shape as data with 5 year timestep
         # TODO check if this is needed
         self.capital_tfp_data = np.zeros(
             (len(self.region_list), len(self.data_time_horizon))
@@ -313,7 +313,7 @@ class NeoclassicalEconomyModel:
         # Setting net output to gross output before any damage or abatement
         self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
 
-    def apply_damage_to_output(self, timestep, damage_fraction):
+    def _apply_damage_to_output(self, timestep, damage_fraction):
         """
         This method applies damage to the output.
         Damage calculated
@@ -326,7 +326,7 @@ class NeoclassicalEconomyModel:
 
         self.net_output[:, timestep, :] -= self.damage[:, timestep, :]
 
-    def apply_abatement_to_output(self, timestep, abatement):
+    def _apply_abatement_to_output(self, timestep, abatement):
         """
         This method applies abatement to the output.
         """
@@ -343,10 +343,10 @@ class NeoclassicalEconomyModel:
         # TODO: Add checks for whether damage and abatement are enabled
         # TODO: Check shape of savings rate
         # Apply damage to the output
-        self.apply_damage_to_output(timestep, damage_fraction)
+        self._apply_damage_to_output(timestep, damage_fraction)
 
         # Apply abatement to the output
-        self.apply_abatement_to_output(timestep, abatement)
+        self._apply_abatement_to_output(timestep, abatement)
 
         # Calculate the investment
         self._calculate_investment(timestep, savings_rate)
@@ -370,7 +370,6 @@ class NeoclassicalEconomyModel:
 
         return consumption
 
-    # TODO: fix this
     def calculate_consumption_per_timestep(self, savings_rate, timestep):  #
         """
         This method calculates the consumption per timestep.
@@ -384,22 +383,24 @@ class NeoclassicalEconomyModel:
 
         return consumption_per_timestep
 
-    # TODO: fix this
     def get_consumption_per_capita_per_timestep(self, savings_rate, timestep):
-        scenario = get_economic_scenario(scenario)
+
         consumption_per_timestep = self.calculate_consumption_per_timestep(
             savings_rate, timestep
         )
         consumption_per_capita_per_timestep = (
             1e3
             * consumption_per_timestep
-            / self.population_array[:, timestep]  # TODO: Need to fix indexing
+            / self.population_array[:, timestep, np.newaxis]
         )
 
         return consumption_per_capita_per_timestep
 
     def get_net_output(self):
         return self.net_output
+
+    def get_gross_output(self):
+        return self.gross_output
 
     def get_net_output_by_timestep(self, timestep):
         return self.net_output[:, timestep, :]
@@ -425,7 +426,6 @@ class NeoclassicalEconomyModel:
         )
         return population
 
-    # TODO: Need to update
     def get_consumption_per_capita(self, savings_rate):
         consumption = self.calculate_consumption(savings_rate)
         consumption_per_capita = (  # Validated
