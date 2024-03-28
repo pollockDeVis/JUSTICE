@@ -127,7 +127,16 @@ class DamageKalkuhl:
         if timestep == 0:
             # Fill the temperature array with the current temperature data
             self.temperature_array[:, 0, :] = temperature
-        else:
+        elif timestep > 0 and timestep < (self.damage_window + 1):
+            # Fill the temperature array with the current temperature data
+            self.temperature_array[:, 1, :] = temperature
+            # Calculate the temperature difference
+            temperature_difference = (
+                self.temperature_array[:, 1, :] - self.temperature_array[:, 0, :]
+            )
+            self.temperature_array[:, 0, :] = self.temperature_array[:, 1, :]
+
+        elif timestep >= (self.damage_window + 1):
             # Fill the temperature array with the current temperature data
             self.temperature_array[:, 1, :] = temperature
             # print(f"temperature_array: {self.temperature_array[:, 1, :].shape}")
@@ -137,9 +146,7 @@ class DamageKalkuhl:
                 self.temperature_array[:, 1, :] - self.temperature_array[:, 0, :]
             )
 
-            # print(f"temperature_difference: {temperature_difference[:, 0]}")
-
-            # Calculate the damage coefficient. Damage coefficient for current timestep is based on previous temperature
+            # Calculate the damage coefficient. Damage coefficient for current timestep is based on previous temperature #BIMPACT
             self.damage_coefficient[:, 1, :] = (
                 self.coefficient_a * temperature_difference
                 + self.coefficient_b
@@ -149,8 +156,7 @@ class DamageKalkuhl:
 
             # print(f"damage_coefficient: {self.damage_coefficient[:, 1, 0]}")
 
-            # Calculate economic_damage_factor for current timestep
-
+            # Calculate economic_damage_factor for current timestep #OMEGA
             np.divide(
                 (1 + (self.economic_damage_factor[:, timestep - 1, :])),
                 np.power((1 + self.damage_coefficient[:, 0, :]), self.data_timestep),
