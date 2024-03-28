@@ -223,6 +223,13 @@ class JUSTICE:
             "global_temperature": np.zeros(
                 (len(self.time_horizon.model_time_horizon), self.no_of_ensembles)
             ),
+            "damage_fraction": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
             "economic_damage": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
@@ -359,6 +366,9 @@ class JUSTICE:
                 timestep=timestep,
             )
 
+            # Storing the damage fraction for the timestep
+            self.data["damage_fraction"][:, timestep, :] = damage_fraction
+
             # Abatement cost is only dependent on the emission control rate
             abatement_cost = self.abatement.calculate_abatement(
                 scenario=self.scenario,
@@ -389,6 +399,9 @@ class JUSTICE:
                 temperature=self.data["regional_temperature"][:, timestep, :],
                 timestep=timestep,
             )
+
+            # Storing the damage fraction for the timestep
+            self.data["damage_fraction"][:, timestep, :] = damage_fraction
 
             # Calculate the abatement cost
             abatement_cost = self.abatement.calculate_abatement(
@@ -498,6 +511,9 @@ class JUSTICE:
                     timestep=timestep,
                 )
 
+                # Storing the damage fraction for the timestep
+                self.data["damage_fraction"][:, timestep, :] = damage_fraction
+
                 # TODO: Incomplete Implementation
                 # carbon_price = self.abatement.calculate_carbon_price(
                 #     timestep=timestep,
@@ -534,6 +550,9 @@ class JUSTICE:
                     temperature=self.data["regional_temperature"][:, timestep, :],
                     timestep=timestep,
                 )
+
+                # Storing the damage fraction for the timestep
+                self.data["damage_fraction"][:, timestep, :] = damage_fraction
 
                 # Calculate the abatement cost
                 abatement_cost = self.abatement.calculate_abatement(
