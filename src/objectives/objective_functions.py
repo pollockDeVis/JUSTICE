@@ -48,14 +48,30 @@ def years_above_temperature_threshold(temperature, threshold):
 def total_damage_cost(damage_cost):
     """Calculate the total damage cost."""
 
-    # Calculate the total damage cost.
-    total_damage_cost = np.sum(damage_cost)
+    # If damage_cost is not 3D, throw an error.
+    if damage_cost.ndim != 3:
+        raise ValueError("Damage cost should be 3D.")
+
+    # Calculate the total damage cost across first two dimensions.
+    total_damage_cost = np.sum(damage_cost, axis=(0, 1))
+
+    # Calculate the mean of the total damage cost across ensemble members.
+    total_damage_cost = np.mean(total_damage_cost)
+
     return total_damage_cost
 
 
 def total_abatement_cost(abatement_cost):
     """Calculate the total abatement cost."""
 
-    # Calculate the total abatement cost.
-    total_abatement_cost = np.sum(abatement_cost)
+    # If abatement_cost is not 3D, throw an error.
+    if abatement_cost.ndim != 3:
+        raise ValueError("Abatement cost should be 3D.")
+
+    # Calculate the total abatement cost across first two dimensions.
+    total_abatement_cost = np.sum(abatement_cost, axis=(0, 1))
+
+    # Calculate the mean of the total abatement cost across ensemble members.
+    total_abatement_cost = np.mean(total_abatement_cost)
+
     return total_abatement_cost
