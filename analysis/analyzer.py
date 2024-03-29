@@ -49,6 +49,7 @@ from src.util.EMA_model_wrapper import (
 from src.util.model_time import TimeHorizon
 from src.util.data_loader import DataLoader
 
+
 # Instantiate the DataLoader class
 data_loader = DataLoader()
 # Instantiate the TimeHorizon class
@@ -104,11 +105,30 @@ def run_optimization_adaptive(
     model.levers = centers_levers + radii_levers + weights_levers
 
     model.outcomes = [
+        # ScalarOutcome(
+        #     "mean_welfare_utilitarian",
+        #     variable_name="welfare_utilitarian",
+        #     kind=ScalarOutcome.MAXIMIZE,
+        # ),
         ScalarOutcome(
-            "mean_welfare_utilitarian",
-            # function=functools.partial(np.mean),
-            variable_name="welfare_utilitarian",
-            kind=ScalarOutcome.MAXIMIZE,
+            "welfare_utilitarian",
+            variable_name="welfare",
+            kind=ScalarOutcome.MINIMIZE,
+        ),
+        ScalarOutcome(
+            "years_above_temperature_threshold",
+            variable_name="years_above_threshold",
+            kind=ScalarOutcome.MINIMIZE,
+        ),
+        ScalarOutcome(
+            "total_damage_cost",
+            variable_name="total_damage",
+            kind=ScalarOutcome.MINIMIZE,
+        ),
+        ScalarOutcome(
+            "total_abatement_cost",
+            variable_name="total_abatement",
+            kind=ScalarOutcome.MINIMIZE,
         ),
     ]
 
