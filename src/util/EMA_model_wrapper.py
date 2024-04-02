@@ -7,6 +7,12 @@ import numpy as np
 from src.model import JUSTICE
 from src.util.enumerations import *
 from emodps.rbf import RBF
+from src.objectives.objective_functions import (
+    calculate_gini_index,
+    years_above_temperature_threshold,
+    total_damage_cost,
+    total_abatement_cost,
+)
 
 # Scaling Values
 max_temperature = 16.0
@@ -36,7 +42,9 @@ def model_wrapper_emodps(**kwargs):
     n_inputs_rbf = kwargs.pop("n_inputs_rbf")
     n_outputs_rbf = kwargs.pop("n_outputs_rbf")
 
-    rbf = RBF(n_rbfs=(n_inputs_rbf + 2), n_inputs=n_inputs_rbf, n_outputs=n_outputs_rbf)
+    rbf = RBF(
+        n_rbfs=(n_inputs_rbf + 2), n_inputs=n_inputs_rbf, n_outputs=n_outputs_rbf
+    )  # n_inputs_rbf is a rule of thumb. Hasn't been verified yet for complex models
 
     centers_shape, radii_shape, weights_shape = rbf.get_shape()
 
@@ -111,9 +119,21 @@ def model_wrapper_emodps(**kwargs):
 
     datasets = model.evaluate()
     # Calculate the mean of ["welfare_utilitarian"]
-    datasets["welfare_utilitarian"] = np.mean(datasets["welfare_utilitarian"])
+    # datasets["welfare_utilitarian"] = np.abs(np.mean(datasets["welfare_utilitarian"]))
+    welfare = np.abs(np.mean(datasets["welfare_utilitarian"]))
 
-    return datasets
+    # Get the years above temperature threshold
+    years_above_threshold = years_above_temperature_threshold(
+        datasets["global_temperature"], 2.0
+    )
+
+    # Get the total damage cost
+    total_damage = total_damage_cost(datasets["economic_damage"])
+
+    # Get the total abatement cost
+    total_abatement = total_abatement_cost(datasets["abatement_cost"])
+
+    return welfare, years_above_threshold, total_damage, total_abatement
 
 
 def model_wrapper(**kwargs):

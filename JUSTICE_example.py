@@ -25,7 +25,7 @@ def get_linear_emission_control():
 
     # Variables to be changed/deleted later
     miu_initial = 0.0
-    min_miu = 1.0  # 0.2  # 0.0 #1.0
+    min_miu = 0.0  # 0.2  # 0.0 #1.0
     min_miu_year = 2055  # 9-original #8 in this model  # 2060
     max_miu = 1.0  # 1.0  # 1.2
     max_miu_year = 2200  # 38-original #37 in this model #2205
@@ -51,7 +51,7 @@ def get_linear_emission_control():
     return emissions_control_rate
 
 
-def JUSTICE_example_run(scenarios=7):
+def JUSTICE_example_run(scenarios=0):
     """
     Run the JUSTICE model for a given scenario
     """
@@ -65,6 +65,7 @@ def JUSTICE_example_run(scenarios=7):
         # Declaring for endogenous fixed savings rate
         elasticity_of_marginal_utility_of_consumption=1.45,
         pure_rate_of_social_time_preference=0.015,
+        inequality_aversion=0.5,
     )
 
     # Get example emissions control rate
@@ -162,7 +163,7 @@ def JUSTICE_example_run(scenarios=7):
 
 
 if __name__ == "__main__":
-    datasets = JUSTICE_example_run(scenarios=2)
+    datasets = JUSTICE_example_run(scenarios=0)
 
     # Print the keys of the datasets
     print(datasets.keys())

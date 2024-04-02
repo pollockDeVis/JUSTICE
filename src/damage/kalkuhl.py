@@ -15,8 +15,6 @@ Kalkuhl Reference: https://www.sciencedirect.com/science/article/pii/S0095069620
 """
 
 import numpy as np
-
-# from scipy.special import erfc
 from typing import Any
 from config.default_parameters import DamageDefaults
 
@@ -24,8 +22,8 @@ from config.default_parameters import DamageDefaults
 class DamageKalkuhl:
     def __init__(self, input_dataset, time_horizon, climate_ensembles):
         self.region_list = input_dataset.REGION_LIST
-        self.timestep = time_horizon.timestep
         self.data_timestep = time_horizon.data_timestep
+        self.model_timestep = time_horizon.timestep
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
 
@@ -68,18 +66,13 @@ class DamageKalkuhl:
         self.coefficient_a = (
             self.short_run_temp_change_coefficient
             + self.lagged_short_run_temp_change_coefficient
-        ) / self.data_timestep
+        ) / self.model_timestep  # NOTE: # Kalkuhl uses annual rates
         self.coefficient_b = (
             self.interaction_term_temp_change_coefficient
             + self.lagged_interaction_term_temp_change_coefficient
-        ) / self.data_timestep
+        ) / self.model_timestep  # NOTE: # Kalkuhl uses annual rates
 
-        # self.climate_timestep_index = climate_model.__getattribute__(
-        #     "justice_start_index"
-        # )
         self.climate_ensembles = climate_ensembles
-        # climate_model.__getattribute__("number_of_ensembles")
-        # print(self.climate_timestep_index)
 
         # Create an temperature array of shape (region_list, damage window, climate_ensembles)
         self.temperature_array = np.zeros(
@@ -121,13 +114,20 @@ class DamageKalkuhl:
             self.climate_ensembles,
         ), "Temperature array is not of shape (region_list, climate_ensembles)"
 
-        # print(f"temperature: {temperature[:, 0]}")
-
-        # DO a if else for the first timestep
+        # Initialize the temperature array
         if timestep == 0:
             # Fill the temperature array with the current temperature data
             self.temperature_array[:, 0, :] = temperature
-        else:
+        elif timestep > 0 and timestep < (self.damage_window + 1):
+            # Fill the temperature array with the current temperature data
+            self.temperature_array[:, 1, :] = temperature
+            # Calculate the temperature difference
+            temperature_difference = (
+                self.temperature_array[:, 1, :] - self.temperature_array[:, 0, :]
+            )
+            self.temperature_array[:, 0, :] = self.temperature_array[:, 1, :]
+
+        elif timestep >= (self.damage_window + 1):
             # Fill the temperature array with the current temperature data
             self.temperature_array[:, 1, :] = temperature
             # print(f"temperature_array: {self.temperature_array[:, 1, :].shape}")
@@ -137,9 +137,7 @@ class DamageKalkuhl:
                 self.temperature_array[:, 1, :] - self.temperature_array[:, 0, :]
             )
 
-            # print(f"temperature_difference: {temperature_difference[:, 0]}")
-
-            # Calculate the damage coefficient. Damage coefficient for current timestep is based on previous temperature
+            # Calculate the damage coefficient. Damage coefficient for current timestep is based on previous temperature #BIMPACT
             self.damage_coefficient[:, 1, :] = (
                 self.coefficient_a * temperature_difference
                 + self.coefficient_b
@@ -147,13 +145,12 @@ class DamageKalkuhl:
                 * self.temperature_array[:, 0, :]
             )
 
-            # print(f"damage_coefficient: {self.damage_coefficient[:, 1, 0]}")
-
-            # Calculate economic_damage_factor for current timestep
-
+            # Calculate economic_damage_factor for current timestep #OMEGA
             np.divide(
                 (1 + (self.economic_damage_factor[:, timestep - 1, :])),
-                np.power((1 + self.damage_coefficient[:, 0, :]), self.data_timestep),
+                np.power(
+                    (1 + self.damage_coefficient[:, 0, :]), self.model_timestep
+                ),  # self.data_timestep
                 out=self.economic_damage_factor[:, timestep, :],
             )
             self.economic_damage_factor[
@@ -190,8 +187,6 @@ class DamageKalkuhl:
             self.total_damage_fraction = (
                 unbounded_damage_fraction + gradient_damage_fraction
             )
-            # total_damage_fraction = unbounded_damage_fraction + gradient_damage_fraction
-            # self.damage_to_output = 1 - total_damage_fraction
 
             # Update the first column of the temperature array and damage coefficient array for the next timestep
             self.temperature_array[:, 0, :] = self.temperature_array[:, 1, :]
