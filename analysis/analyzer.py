@@ -49,15 +49,34 @@ from src.util.EMA_model_wrapper import (
 from src.util.model_time import TimeHorizon
 from src.util.data_loader import DataLoader
 
+# TODO: Create a config file for loading values for analysis
+start_year = 2015
+end_year = 2300
+data_timestep = 5
+timestep = 1
+emission_control_start_year = 2025
+
+n_rbfs = 4
+n_inputs = 2
+nfe = 5000
+
 
 # Instantiate the DataLoader class
 data_loader = DataLoader()
 # Instantiate the TimeHorizon class
-time_horizon = TimeHorizon(start_year=2015, end_year=2300, data_timestep=5, timestep=1)
+time_horizon = TimeHorizon(
+    start_year=start_year,
+    end_year=end_year,
+    data_timestep=data_timestep,
+    timestep=timestep,
+)
+emission_control_start_timestep = time_horizon.year_to_timestep(
+    year=emission_control_start_year, timestep=timestep
+)
 
 
 def run_optimization_adaptive(
-    n_rbfs=4, n_inputs=2, nfe=5000, filename=None, folder=None
+    n_rbfs=n_rbfs, n_inputs=n_inputs, nfe=nfe, filename=None, folder=None
 ):
     model = Model("JUSTICE", function=model_wrapper_emodps)
 
@@ -65,6 +84,7 @@ def run_optimization_adaptive(
     model.constants = [
         Constant("n_regions", len(data_loader.REGION_LIST)),
         Constant("n_timesteps", len(time_horizon.model_time_horizon)),
+        Constant("emission_control_start_timestep", emission_control_start_timestep),
         Constant("n_rbfs", n_rbfs),
         Constant("n_inputs_rbf", n_inputs),
         Constant("n_outputs_rbf", len(data_loader.REGION_LIST)),
@@ -77,7 +97,7 @@ def run_optimization_adaptive(
         CategoricalParameter(
             "ssp_rcp_scenario", (0, 1, 2, 3, 4, 5, 6, 7)
         ),  # 8 SSP-RCP scenario combinations
-        CategoricalParameter("inequality_aversion", (0.0, 0.5, 1.45, 2.0)),
+        # CategoricalParameter("inequality_aversion", (0.0, 0.5, 1.45, 2.0)),
     ]
 
     # Set the model levers, which are the RBF parameters
@@ -135,7 +155,7 @@ def run_optimization_adaptive(
     reference_scenario = Scenario(
         "reference",
         ssp_rcp_scenario=2,
-        inequality_aversion=0.0,
+        # inequality_aversion=0.5,
     )
 
     convergence_metrics = [

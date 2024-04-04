@@ -13,6 +13,7 @@ from src.objectives.objective_functions import (
     total_damage_cost,
     total_abatement_cost,
 )
+from src.util.emission_control_contraint import emission_control_constraint
 
 # Scaling Values
 max_temperature = 16.0
@@ -38,6 +39,7 @@ def model_wrapper_emodps(**kwargs):
 
     n_regions = kwargs.pop("n_regions")
     n_timesteps = kwargs.pop("n_timesteps")
+    emission_control_start_timestep = kwargs.pop("emission_control_start_timestep")
 
     n_inputs_rbf = kwargs.pop("n_inputs_rbf")
     n_outputs_rbf = kwargs.pop("n_outputs_rbf")
@@ -116,6 +118,13 @@ def model_wrapper_emodps(**kwargs):
         # Check if this is not the last timestep
         if timestep < n_timesteps - 1:
             emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(rbf_input)
+            emissions_control_rate[:, timestep + 1, :] = emission_control_constraint(
+                emission_control_rate=emissions_control_rate[:, timestep + 1, :],
+                timestep=timestep,
+                max_annual_growth_rate=0.4,
+                emission_control_start_timestep=emission_control_start_timestep,
+                allow_fallback=False,
+            )
 
     datasets = model.evaluate()
     # Calculate the mean of ["welfare_utilitarian"]
