@@ -135,7 +135,9 @@ def JUSTICE_stepwise_run(scenarios=0):
         # Constrain the emission control rate
         constrained_emission_control_rate[:, timestep, :] = (
             emission_constraint.constrain_emission_control_rate(
-                emissions_control_rate[:, timestep, :], timestep, allow_fallback=False
+                emissions_control_rate[:, timestep, :],
+                timestep,
+                allow_fallback=True,  # False #Default is False
             )
         )
 
@@ -169,7 +171,7 @@ def JUSTICE_stepwise_run(scenarios=0):
             # Test
             # Subtract 0.5 from all the elements of the emissions_control_rate
             emissions_control_rate[:, timestep + 1, :] = (
-                emissions_control_rate[:, timestep + 1, :] - 0.8
+                emissions_control_rate[:, timestep + 1, :] - 0.4
             )
 
     datasets = model.evaluate()

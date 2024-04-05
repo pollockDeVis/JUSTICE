@@ -41,12 +41,12 @@ class EmissionControlConstraint:
         """
 
         if timestep >= self.emission_control_start_timestep:
-            if timestep == self.emission_control_start_timestep:
-                # Initialize the previous_emission_control_rate with a self.max_annual_growth_rate small value of 1e-6
-                self.previous_emission_control_rate = (
-                    np.ones_like(emission_control_rate)
-                    * self.max_annual_growth_rate  # 1e-6
-                )
+            # if timestep == self.emission_control_start_timestep:
+            #     # Initialize the previous_emission_control_rate with a self.max_annual_growth_rate small value of 1e-6
+            #     self.previous_emission_control_rate = (
+            #         np.ones_like(emission_control_rate)
+            #         * self.max_annual_growth_rate  # 1e-6
+            #     )
 
             with np.errstate(divide="ignore", invalid="ignore"):
                 annual_growth_rate = (
@@ -67,7 +67,6 @@ class EmissionControlConstraint:
                     self.previous_emission_control_rate[mask_high_growth]
                     * (1 + self.max_annual_growth_rate)
                 )
-            self.constrained_emission_control_rate = emission_control_rate
 
             if allow_fallback:
                 self.constrained_emission_control_rate = emission_control_rate
@@ -79,13 +78,24 @@ class EmissionControlConstraint:
                     )
                     self.constrained_emission_control_rate = emission_control_rate
 
+            # Check if emission_control_rate has any negative elements. If yes, set to 0.01
+            if np.any(emission_control_rate < 0):
+                mask_negative = emission_control_rate < 0
+                emission_control_rate[mask_negative] = 0.01
+
+            self.constrained_emission_control_rate = emission_control_rate
+
             self.previous_emission_control_rate = self.constrained_emission_control_rate
 
+        # Timesteps before the emission_control_start_timestep
         elif timestep < self.emission_control_start_timestep:
             self.constrained_emission_control_rate = np.zeros_like(
                 emission_control_rate
             )
             self.previous_emission_control_rate = self.constrained_emission_control_rate
+
+            if timestep == (self.emission_control_start_timestep - 1):
+                self.previous_emission_control_rate = emission_control_rate
 
         return self.constrained_emission_control_rate
 
