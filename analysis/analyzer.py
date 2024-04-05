@@ -3,7 +3,7 @@ This module contains the uncertainty analysis for the JUSTICE model using EMA Wo
 """
 
 import functools
-
+import datetime
 import numpy as np
 import os
 
@@ -151,6 +151,13 @@ def run_optimization_adaptive(
             kind=ScalarOutcome.MINIMIZE,
         ),
     ]
+    # TODO should have a configuration file for optimizations
+    epsilons = [
+        0.1,
+        0.25,
+        10,
+        10,
+    ]  # epsilons for welfare, years_above_threshold, total_damage, total_abatement
 
     reference_scenario = Scenario(
         "reference",
@@ -158,12 +165,19 @@ def run_optimization_adaptive(
         # inequality_aversion=0.5,
     )
 
+    filename = f"JUSTICE_EMODPS_{nfe}.tar.gz"
+    date = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    directory_name = f"./data/output_{date}"
+    # Create a directory inside ./data/ with name output_{date} to save the results
+    os.mkdir(directory_name)
+    # Set the directory path to a variable
+
     convergence_metrics = [
         ArchiveLogger(
-            "./data/output",
+            directory_name,  # "./data/output",
             [l.name for l in model.levers],
             [o.name for o in model.outcomes],
-            base_filename="JUSTICE_dps_archive.tar.gz",
+            base_filename=filename,  # "JUSTICE_dps_archive.tar.gz"
         ),
         EpsilonProgress(),
     ]
@@ -172,7 +186,7 @@ def run_optimization_adaptive(
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
-            epsilons=[0.01] * len(model.outcomes),  # * len(model.outcomes)
+            epsilons=epsilons,  # [0.01] * len(model.outcomes),  # * len(model.outcomes)
             reference=reference_scenario,
             convergence=convergence_metrics,
             # population_size=10,
