@@ -13,7 +13,7 @@ from src.objectives.objective_functions import (
     total_damage_cost,
     total_abatement_cost,
 )
-from src.util.emission_control_contraint import emission_control_constraint
+from src.util.emission_control_constraint import emission_control_constraint
 
 # Scaling Values
 max_temperature = 16.0
