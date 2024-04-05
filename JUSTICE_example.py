@@ -112,7 +112,9 @@ def JUSTICE_stepwise_run(scenarios=0):
         path_to_rbf_weights="data/optimized_rbf_weights/100k_Util_4Obj_JUSTICE_dps_archive_1-4-24/100027.csv",
     )
     emission_constraint = EmissionControlConstraint(
-        max_annual_growth_rate=0.04, emission_control_start_timestep=9
+        max_annual_growth_rate=0.04,
+        emission_control_start_timestep=9,
+        min_emission_control_rate=0.01,
     )
     # Initialize datasets to store the results
     datasets = {}
@@ -170,9 +172,9 @@ def JUSTICE_stepwise_run(scenarios=0):
 
             # Test
             # Subtract 0.5 from all the elements of the emissions_control_rate
-            emissions_control_rate[:, timestep + 1, :] = (
-                emissions_control_rate[:, timestep + 1, :] - 0.4
-            )
+            # emissions_control_rate[:, timestep + 1, :] = (
+            #     emissions_control_rate[:, timestep + 1, :] - 0.4
+            # )
 
     datasets = model.evaluate()
 
