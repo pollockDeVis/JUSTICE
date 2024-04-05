@@ -14,6 +14,8 @@ from src.objectives.objective_functions import (
     total_abatement_cost,
 )
 
+from src.util.emission_control_constraint import EmissionControlConstraint
+
 # Scaling Values
 max_temperature = 16.0
 min_temperature = 0.0
@@ -38,6 +40,7 @@ def model_wrapper_emodps(**kwargs):
 
     n_regions = kwargs.pop("n_regions")
     n_timesteps = kwargs.pop("n_timesteps")
+    emission_control_start_timestep = kwargs.pop("emission_control_start_timestep")
 
     n_inputs_rbf = kwargs.pop("n_inputs_rbf")
     n_outputs_rbf = kwargs.pop("n_outputs_rbf")
@@ -68,6 +71,13 @@ def model_wrapper_emodps(**kwargs):
 
     rbf.set_decision_vars(decision_vars)
 
+    # NOTE: Could get the growth rate and min_emission_control_rate from the kwargs
+    emission_constraint = EmissionControlConstraint(
+        max_annual_growth_rate=0.04,
+        emission_control_start_timestep=emission_control_start_timestep,
+        min_emission_control_rate=0.01,
+    )
+
     model = JUSTICE(
         scenario=scenario,
         economy_type=economy_type,
@@ -86,12 +96,24 @@ def model_wrapper_emodps(**kwargs):
     datasets = {}
     # Initialize emissions control rate
     emissions_control_rate = np.zeros((n_regions, n_timesteps, no_of_ensembles))
+    constrained_emission_control_rate = np.zeros(
+        (n_regions, n_timesteps, no_of_ensembles)
+    )
     previous_temperature = 0
     difference = 0
 
     for timestep in range(n_timesteps):
+
+        # Constrain the emission control rate
+        constrained_emission_control_rate[:, timestep, :] = (
+            emission_constraint.constrain_emission_control_rate(
+                emissions_control_rate[:, timestep, :],
+                timestep,
+                allow_fallback=False,  # Default is False
+            )
+        )
         model.stepwise_run(
-            emission_control_rate=emissions_control_rate[:, timestep, :],
+            emission_control_rate=constrained_emission_control_rate[:, timestep, :],
             timestep=timestep,
             endogenous_savings_rate=True,
         )

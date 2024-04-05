@@ -655,3 +655,9 @@ class JUSTICE:
         Get the list of outcomes of the model.
         """
         return self.data.keys()
+
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)
