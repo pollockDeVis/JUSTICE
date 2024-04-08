@@ -16,6 +16,13 @@ class WelfareFunction(Enum):
     SUFFICIENTARIAN = (2, "SUFFICIENTARIAN")
     EGALITARIAN = (3, "EGALITARIAN")
 
+    @staticmethod
+    def from_index(index):
+        for enum in WelfareFunction:
+            if enum.value[0] == index:
+                return enum
+        return None
+
 
 class SSP(IntEnum):
     SSP1 = 0

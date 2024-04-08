@@ -3,7 +3,6 @@ import sys
 
 
 if __name__ == "__main__":
-    # # stat = sys.argv[1] if len(sys.argv) > 1 else "mean" #HPC shell script input
-    # run_optimization_adaptive(n_rbfs=4, n_inputs=2, nfe=5)
     nfe = int(sys.argv[1]) if len(sys.argv) > 1 else 5  # default value 5
-    run_optimization_adaptive(n_rbfs=4, n_inputs=2, nfe=nfe)
+    swf = int(sys.argv[2]) if len(sys.argv) > 2 else 0  # default value 0
+    run_optimization_adaptive(n_rbfs=4, n_inputs=2, nfe=nfe, swf=swf)

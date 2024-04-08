@@ -70,8 +70,8 @@ epsilons = [
     10,
 ]  # epsilons for welfare, years_above_threshold, total_damage, total_abatement
 
-# TODO should have a configuration file for optimizations
-social_welfare_function = WelfareFunction.UTILITARIAN
+# # TODO should have a configuration file for optimizations
+# social_welfare_function = WelfareFunction.UTILITARIAN
 
 # Instantiate the DataLoader class
 data_loader = DataLoader()
@@ -86,15 +86,17 @@ emission_control_start_timestep = time_horizon.year_to_timestep(
     year=emission_control_start_year, timestep=timestep
 )
 
-# Get Social Welfare Defaults
-social_welfare_defaults = SocialWelfareDefaults().get_defaults(
-    social_welfare_function.value[1]
-)
-
 
 def run_optimization_adaptive(
-    n_rbfs=n_rbfs, n_inputs=n_inputs, nfe=nfe, filename=None, folder=None
+    n_rbfs=n_rbfs, n_inputs=n_inputs, nfe=nfe, swf=0, filename=None, folder=None
 ):
+    social_welfare_function = WelfareFunction.from_index(swf)
+
+    # Get Social Welfare Defaults
+    social_welfare_defaults = SocialWelfareDefaults().get_defaults(
+        social_welfare_function.value[1]
+    )
+
     model = Model("JUSTICE", function=model_wrapper_emodps)
 
     # Define constants, uncertainties and levers
