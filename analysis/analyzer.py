@@ -90,6 +90,7 @@ def run_optimization_adaptive(
         Constant("n_outputs_rbf", len(data_loader.REGION_LIST)),
         Constant("elasticity_of_marginal_utility_of_consumption", 1.45),
         Constant("pure_rate_of_social_time_preference", 0.015),
+        Constant("inequality_aversion", 0.5),
     ]
 
     # Speicify uncertainties
@@ -182,14 +183,15 @@ def run_optimization_adaptive(
         EpsilonProgress(),
     ]
 
-    with MPIEvaluator(model) as evaluator:
+    # with MPIEvaluator(model) as evaluator:
+    with SequentialEvaluator(model) as evaluator:
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
             epsilons=epsilons,  # [0.01] * len(model.outcomes),  # * len(model.outcomes)
             reference=reference_scenario,
             convergence=convergence_metrics,
-            # population_size=10,
+            population_size=2,
         )
 
         # if filename is None:
