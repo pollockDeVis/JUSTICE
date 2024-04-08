@@ -5,6 +5,28 @@ This file contains all custom-made enumerations for JUSTICE model.
 from enum import Enum, IntEnum
 
 
+class WelfareFunction(Enum):
+    """
+    Social Welfare Functions
+    Tuple: (index, string)
+    """
+
+    UTILITARIAN = (0, "Utilitarian")
+    PRIORITARIAN = (1, "Prioritarian")
+    SUFFICIENTARIAN = (2, "Sufficientarian")
+    EGALITARIAN = (3, "Egalitarian")
+
+
+def get_welfare_function_name(index):
+    welfare_functions = list(WelfareFunction)
+    if index < 0 or index >= len(welfare_functions):
+        raise ValueError(
+            "Index out of range. It should be between 0 and "
+            + str(len(welfare_functions) - 1)
+        )
+    return welfare_functions[index].value[1]
+
+
 class SSP(IntEnum):
     SSP1 = 0
     SSP2 = 1
@@ -78,14 +100,3 @@ class Abatement(Enum):
 
     ENERDATA = 0
     DICE = 1
-
-
-class WelfareFunction(Enum):
-    """
-    Social Welfare Functions
-    """
-
-    UTILITARIAN = 0
-    PRIORITARIAN = 1
-    SUFFICIENTARIAN = 2
-    EGALITARIAN = 3

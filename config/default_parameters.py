@@ -88,11 +88,26 @@ class SocialWelfareDefaults:
                 # The discount rate, a.k.a the initial rate of social time preference. #prstp in code
                 "pure_rate_of_social_time_preference": 0.015,
                 # Inequality aversion parameter. #labelled gamma #Range: [0,1.5]; good options: | 0 | 0.5 | 1.45 | 2 |
-                "inequality_aversion": 0.5,
+                "inequality_aversion": 0.0,
             },
-            "PRIORITARIAN": {},
-            "EGALITARIAN": {},
-            "SUFFICENTARIAN": {},
+            "PRIORITARIAN": {
+                "elasticity_of_marginal_utility_of_consumption": 1.45,
+                "pure_rate_of_social_time_preference": 0.0,
+                "inequality_aversion": 2.0,
+            },
+            "SUFFICENTARIAN": {
+                "elasticity_of_marginal_utility_of_consumption": 1.45,
+                "pure_rate_of_social_time_preference": 0.0,
+                "inequality_aversion": 2.0,
+                "sufficiency_threshold": (
+                    1.25 * 365.25
+                ),  # World bank stipulated the poverty line of US$1.25 for 2005 USD PPP. Consumption in JUSTICE is yearly (in $2005 PPP), hence we simply multiply this poverty line rate with average days in a year and hence  in JUSTICE will be 1.25 * 365.25
+            },
+            "EGALITARIAN": {
+                "elasticity_of_marginal_utility_of_consumption": 1.45,
+                "pure_rate_of_social_time_preference": 0.0,
+                "inequality_aversion": 2.0,
+            },
         }
 
     def get_defaults(self, type):
