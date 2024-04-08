@@ -33,6 +33,9 @@ def model_wrapper_emodps(**kwargs):
     )
     inequality_aversion = kwargs.pop("inequality_aversion")
 
+    sufficiency_threshold = kwargs.pop("sufficiency_threshold")
+    egality_strictness = kwargs.pop("egality_strictness")
+
     economy_type = kwargs.pop("economy_type", (Economy.NEOCLASSICAL,))
     damage_function_type = kwargs.pop("damage_function_type", (DamageFunction.KALKUHL,))
     abatement_type = kwargs.pop("abatement_type", (Abatement.ENERDATA,))

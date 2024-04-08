@@ -89,24 +89,33 @@ class SocialWelfareDefaults:
                 "pure_rate_of_social_time_preference": 0.015,
                 # Inequality aversion parameter. #labelled gamma #Range: [0,1.5]; good options: | 0 | 0.5 | 1.45 | 2 |
                 "inequality_aversion": 0.0,
+                "sufficiency_threshold": 0.0,
+                "egality_strictness": 0.0,  # Range: [0,1]
             },
             "PRIORITARIAN": {
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
                 "pure_rate_of_social_time_preference": 0.0,
                 "inequality_aversion": 2.0,
+                "sufficiency_threshold": 0.0,
+                "egality_strictness": 0.0,  # Range: [0,1]
             },
-            "SUFFICENTARIAN": {
+            "SUFFICIENTARIAN": {
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
                 "pure_rate_of_social_time_preference": 0.0,
                 "inequality_aversion": 2.0,
                 "sufficiency_threshold": (
                     1.25 * 365.25
-                ),  # World bank stipulated the poverty line of US$1.25 for 2005 USD PPP. Consumption in JUSTICE is yearly (in $2005 PPP), hence we simply multiply this poverty line rate with average days in a year and hence  in JUSTICE will be 1.25 * 365.25
+                ),  # World bank stipulated the poverty line of US$1.25 for 2005 USD PPP.
+                # Consumption in JUSTICE is yearly (in $2005 PPP), hence we simply
+                # multiply this poverty line rate with average days in a year and hence  in JUSTICE will be 1.25 * 365.25
+                "egality_strictness": 0.0,  # Range: [0,1]
             },
             "EGALITARIAN": {
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
                 "pure_rate_of_social_time_preference": 0.0,
                 "inequality_aversion": 2.0,
+                "sufficiency_threshold": 0.0,
+                "egality_strictness": 1.0,  # Range: [0,1]
             },
         }
 

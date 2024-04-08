@@ -11,20 +11,10 @@ class WelfareFunction(Enum):
     Tuple: (index, string)
     """
 
-    UTILITARIAN = (0, "Utilitarian")
-    PRIORITARIAN = (1, "Prioritarian")
-    SUFFICIENTARIAN = (2, "Sufficientarian")
-    EGALITARIAN = (3, "Egalitarian")
-
-
-def get_welfare_function_name(index):
-    welfare_functions = list(WelfareFunction)
-    if index < 0 or index >= len(welfare_functions):
-        raise ValueError(
-            "Index out of range. It should be between 0 and "
-            + str(len(welfare_functions) - 1)
-        )
-    return welfare_functions[index].value[1]
+    UTILITARIAN = (0, "UTILITARIAN")
+    PRIORITARIAN = (1, "PRIORITARIAN")
+    SUFFICIENTARIAN = (2, "SUFFICIENTARIAN")
+    EGALITARIAN = (3, "EGALITARIAN")
 
 
 class SSP(IntEnum):
@@ -63,6 +53,16 @@ def get_economic_scenario(index):
             "Index out of range. It should be between 0 and " + str(len(scenarios) - 1)
         )
     return scenarios[index].value[1].value
+
+
+def get_welfare_function_name(index):
+    welfare_functions = list(WelfareFunction)
+    if index < 0 or index >= len(welfare_functions):
+        raise ValueError(
+            "Index out of range. It should be between 0 and "
+            + str(len(welfare_functions) - 1)
+        )
+    return welfare_functions[index].value[1]
 
 
 class ModelRunSpec(Enum):
