@@ -36,7 +36,6 @@ from ema_workbench.em_framework.optimization import (
     # HyperVolume,
 )
 
-
 # JUSTICE
 # Set this path to the src folder
 # export PYTHONPATH=$PYTHONPATH:/Users/palokbiswas/Desktop/pollockdevis_git/JUSTICE/src
@@ -49,6 +48,9 @@ from src.util.EMA_model_wrapper import (
 from src.util.model_time import TimeHorizon
 from src.util.data_loader import DataLoader
 
+from src.util.enumerations import WelfareFunction, get_welfare_function_name
+from config.default_parameters import SocialWelfareDefaults
+
 # TODO: Create a config file for loading values for analysis
 start_year = 2015
 end_year = 2300
@@ -60,6 +62,16 @@ n_rbfs = 4
 n_inputs = 2
 nfe = 5000
 
+# TODO should have a configuration file for optimizations
+epsilons = [
+    0.1,
+    0.25,
+    10,
+    10,
+]  # epsilons for welfare, years_above_threshold, total_damage, total_abatement
+
+# TODO should have a configuration file for optimizations
+social_welfare_function = WelfareFunction.UTILITARIAN
 
 # Instantiate the DataLoader class
 data_loader = DataLoader()
@@ -72,6 +84,11 @@ time_horizon = TimeHorizon(
 )
 emission_control_start_timestep = time_horizon.year_to_timestep(
     year=emission_control_start_year, timestep=timestep
+)
+
+# Get Social Welfare Defaults
+social_welfare_defaults = SocialWelfareDefaults().get_defaults(
+    social_welfare_function.value[1]
 )
 
 
@@ -88,15 +105,35 @@ def run_optimization_adaptive(
         Constant("n_rbfs", n_rbfs),
         Constant("n_inputs_rbf", n_inputs),
         Constant("n_outputs_rbf", len(data_loader.REGION_LIST)),
-        Constant("elasticity_of_marginal_utility_of_consumption", 1.45),
-        Constant("pure_rate_of_social_time_preference", 0.015),
-        Constant("inequality_aversion", 0.5),
+        Constant(
+            "elasticity_of_marginal_utility_of_consumption",
+            social_welfare_defaults["elasticity_of_marginal_utility_of_consumption"],
+        ),
+        Constant(
+            "pure_rate_of_social_time_preference",
+            social_welfare_defaults["pure_rate_of_social_time_preference"],
+        ),
+        Constant("inequality_aversion", social_welfare_defaults["inequality_aversion"]),
+        Constant(
+            "sufficiency_threshold", social_welfare_defaults["sufficiency_threshold"]
+        ),
+        Constant("egality_strictness", social_welfare_defaults["egality_strictness"]),
     ]
 
     # Speicify uncertainties
     model.uncertainties = [
         CategoricalParameter(
-            "ssp_rcp_scenario", (0, 1, 2, 3, 4, 5, 6, 7)
+            "ssp_rcp_scenario",
+            (
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+            ),  # TODO should have a configuration file for optimizations
         ),  # 8 SSP-RCP scenario combinations
         # CategoricalParameter("inequality_aversion", (0.0, 0.5, 1.45, 2.0)),
     ]
@@ -116,7 +153,9 @@ def run_optimization_adaptive(
     weights_levers = []
 
     for i in range(centers_shape):
-        centers_levers.append(RealParameter(f"center {i}", -1.0, 1.0))
+        centers_levers.append(
+            RealParameter(f"center {i}", -1.0, 1.0)
+        )  # TODO should have a configuration file for optimizations
         radii_levers.append(RealParameter(f"radii {i}", 0.0, 1.0))
 
     for i in range(weights_shape):
@@ -152,21 +191,14 @@ def run_optimization_adaptive(
             kind=ScalarOutcome.MINIMIZE,
         ),
     ]
-    # TODO should have a configuration file for optimizations
-    epsilons = [
-        0.1,
-        0.25,
-        10,
-        10,
-    ]  # epsilons for welfare, years_above_threshold, total_damage, total_abatement
 
     reference_scenario = Scenario(
         "reference",
         ssp_rcp_scenario=2,
-        # inequality_aversion=0.5,
     )
 
-    filename = f"JUSTICE_EMODPS_{nfe}.tar.gz"
+    # Add social_welfare_function.value[1] to the filename
+    filename = f"{social_welfare_function.value[1]}_{nfe}.tar.gz"
     date = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     directory_name = f"./data/output_{date}"
     # Create a directory inside ./data/ with name output_{date} to save the results
@@ -183,8 +215,8 @@ def run_optimization_adaptive(
         EpsilonProgress(),
     ]
 
-    # with MPIEvaluator(model) as evaluator:
-    with SequentialEvaluator(model) as evaluator:
+    with MPIEvaluator(model) as evaluator:
+        # with SequentialEvaluator(model) as evaluator:
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
