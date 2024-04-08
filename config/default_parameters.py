@@ -99,10 +99,10 @@ class SocialWelfareDefaults:
                 "sufficiency_threshold": 0.0,
                 "egality_strictness": 0.0,  # Range: [0,1]
             },
-            "SUFFICIENTARIAN": {
+            "SUFFICIENTARIAN": {  # Sufficientarian can be either Utilitarian above threshold or Prioritarian below threshold
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
-                "pure_rate_of_social_time_preference": 0.0,
-                "inequality_aversion": 2.0,
+                "pure_rate_of_social_time_preference": 0.015,
+                "inequality_aversion": 0.0,
                 "sufficiency_threshold": (
                     (1.25 * 365.25) / 1e3
                 ),  # World bank stipulated the poverty line of US$1.25 for 2005 USD PPP.

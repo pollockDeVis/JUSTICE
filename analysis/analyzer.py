@@ -195,10 +195,10 @@ def run_optimization_adaptive(
     reference_scenario = Scenario(
         "reference",
         ssp_rcp_scenario=2,
-        # inequality_aversion=0.5,
     )
 
-    filename = f"JUSTICE_EMODPS_{nfe}.tar.gz"
+    # Add social_welfare_function.value[1] to the filename
+    filename = f"{social_welfare_function.value[1]}_{nfe}.tar.gz"
     date = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     directory_name = f"./data/output_{date}"
     # Create a directory inside ./data/ with name output_{date} to save the results
