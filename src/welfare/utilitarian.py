@@ -120,6 +120,7 @@ class Utilitarian:
         )
 
         # Applying gini to disentangled utility summed
+        # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
         disentangled_utility_summed = disentangled_utility_summed * (
             1 - gini_disentangled_utility * self.egality_strictness
         )
