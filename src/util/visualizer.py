@@ -23,13 +23,13 @@ def visualize_tradeoffs(
     set_style="whitegrid",
     font_scale=1.8,
     number_of_objectives=4,
-    colourmap="Spectral",
+    colourmap="Set2",
     linewidth=0.8,
     alpha=0.2,
     path_to_data=None,
     path_to_output="./data/plots",
     output_file_name="",
-    **kwargs
+    **kwargs,
 ):
     """
     Visualize the tradeoffs between different objectives in the model.
@@ -46,9 +46,12 @@ def visualize_tradeoffs(
     if path_to_data is not None and input_data is not None:
         # Repeat for multiple data files and concatenate them into one dataframe
         if isinstance(input_data, list):
-            data = pd.concat(
-                [pd.read_csv(path_to_data + "/" + file) for file in input_data]
-            )
+            data = pd.DataFrame()
+            data_length = np.zeros(len(input_data))
+            for index, file in enumerate(input_data):
+                data = pd.concat([data, pd.read_csv(path_to_data + "/" + file)])
+                output_file_name = output_file_name + file.split(".")[0] + "_"
+                data_length[index] = int(data.shape[0])
             # output_file_name = "_".join(input_data)
             # output_file_name = output_file_name.split(".")[0]
 
@@ -57,27 +60,34 @@ def visualize_tradeoffs(
 
             output_file_name = input_data
 
-    for file in input_data:
+    for index, file in enumerate(input_data):
         output_file_name = output_file_name + file.split(".")[0] + "_"
 
-    print(output_file_name)
+    print(data_length)
+    # Print data_length data type
+    print(type(data_length))
 
     # Keep only the last objective columns
     data = data.iloc[:, -number_of_objectives:]
 
     limits = parcoords.get_limits(data)
     axes = parcoords.ParallelAxes(limits)
-    # Define the number of lines
-    num_lines = len(data)
 
-    # Define the color spectrum palette
-    color_palette = cm.get_cmap(colourmap)(np.linspace(0, 1, num_lines))
-
+    color_palette = sns.color_palette(colourmap)
     # Plot the data and save the figure
-    for i in range(num_lines):
+    start_index = 0
+    for i in range(len(data_length)):
+
+        end_index = int(data_length[i])
         axes.plot(
-            data.iloc[i], color=color_palette[i], linewidth=linewidth, alpha=alpha
+            data.iloc[start_index:end_index],  # .T
+            color=color_palette[i],
+            linewidth=linewidth,
+            alpha=alpha,
+            label=input_data[i].split(".")[0],
         )
+        start_index = end_index + 1
+    axes.legend()
 
     # Save the figure
     if not os.path.exists(path_to_output):
