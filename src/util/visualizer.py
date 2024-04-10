@@ -18,17 +18,65 @@ from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import to_hex
 
 
+def preprocess_data(
+    data, number_of_objectives, data_length, direction="min", objective_of_interest=0
+):
+    """
+    Preprocess the data to be visualized.
+    """
+
+    # Best solutions array
+    # best_solutions_indices = np.zeros((number_of_objectives, number_of_objectives))
+    best_solutions_indices = np.zeros((number_of_objectives))
+
+    # Keep only the last objective columns
+    data = data.iloc[:, -number_of_objectives:]
+
+    # Initialize the start index
+    start_index = 0
+    # Loop through data_length
+    for i in range(len(data_length)):
+        end_index = int(data_length[i])
+        print(start_index, end_index)
+        # Get the best solutions
+        if direction == "min":
+            sliced_data = data.iloc[start_index:end_index, :]
+            # Find the min value for first objective
+            best_solutions_indices[i] = sliced_data.iloc[
+                :, objective_of_interest
+            ].idxmin()
+
+            # Find the index for the min value for each column in sliced_data
+
+            # best_solutions_indices[i, :] = sliced_data.idxmin()  # min(axis=0)
+
+        elif direction == "max":
+            pass
+            # sliced_data = data.iloc[start_index:end_index]
+            # # Find the index for the max value for each column in sliced_data
+            # idx = sliced_data.idxmax()
+            # best_solutions_indices[i] = data.iloc[idx]
+
+        start_index = end_index + 1
+
+    # Convert the best_solutions array to a dataframe with the same columns as data
+    # best_solutions_indices = pd.DataFrame(best_solutions_indices, columns=data.columns)
+
+    return data, best_solutions_indices
+
+
 def visualize_tradeoffs(
     figsize=(15, 10),
     set_style="whitegrid",
     font_scale=1.8,
     number_of_objectives=4,
     colourmap="Set2",
-    linewidth=0.8,
-    alpha=0.2,
+    linewidth=0.4,
+    alpha=0.05,
     path_to_data=None,
     path_to_output="./data/plots",
     output_file_name="",
+    objective_of_interest=0,
     **kwargs,
 ):
     """
@@ -52,8 +100,6 @@ def visualize_tradeoffs(
                 data = pd.concat([data, pd.read_csv(path_to_data + "/" + file)])
                 output_file_name = output_file_name + file.split(".")[0] + "_"
                 data_length[index] = int(data.shape[0])
-            # output_file_name = "_".join(input_data)
-            # output_file_name = output_file_name.split(".")[0]
 
         else:
             data = pd.read_csv(path_to_data + "/" + input_data)
@@ -63,30 +109,65 @@ def visualize_tradeoffs(
     for index, file in enumerate(input_data):
         output_file_name = output_file_name + file.split(".")[0] + "_"
 
-    print(data_length)
-    # Print data_length data type
-    print(type(data_length))
-
-    # Keep only the last objective columns
+    # Preprocess the data
+    # data, best_solutions_indices = preprocess_data(
+    #     data, number_of_objectives, data_length, direction="min"
+    # )
+    # # Keep only the last objective columns
     data = data.iloc[:, -number_of_objectives:]
 
     limits = parcoords.get_limits(data)
     axes = parcoords.ParallelAxes(limits)
 
     color_palette = sns.color_palette(colourmap)
+
     # Plot the data and save the figure
     start_index = 0
     for i in range(len(data_length)):
 
         end_index = int(data_length[i])
+
+        _sliced_data = data.iloc[start_index:end_index]
+        best_solutions_indices = _sliced_data.iloc[:, objective_of_interest].idxmin()
+        print(best_solutions_indices)
+
         axes.plot(
-            data.iloc[start_index:end_index],  # .T
+            _sliced_data,
             color=color_palette[i],
             linewidth=linewidth,
             alpha=alpha,
             label=input_data[i].split(".")[0],
         )
+
+        axes.plot(
+            _sliced_data.iloc[best_solutions_indices],
+            color=color_palette[i],
+            linewidth=2,
+            alpha=1,
+        )
         start_index = end_index + 1
+
+        # for j in range(best_solutions_indices.shape[1]):
+        #     idx = int(best_solutions_indices[i, j])
+        #     axes.plot(
+        #         data.iloc[idx],
+        #         color=color_palette[i],
+        #         linewidth=2,
+        #         alpha=1,
+        #     )
+        # Plot the best solutions
+        # axes.plot(best_solutions_indices.iloc[i], color=color_palette[i], linewidth=2, alpha=1)
+        # print(i)
+
+    # for j in range(best_solutions_indices.shape[0]):
+    #     axes.plot(
+    #         data.iloc[int(best_solutions_indices[j])],
+    #         color=color_palette[j],
+    #         linewidth=2,
+    #         alpha=1,
+    #     )
+
+    # Add the legend
     axes.legend()
 
     # Save the figure
