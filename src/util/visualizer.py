@@ -15,16 +15,32 @@ import matplotlib.cm as cm
 from matplotlib.colors import to_rgb
 
 
-def process_input_data(input_data, path_to_data):
+def process_input_data(
+    input_data, path_to_data, number_of_objectives, objective_of_interest
+):
     data = pd.DataFrame()
     output_file_name = ""
+    sliced_data = {}
+    filtered_idx = 0
+    filtered_data = np.zeros((number_of_objectives, number_of_objectives))
 
     data_length = np.zeros(len(input_data))
     for index, file in enumerate(input_data):
-        data = pd.concat([data, pd.read_csv(path_to_data + "/" + file)])
+        _read_data = pd.read_csv(path_to_data + "/" + file)
+        # Keep only the last objective columns
+        _read_data = _read_data.iloc[:, -number_of_objectives:]
+        data = pd.concat([data, _read_data])
         output_file_name = output_file_name + file.split(".")[0] + "_"
         data_length[index] = int(data.shape[0])
-    return output_file_name
+
+        sliced_data[index] = _read_data
+
+        filtered_idx = sliced_data[index].iloc[:, objective_of_interest].idxmin()
+        filtered_data[index, :] = _read_data.iloc[filtered_idx]
+
+    # Convert filtered data to a dataframe
+    filtered_data = pd.DataFrame(filtered_data, columns=data.columns)
+    return data, data_length, output_file_name, sliced_data, filtered_data
 
 
 def visualize_tradeoffs(
@@ -60,24 +76,19 @@ def visualize_tradeoffs(
     if path_to_data is not None and input_data is not None:
         # Repeat for multiple data files and concatenate them into one dataframe
         if isinstance(input_data, list):
-            data = pd.DataFrame()
-            data_length = np.zeros(len(input_data))
-            for index, file in enumerate(input_data):
-                data = pd.concat([data, pd.read_csv(path_to_data + "/" + file)])
-                output_file_name = output_file_name + file.split(".")[0] + "_"
-                data_length[index] = int(data.shape[0])
+            data, data_length, output_file_name, sliced_data, filtered_data = (
+                process_input_data(
+                    input_data,
+                    path_to_data,
+                    number_of_objectives,
+                    objective_of_interest,
+                )
+            )
 
         else:
             data = pd.read_csv(path_to_data + "/" + input_data)
 
             output_file_name = input_data
-
-    # Redundant
-    for index, file in enumerate(input_data):
-        output_file_name = output_file_name + file.split(".")[0] + "_"
-
-    # Keep only the last objective columns
-    data = data.iloc[:, -number_of_objectives:]
 
     if column_labels is not None:
         # Check if the number of column labels is equal to the number of objectives
@@ -110,14 +121,13 @@ def visualize_tradeoffs(
     color_palette = sns.color_palette(colourmap)
 
     # Plot the data and save the figure
-    start_index = 0
-    best_solutions = np.zeros((len(input_data), number_of_objectives))
     for i in range(len(data_length)):
 
         end_index = int(data_length[i])
 
-        _sliced_data = data.iloc[start_index:end_index]
-        best_solutions_indices = _sliced_data.iloc[:, objective_of_interest].idxmin()
+        _sliced_data = sliced_data[i]
+        _sliced_data.columns = data.columns
+
         labels = []
         if legend_labels is not None:
             labels = legend_labels
@@ -131,16 +141,14 @@ def visualize_tradeoffs(
             alpha=alpha,
             label=labels[i].split(".")[0],  # Splitting in case of file extension
         )
-        best_solutions[i, :] = _sliced_data.iloc[best_solutions_indices]
 
-        start_index = end_index + 1
-
-    best_solutions_df = pd.DataFrame(best_solutions, columns=data.columns)
+    # Add the column labels
+    filtered_data.columns = data.columns
 
     # Loop through the best solutions dataframe and plot them
-    for j in range(best_solutions_df.shape[0]):
+    for j in range(filtered_data.shape[0]):
         axes.plot(
-            best_solutions_df.iloc[j],
+            filtered_data.iloc[j],
             color=color_palette[j],
             linewidth=2,
             alpha=0.8,
