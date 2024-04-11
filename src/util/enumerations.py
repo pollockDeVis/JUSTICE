@@ -48,6 +48,10 @@ class Scenario(Enum):
     )
     SSP585 = (7, SSP.SSP5, "ssp585", "SSP5-RCP8.5")
 
+    @staticmethod
+    def get_ssp_rcp_strings():
+        return [scenario.value[3] for scenario in Scenario]
+
 
 def get_climate_scenario(index):
     scenarios = list(Scenario)

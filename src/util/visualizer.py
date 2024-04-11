@@ -2,23 +2,19 @@
 This module contains methods to visualize different kinds of output data from the JUSTICE model.
 """
 
-import matplotlib
-import numpy as np
-
 from ema_workbench.analysis import plotting, Density, parcoords
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import os
-import matplotlib.cm as cm
-from matplotlib.colors import to_rgb
-
-# Import sklearn minmaxscaler
+from src.util.model_time import TimeHorizon
+from src.util.enumerations import *
+import pickle
 from sklearn.preprocessing import MinMaxScaler
 
 
-def process_input_data(
+def process_input_data_for_tradeoff_plot(
     input_data,
     path_to_data,
     number_of_objectives,
@@ -104,7 +100,7 @@ def visualize_tradeoffs(
         # Repeat for multiple data files and concatenate them into one dataframe
         if isinstance(input_data, list):
             data, data_length, output_file_name, sliced_data, filtered_data = (
-                process_input_data(
+                process_input_data_for_tradeoff_plot(
                     input_data,
                     path_to_data,
                     number_of_objectives,
@@ -150,7 +146,7 @@ def visualize_tradeoffs(
     # Plot the data and save the figure
     for i in range(len(data_length)):
 
-        end_index = int(data_length[i])
+        # end_index = int(data_length[i])
 
         _sliced_data = sliced_data[i]
         _sliced_data.columns = data.columns
@@ -189,6 +185,133 @@ def visualize_tradeoffs(
     if not os.path.exists(path_to_output):
         os.makedirs(path_to_output)
     plt.savefig(path_to_output + "/" + output_file_name, dpi=300)
+
+
+def plot_timeseries(
+    figsize=(15, 10),
+    set_style="white",
+    colourmap="bright",
+    path_to_data="data/reevaluation",
+    path_to_output="./data/plots",
+    fontsize=15,
+    x_label="Years",
+    y_label="Temperature Rise (°C)",
+    variable_name="global_temperature",
+    no_of_ensembles=1001,
+    input_data=[],
+    output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    main_title="Global Temperature Rise - ",
+    yaxis_lower_limit=0,
+    yaxis_upper_limit=10,
+    alpha=0.1,
+    linewidth=2.5,
+    lower_percentile=0,
+    upper_percentile=100,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+):
+
+    # Assert if input_data list is empty
+    assert input_data, "No input data provided for visualization."
+
+    # Set color palette
+    color_palette = sns.color_palette(colourmap)
+
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+    columns = list_of_years
+    data_scenario = np.zeros((len(Scenario), len(list_of_years), no_of_ensembles))
+    ssp_rcp_string_list = Scenario.get_ssp_rcp_strings()
+
+    # Loop through the input data and plot the timeseries
+    for plotting_idx, file in enumerate(input_data):
+        # Load the scenario data from the pickle file
+        with open(path_to_data + "/" + file, "rb") as f:  # input_data[plotting_idx]
+            scenario_data = pickle.load(f)
+
+        for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
+            data_scenario[idx, :, :] = scenario_data[scenarios][variable_name]
+
+        mean_data = np.zeros((len(Scenario), len(list_of_years)))
+        sns.set_style(set_style)
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Set y-axis limits
+        plt.ylim(yaxis_lower_limit, yaxis_upper_limit)
+
+        for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
+
+            print(scenarios)
+            temp_df = pd.DataFrame(data_scenario[idx, :, :].T, columns=list_of_years)
+            print(temp_df.max().max())
+            label = ssp_rcp_string_list[idx]
+            color = color_palette[idx]  # colors[idx]
+
+            # Calculate the percentiles
+            p_l = np.percentile(temp_df, lower_percentile, axis=0)
+            p_h = np.percentile(temp_df, upper_percentile, axis=0)
+
+            # Calculate the mean
+            mean_data[idx, :] = temp_df.mean()
+
+            # Plot percentiles as bands
+            ax.fill_between(list_of_years, p_l, p_h, color=color, alpha=alpha)
+
+        # Convert the mean_data to a dataframe
+        mean_data = pd.DataFrame(mean_data, columns=list_of_years)
+
+        for i in range(mean_data.shape[0]):
+            label = ssp_rcp_string_list[i]
+            color = color_palette[i]
+            sns.lineplot(
+                data=mean_data.iloc[i],
+                color=color,
+                alpha=alpha * 8,
+                linewidth=linewidth,
+                label=label,
+                ax=ax,
+            )
+        # Access the current Axes instance on the current figure:
+
+        ax = plt.gca()
+
+        # Remove top and right border
+        ax.spines["right"].set_visible(False)
+        ax.spines["top"].set_visible(False)
+
+        # Remove top and right ticks
+        ax.xaxis.set_ticks_position("bottom")
+        ax.yaxis.set_ticks_position("left")
+
+        # Set font size of axis labels
+        plt.xticks(fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+
+        # Add labels, legend and title
+        plt.xlabel(x_label, fontsize=fontsize)
+        plt.ylabel(y_label, fontsize=fontsize)
+        plt.legend(loc="upper left", fontsize=fontsize)
+        plt.title(main_title + output_titles[plotting_idx], fontsize=fontsize)
+
+        # Save the figure
+        if not os.path.exists(path_to_output):
+            os.makedirs(path_to_output)
+
+        # if output_file_name is None:
+        output_file_name = file.split(".")[0]  # input_data[plotting_idx]
+
+        plt.savefig(
+            path_to_output + "/" + output_file_name + "_" + output_titles[plotting_idx],
+            dpi=300,
+        )
 
 
 def plot_ssp_rcp_subplots():
@@ -274,3 +397,25 @@ def plot_ssp_rcp_subplots():
 
         plt.tight_layout()
         plt.show()
+
+
+if __name__ == "__main__":
+    plot_timeseries(
+        path_to_data="data/reevaluation",
+        path_to_output="./data/plots",
+        x_label="Years",
+        y_label="Temperature Rise (°C)",
+        variable_name="global_temperature",
+        input_data=[
+            "UTIL_100049.pkl",
+            "EGAL_101948.pkl",
+            "PRIOR_101765.pkl",
+            "SUFF_102924.pkl",
+        ],
+        output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+        main_title="Global Temperature Rise - ",
+        yaxis_lower_limit=0,
+        yaxis_upper_limit=10,
+        alpha=0.1,
+        linewidth=2.5,
+    )
