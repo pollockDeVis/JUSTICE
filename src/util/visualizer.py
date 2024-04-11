@@ -36,8 +36,8 @@ def process_input_data_for_tradeoff_plot(
         _read_data = _read_data.iloc[:, -number_of_objectives:]
 
         if scaling:
-            # Scale the data, slice the data and filter the data
-            scaler = MinMaxScaler(feature_range=(0, 1))
+            # # Scale the data, slice the data and filter the data
+            # scaler = MinMaxScaler(feature_range=(0, 1))
 
             # Adjust the feature values if any values are over feature_adjustment_value, subtract feature_adjustment_value for the scaling_index
             if np.max(_read_data.iloc[:, scaling_index]) > feature_adjustment_value:
@@ -45,9 +45,9 @@ def process_input_data_for_tradeoff_plot(
                     _read_data.iloc[:, scaling_index] - feature_adjustment_value
                 )
 
-            _read_data = pd.DataFrame(
-                scaler.fit_transform(_read_data), columns=_read_data.columns
-            )  # .iloc[:, scaling_index]
+            # _read_data = pd.DataFrame(
+            #     scaler.fit_transform(_read_data), columns=_read_data.columns
+            # )  # .iloc[:, scaling_index]
 
         data = pd.concat([data, _read_data])
         output_file_name = output_file_name + file.split(".")[0] + "_"
@@ -61,6 +61,25 @@ def process_input_data_for_tradeoff_plot(
 
     # Convert filtered data to a dataframe
     filtered_data = pd.DataFrame(filtered_data, columns=data.columns)
+
+    if scaling:
+
+        # Scale the data, slice the data and filter the data
+        scaler = MinMaxScaler(feature_range=(0, 1))
+
+        # Transform the filtered data
+        filtered_data = pd.DataFrame(
+            scaler.fit_transform(filtered_data), columns=filtered_data.columns
+        )
+
+        # Transform sliced data
+        for i in range(len(sliced_data)):
+            sliced_data[i] = pd.DataFrame(
+                scaler.fit_transform(sliced_data[i]), columns=sliced_data[i].columns
+            )
+
+        # Transform the data
+        data = pd.DataFrame(scaler.fit_transform(data), columns=data.columns)
 
     return data, data_length, output_file_name, sliced_data, filtered_data
 
@@ -78,10 +97,13 @@ def visualize_tradeoffs(
     output_file_name="",
     objective_of_interest=0,
     show_best_solutions=True,
+    scaling=True,
+    scaling_index=0,
     column_labels=None,
     legend_labels=None,
     axis_rotation=45,
     fontsize=15,
+    feature_adjustment_value=300,
     **kwargs,
 ):
     """
@@ -101,10 +123,13 @@ def visualize_tradeoffs(
         if isinstance(input_data, list):
             data, data_length, output_file_name, sliced_data, filtered_data = (
                 process_input_data_for_tradeoff_plot(
-                    input_data,
-                    path_to_data,
-                    number_of_objectives,
-                    objective_of_interest,
+                    input_data=input_data,
+                    path_to_data=path_to_data,
+                    number_of_objectives=number_of_objectives,
+                    objective_of_interest=objective_of_interest,
+                    scaling=scaling,
+                    scaling_index=scaling_index,
+                    feature_adjustment_value=feature_adjustment_value,
                 )
             )
 
