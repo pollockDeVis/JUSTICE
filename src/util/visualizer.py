@@ -40,6 +40,7 @@ def process_input_data(
 
     # Convert filtered data to a dataframe
     filtered_data = pd.DataFrame(filtered_data, columns=data.columns)
+
     return data, data_length, output_file_name, sliced_data, filtered_data
 
 

@@ -81,7 +81,26 @@ def JUSTICE_run(scenarios=0):
     return datasets
 
 
-def JUSTICE_stepwise_run(scenarios=0):
+def JUSTICE_stepwise_run(
+    scenarios=0,
+    elasticity_of_marginal_utility_of_consumption=1.45,
+    pure_rate_of_social_time_preference=0.015,
+    inequality_aversion=0.5,
+    path_to_rbf_weights="data/optimized_rbf_weights/100k_Util_4Obj_JUSTICE_dps_archive_1-4-24/100027.csv",
+    path_to_output="data/output/",
+    output_file_name=None,
+    rbf_policy_index=6809,
+    n_inputs_rbf=2,
+    max_annual_growth_rate=0.04,
+    emission_control_start_timestep=10,
+    min_emission_control_rate=0.01,
+    allow_emission_fallback=False,  # Default is False
+    endogenous_savings_rate=True,
+    max_temperature=16.0,
+    min_temperature=0.0,
+    max_difference=2.0,
+    min_difference=0.0,
+):
     """
     Run the JUSTICE model for a given scenario
     """
@@ -91,11 +110,9 @@ def JUSTICE_stepwise_run(scenarios=0):
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=WelfareFunction.UTILITARIAN,
-        # climate_ensembles=570,
-        # Declaring for endogenous fixed savings rate
-        elasticity_of_marginal_utility_of_consumption=1.45,
-        pure_rate_of_social_time_preference=0.015,
-        inequality_aversion=0.5,
+        elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
+        pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+        inequality_aversion=inequality_aversion,
     )
 
     time_horizon = model.__getattribute__("time_horizon")
@@ -107,15 +124,17 @@ def JUSTICE_stepwise_run(scenarios=0):
     # Setting up the RBF. Note: this depends on the setup of the optimization run
     rbf = setup_RBF_for_emission_control(
         region_list=data_loader.REGION_LIST,
-        rbf_policy_index=6809,
-        n_inputs_rbf=2,
-        path_to_rbf_weights="data/optimized_rbf_weights/100k_Util_4Obj_JUSTICE_dps_archive_1-4-24/100027.csv",
+        rbf_policy_index=rbf_policy_index,
+        n_inputs_rbf=n_inputs_rbf,
+        path_to_rbf_weights=path_to_rbf_weights,
     )
     emission_constraint = EmissionControlConstraint(
-        max_annual_growth_rate=0.04,
-        emission_control_start_timestep=9,
-        min_emission_control_rate=0.01,
+        max_annual_growth_rate=max_annual_growth_rate,
+        emission_control_start_timestep=10,
+        emission_control_start_timestep=emission_control_start_timestep,
+        min_emission_control_rate=min_emission_control_rate,
     )
+
     # Initialize datasets to store the results
     datasets = {}
 
@@ -127,10 +146,10 @@ def JUSTICE_stepwise_run(scenarios=0):
 
     previous_temperature = 0
     difference = 0
-    max_temperature = 16.0
-    min_temperature = 0.0
-    max_difference = 2.0
-    min_difference = 0.0
+    max_temperature = max_temperature
+    min_temperature = min_temperature
+    max_difference = max_difference
+    min_difference = min_difference
 
     for timestep in range(n_timesteps):
 
@@ -139,14 +158,14 @@ def JUSTICE_stepwise_run(scenarios=0):
             emission_constraint.constrain_emission_control_rate(
                 emissions_control_rate[:, timestep, :],
                 timestep,
-                allow_fallback=True,  # False #Default is False
+                allow_fallback=allow_emission_fallback,
             )
         )
 
         model.stepwise_run(
             emission_control_rate=constrained_emission_control_rate[:, timestep, :],
             timestep=timestep,
-            endogenous_savings_rate=True,
+            endogenous_savings_rate=endogenous_savings_rate,
         )
         datasets = model.stepwise_evaluate(timestep=timestep)
         temperature = datasets["global_temperature"][timestep, :]
@@ -170,19 +189,16 @@ def JUSTICE_stepwise_run(scenarios=0):
         if timestep < n_timesteps - 1:
             emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(rbf_input)
 
-            # Test
-            # Subtract 0.5 from all the elements of the emissions_control_rate
-            # emissions_control_rate[:, timestep + 1, :] = (
-            #     emissions_control_rate[:, timestep + 1, :] - 0.4
-            # )
-
     datasets = model.evaluate()
+    datasets["constrained_emission_control_rate"] = constrained_emission_control_rate
 
-    # Save emissions control rate
-    np.save(
-        "data/output/optimized_emissions_control_rate.npy",
-        constrained_emission_control_rate,
-    )
+    # Save the datasets
+    if output_file_name is not None:
+        np.save(path_to_output + output_file_name + rbf_policy_index, datasets)
+    # np.save(
+    #     "data/output/optimized_emissions_control_rate.npy",
+    #     constrained_emission_control_rate,
+    # )
 
     return datasets
 
