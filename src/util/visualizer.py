@@ -17,6 +17,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 import json
 import pycountry
+import plotly.express as px
 
 
 def process_input_data_for_tradeoff_plot(
@@ -462,15 +463,12 @@ def plot_choropleth(
     path_to_data="data/reevaluation/",
     path_to_output="./data/plots",
     year_to_visualize=2100,
-    input_data=[
-        "UTIL_100049.pkl",
-        "EGAL_101948.pkl",
-        "PRIOR_101765.pkl",
-        "SUFF_102924.pkl",
-    ],
+    input_data=None,
     output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
-    fontsize=15,
+    title="Mitigation Burden Distribution in ",
+    data_label="Emission Control Rate",
     colourmap="matter",
+    projection="natural earth",
     height=700,
     width=1200,
     start_year=2015,
@@ -480,7 +478,7 @@ def plot_choropleth(
     no_of_ensembles=1001,
 ):
 
-    # Assert if input_data list is empty and output_titles list is empty
+    # Assert if input_data list and output_titles list is None
     assert input_data, "No input data provided for visualization."
     assert output_titles, "No output titles provided for visualization."
 
@@ -509,6 +507,56 @@ def plot_choropleth(
         # Loop through all the scenarios and store the data in a 4D numpy array
         for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
             data_scenario[idx, :, :, :] = scenario_data[scenarios][variable_name]
+
+            # Process the data for choropleth plot
+            data_scenario_year_by_country = process_country_data_for_choropleth_plot(
+                region_list=region_list,
+                data=data_scenario,
+                list_of_years=list_of_years,
+                year_to_visualize=year_to_visualize,
+                data_label=data_label,
+                ssp_scenario=idx,
+            )
+
+            choropleth_title = (
+                title
+                + str(year_to_visualize)
+                + "-"
+                + Scenario.get_ssp_rcp_strings()[idx]
+            )
+
+            fig = px.choropleth(
+                data_scenario_year_by_country,
+                locations="CountryCode",
+                color=data_label,
+                hover_name="CountryName",
+                projection=projection,
+                title=choropleth_title,
+                height=height,
+                width=width,
+                color_continuous_scale=colourmap,
+            )
+
+            # Update the layout
+            fig.update_layout(
+                title={
+                    "text": choropleth_title,
+                    "xanchor": "center",
+                    "yanchor": "top",
+                    "x": 0.5,
+                    "y": 0.95,
+                },
+            )
+
+            output_file_name = (
+                variable_name
+                + "_"
+                + output_titles[plotting_idx]
+                + "_"
+                + Scenario.get_ssp_rcp_strings()[idx]
+            )
+            # Save the plot as a png file
+            fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     # plotting_idx = 2
 
