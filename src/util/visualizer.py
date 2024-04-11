@@ -11,7 +11,12 @@ import os
 from src.util.model_time import TimeHorizon
 from src.util.enumerations import *
 import pickle
+from src.util.data_loader import DataLoader
+
 from sklearn.preprocessing import MinMaxScaler
+
+import json
+import pycountry
 
 
 def process_input_data_for_tradeoff_plot(
@@ -338,6 +343,177 @@ def plot_timeseries(
         )
 
 
+def process_country_data_for_choropleth_plot(
+    region_list=None,
+    data=None,
+    list_of_years=None,
+    axis_to_average=2,
+    year_to_visualize=2100,
+    data_label="Emission Control Rate",
+    ssp_scenario=0,
+    region_to_country_mapping="data/input/rice50_regions_dict.json",
+    scaler=True,
+    feature_scale=(0, 1),
+    data_correction=True,
+):
+    # Assert if region list, data, and list of years are None
+    assert region_list is not None, "Region list is not provided."
+    assert data is not None, "Data is not provided."
+    assert list_of_years is not None, "List of years is not provided."
+
+    # Get the list of regions as byte strings
+
+    regions_df = pd.DataFrame(region_list)
+    regions_byte = regions_df[0].values
+
+    # Decode byte strings to normal strings
+    regions_str = [region.decode("utf-8") for region in regions_byte]
+
+    # Selecting data for the specific scenario
+    data_scenario = data[ssp_scenario, :, :, :]
+
+    # Take the mean of ensembles on the last column
+    data_scenario = np.mean(data_scenario, axis=axis_to_average)
+    data_scenario = pd.DataFrame(
+        data_scenario, index=region_list, columns=list_of_years
+    )
+
+    # Select the year to visualize
+    data_scenario_year = data_scenario[year_to_visualize]
+
+    # Convert the index of data_scenario_year from byte string to normal string
+    data_scenario_year.index = regions_str
+
+    # Convert the data_scenario_year to a dataframe
+    data_scenario_year = pd.DataFrame(data_scenario_year)
+
+    # Change the index name to 'Region'
+    data_scenario_year.index.name = "Region"
+
+    # load region to country mapping from JSON file
+    with open(region_to_country_mapping) as json_file:
+        region_to_country = json.load(json_file)
+
+    # Create a new dataframe from the mapping
+    mapping_df = pd.DataFrame(
+        list(region_to_country.items()), columns=["Region", "CountryCode"]
+    )
+
+    # Merge the mapping dataframe with the range of emis_2050 dataframe
+    data_scenario_year = pd.merge(
+        mapping_df,
+        data_scenario_year.reset_index().rename(
+            columns={"index": "Region", 0: data_label}
+        ),
+        on="Region",
+    )
+
+    data_scenario_year.columns = [
+        "Region",
+        "CountryCode",
+        data_label,
+    ]  # redundant
+
+    # Create a new dataframe from the mapping
+    data_scenario_year_by_country = []
+
+    for idx, row in data_scenario_year.iterrows():
+        for country in row["CountryCode"]:
+            data_scenario_year_by_country.append([country, row[data_label]])
+
+    # Convert list of lists to DataFrame
+    data_scenario_year_by_country = pd.DataFrame(
+        data_scenario_year_by_country, columns=["CountryCode", data_label]
+    )
+
+    if scaler:
+        # Scale the data
+        data_scenario_year_by_country[data_label] = MinMaxScaler(
+            feature_scale
+        ).fit_transform(data_scenario_year_by_country[data_label].values.reshape(-1, 1))
+
+    # Create a new column 'CountryName' in data_scenario_year_by_country
+    data_scenario_year_by_country["CountryName"] = data_scenario_year_by_country[
+        "CountryCode"
+    ].apply(
+        lambda x: (
+            pycountry.countries.get(alpha_3=x).name
+            if pycountry.countries.get(alpha_3=x)
+            else None
+        )
+    )
+
+    if data_correction:
+        # Check for the country code 'ATA' in the dataframe and set it to 0
+        data_scenario_year_by_country.loc[
+            data_scenario_year_by_country["CountryCode"] == "ATA", data_label
+        ] = 0
+
+        # Check for the CountryCode 'KSV' and set the 'CountryName' to 'Kosovo'
+        data_scenario_year_by_country.loc[
+            data_scenario_year_by_country["CountryCode"] == "KSV", "CountryName"
+        ] = "Kosovo"
+
+    return data_scenario_year_by_country
+
+
+def plot_choropleth(
+    variable_name="constrained_emission_control_rate",
+    path_to_data="data/reevaluation/",
+    path_to_output="./data/plots",
+    year_to_visualize=2100,
+    input_data=[
+        "UTIL_100049.pkl",
+        "EGAL_101948.pkl",
+        "PRIOR_101765.pkl",
+        "SUFF_102924.pkl",
+    ],
+    output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    fontsize=15,
+    colourmap="matter",
+    height=700,
+    width=1200,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    no_of_ensembles=1001,
+):
+
+    # Assert if input_data list is empty and output_titles list is empty
+    assert input_data, "No input data provided for visualization."
+    assert output_titles, "No output titles provided for visualization."
+
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+    data_loader = DataLoader()
+
+    region_list = data_loader.REGION_LIST
+    columns = list_of_years
+
+    # Loop through the input data and plot the choropleth
+    for plotting_idx, file in enumerate(input_data):
+        # Load the scenario data from the pickle file
+        with open(path_to_data + file, "rb") as f:
+            scenario_data = pickle.load(f)
+
+        data_scenario = np.zeros(
+            (len(Scenario), len(region_list), len(list_of_years), no_of_ensembles)
+        )
+
+        # Loop through all the scenarios and store the data in a 4D numpy array
+        for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
+            data_scenario[idx, :, :, :] = scenario_data[scenarios][variable_name]
+
+    # plotting_idx = 2
+
+
+# TODO: Under Construction
 def plot_ssp_rcp_subplots():
 
     ssp_rcp_string_list = [
@@ -351,76 +527,76 @@ def plot_ssp_rcp_subplots():
         "SSP5-RCP8.5",
     ]
 
-    scenario = list(Scenario)
-    # Color Mapping
-    colors = ["red", "orange", "green", "blue", "indigo"]
+    # scenario = list(Scenario)
+    # # Color Mapping
+    # colors = ["red", "orange", "green", "blue", "indigo"]
 
-    # Time Horizon Setup
-    time_horizon = TimeHorizon(
-        start_year=2015, end_year=2300, data_timestep=5, timestep=1
-    )
-    list_of_years = time_horizon.model_time_horizon
+    # # Time Horizon Setup
+    # time_horizon = TimeHorizon(
+    #     start_year=2015, end_year=2300, data_timestep=5, timestep=1
+    # )
+    # list_of_years = time_horizon.model_time_horizon
 
-    # rice50_temp = pd.DataFrame(interpolated_TATM, columns=list_of_years)
-    # damages_array_summed = np.sum(damages_array, axis=1)
-    # damages_array_summed = pd.DataFrame(damages_array_summed, columns=list_of_years)
-    # Sum the damages for all regions
-    rice50_damages = np.sum(interpolated_damages, axis=1)
-    # Use the list of years as x-axis and the interpolated damages for each scenario as y-axis
-    rice50_damages = pd.DataFrame(rice50_damages, columns=list_of_years)
+    # # rice50_temp = pd.DataFrame(interpolated_TATM, columns=list_of_years)
+    # # damages_array_summed = np.sum(damages_array, axis=1)
+    # # damages_array_summed = pd.DataFrame(damages_array_summed, columns=list_of_years)
+    # # Sum the damages for all regions
+    # rice50_damages = np.sum(interpolated_damages, axis=1)
+    # # Use the list of years as x-axis and the interpolated damages for each scenario as y-axis
+    # rice50_damages = pd.DataFrame(rice50_damages, columns=list_of_years)
 
-    # Create subplots in grid of 4 rows and 2 columns
-    fig, axs = plt.subplots(2, 4, figsize=(25, 12))
+    # # Create subplots in grid of 4 rows and 2 columns
+    # fig, axs = plt.subplots(2, 4, figsize=(25, 12))
 
-    # Reshape axs to 1D for easy iteration
-    axs = axs.ravel()
+    # # Reshape axs to 1D for easy iteration
+    # axs = axs.ravel()
 
-    # find overall min and max temperatures (5th and 95th percentile respectively) amongst all data
-    global_min = np.min(
-        [
-            np.percentile(np.sum(damages_array_sorted[i], axis=1), 5, axis=0)
-            for i in range(8)
-        ]
-    )
-    global_max = np.max(
-        [
-            np.percentile(np.sum(damages_array_sorted[i], axis=1), 95, axis=0)
-            for i in range(8)
-        ]
-    )
+    # # find overall min and max temperatures (5th and 95th percentile respectively) amongst all data
+    # global_min = np.min(
+    #     [
+    #         np.percentile(np.sum(damages_array_sorted[i], axis=1), 5, axis=0)
+    #         for i in range(8)
+    #     ]
+    # )
+    # global_max = np.max(
+    #     [
+    #         np.percentile(np.sum(damages_array_sorted[i], axis=1), 95, axis=0)
+    #         for i in range(8)
+    #     ]
+    # )
 
-    for i in range(8):
-        # calculate 5th and 95th percentiles
-        p_5 = np.percentile(np.sum(damages_array_sorted[i], axis=1), 5, axis=0)
-        p_95 = np.percentile(np.sum(damages_array_sorted[i], axis=1), 95, axis=0)
+    # for i in range(8):
+    #     # calculate 5th and 95th percentiles
+    #     p_5 = np.percentile(np.sum(damages_array_sorted[i], axis=1), 5, axis=0)
+    #     p_95 = np.percentile(np.sum(damages_array_sorted[i], axis=1), 95, axis=0)
 
-        # Get the economic scenario corresponding to the index
-        idx = get_economic_scenario(i)
+    #     # Get the economic scenario corresponding to the index
+    #     idx = get_economic_scenario(i)
 
-        # Plot percentiles as bands
-        axs[i].fill_between(list_of_years, p_5, p_95, color=colors[idx], alpha=0.2)
+    #     # Plot percentiles as bands
+    #     axs[i].fill_between(list_of_years, p_5, p_95, color=colors[idx], alpha=0.2)
 
-        # Plot
-        sns.lineplot(data=rice50_damages.iloc[idx, :], color=colors[idx], ax=axs[i])
+    #     # Plot
+    #     sns.lineplot(data=rice50_damages.iloc[idx, :], color=colors[idx], ax=axs[i])
 
-        # Styling each subplot
-        axs[i].spines["right"].set_visible(False)
-        axs[i].spines["top"].set_visible(False)
-        axs[i].xaxis.set_ticks_position("bottom")
-        axs[i].yaxis.set_ticks_position("left")
+    #     # Styling each subplot
+    #     axs[i].spines["right"].set_visible(False)
+    #     axs[i].spines["top"].set_visible(False)
+    #     axs[i].xaxis.set_ticks_position("bottom")
+    #     axs[i].yaxis.set_ticks_position("left")
 
-        # axs[i].set_xlabel('Year')
-        axs[i].set_ylabel("Economic Damages Trillion $")
-        axs[i].legend([f"SSP {idx+1}"], loc="upper left")
-        # Set title for each subplot
-        axs[i].set_title(ssp_rcp_string_list[i])  # (scenario[i].value[2])
-        # Set title font size
-        axs[i].title.set_size(20)
+    #     # axs[i].set_xlabel('Year')
+    #     axs[i].set_ylabel("Economic Damages Trillion $")
+    #     axs[i].legend([f"SSP {idx+1}"], loc="upper left")
+    #     # Set title for each subplot
+    #     axs[i].set_title(ssp_rcp_string_list[i])  # (scenario[i].value[2])
+    #     # Set title font size
+    #     axs[i].title.set_size(20)
 
-        axs[i].set_ylim(global_min, global_max)
+    #     axs[i].set_ylim(global_min, global_max)
 
-        plt.tight_layout()
-        plt.show()
+    #     plt.tight_layout()
+    #     plt.show()
 
 
 if __name__ == "__main__":
