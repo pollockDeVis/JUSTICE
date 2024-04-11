@@ -162,3 +162,88 @@ def visualize_tradeoffs(
     if not os.path.exists(path_to_output):
         os.makedirs(path_to_output)
     plt.savefig(path_to_output + "/" + output_file_name, dpi=300)
+
+
+def plot_ssp_rcp_subplots():
+
+    ssp_rcp_string_list = [
+        "SSP1-RCP1.9",
+        "SSP1-RCP2.6",
+        "SSP2-RCP4.5",
+        "SSP3-RCP7.0",
+        "SSP4-RCP3.4",
+        "SSP4-RCP6.0",
+        "SSP5-RCP3.4-overshoot",
+        "SSP5-RCP8.5",
+    ]
+
+    scenario = list(Scenario)
+    # Color Mapping
+    colors = ["red", "orange", "green", "blue", "indigo"]
+
+    # Time Horizon Setup
+    time_horizon = TimeHorizon(
+        start_year=2015, end_year=2300, data_timestep=5, timestep=1
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    # rice50_temp = pd.DataFrame(interpolated_TATM, columns=list_of_years)
+    # damages_array_summed = np.sum(damages_array, axis=1)
+    # damages_array_summed = pd.DataFrame(damages_array_summed, columns=list_of_years)
+    # Sum the damages for all regions
+    rice50_damages = np.sum(interpolated_damages, axis=1)
+    # Use the list of years as x-axis and the interpolated damages for each scenario as y-axis
+    rice50_damages = pd.DataFrame(rice50_damages, columns=list_of_years)
+
+    # Create subplots in grid of 4 rows and 2 columns
+    fig, axs = plt.subplots(2, 4, figsize=(25, 12))
+
+    # Reshape axs to 1D for easy iteration
+    axs = axs.ravel()
+
+    # find overall min and max temperatures (5th and 95th percentile respectively) amongst all data
+    global_min = np.min(
+        [
+            np.percentile(np.sum(damages_array_sorted[i], axis=1), 5, axis=0)
+            for i in range(8)
+        ]
+    )
+    global_max = np.max(
+        [
+            np.percentile(np.sum(damages_array_sorted[i], axis=1), 95, axis=0)
+            for i in range(8)
+        ]
+    )
+
+    for i in range(8):
+        # calculate 5th and 95th percentiles
+        p_5 = np.percentile(np.sum(damages_array_sorted[i], axis=1), 5, axis=0)
+        p_95 = np.percentile(np.sum(damages_array_sorted[i], axis=1), 95, axis=0)
+
+        # Get the economic scenario corresponding to the index
+        idx = get_economic_scenario(i)
+
+        # Plot percentiles as bands
+        axs[i].fill_between(list_of_years, p_5, p_95, color=colors[idx], alpha=0.2)
+
+        # Plot
+        sns.lineplot(data=rice50_damages.iloc[idx, :], color=colors[idx], ax=axs[i])
+
+        # Styling each subplot
+        axs[i].spines["right"].set_visible(False)
+        axs[i].spines["top"].set_visible(False)
+        axs[i].xaxis.set_ticks_position("bottom")
+        axs[i].yaxis.set_ticks_position("left")
+
+        # axs[i].set_xlabel('Year')
+        axs[i].set_ylabel("Economic Damages Trillion $")
+        axs[i].legend([f"SSP {idx+1}"], loc="upper left")
+        # Set title for each subplot
+        axs[i].set_title(ssp_rcp_string_list[i])  # (scenario[i].value[2])
+        # Set title font size
+        axs[i].title.set_size(20)
+
+        axs[i].set_ylim(global_min, global_max)
+
+        plt.tight_layout()
+        plt.show()
