@@ -88,6 +88,7 @@ def JUSTICE_stepwise_run(
     inequality_aversion=0.5,
     path_to_rbf_weights="data/optimized_rbf_weights/100k_Util_4Obj_JUSTICE_dps_archive_1-4-24/100027.csv",
     path_to_output="data/output/",
+    saving=False,
     output_file_name=None,
     rbf_policy_index=6809,
     n_inputs_rbf=2,
@@ -130,7 +131,6 @@ def JUSTICE_stepwise_run(
     )
     emission_constraint = EmissionControlConstraint(
         max_annual_growth_rate=max_annual_growth_rate,
-        emission_control_start_timestep=10,
         emission_control_start_timestep=emission_control_start_timestep,
         min_emission_control_rate=min_emission_control_rate,
     )
@@ -193,8 +193,9 @@ def JUSTICE_stepwise_run(
     datasets["constrained_emission_control_rate"] = constrained_emission_control_rate
 
     # Save the datasets
-    if output_file_name is not None:
-        np.save(path_to_output + output_file_name + rbf_policy_index, datasets)
+    if saving:
+        if output_file_name is not None:
+            np.save(path_to_output + output_file_name + rbf_policy_index, datasets)
     # np.save(
     #     "data/output/optimized_emissions_control_rate.npy",
     #     constrained_emission_control_rate,

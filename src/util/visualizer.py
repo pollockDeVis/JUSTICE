@@ -81,6 +81,7 @@ def visualize_tradeoffs(
     path_to_output="./data/plots",
     output_file_name="",
     objective_of_interest=0,
+    show_best_solutions=True,
     column_labels=None,
     legend_labels=None,
     axis_rotation=45,
@@ -171,14 +172,15 @@ def visualize_tradeoffs(
     # Add the column labels
     filtered_data.columns = data.columns
 
-    # Loop through the best solutions dataframe and plot them
-    for j in range(filtered_data.shape[0]):
-        axes.plot(
-            filtered_data.iloc[j],
-            color=color_palette[j],
-            linewidth=2.5,
-            alpha=0.8,
-        )
+    if show_best_solutions:
+        # Loop through the best solutions dataframe and plot them
+        for j in range(filtered_data.shape[0]):
+            axes.plot(
+                filtered_data.iloc[j],
+                color=color_palette[j],
+                linewidth=2.5,
+                alpha=0.8,
+            )
 
     # Add the legend
     axes.legend()

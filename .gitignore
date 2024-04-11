@@ -215,6 +215,7 @@ JUSTICE.code-workspace
 data/output/*
 data/optimized_rbf_weights/*
 data/plots/*
+data/reevaluation/*
 
 #Mac
 .DS_Store
