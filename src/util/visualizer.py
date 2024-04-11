@@ -305,8 +305,7 @@ def plot_timeseries(
         if not os.path.exists(path_to_output):
             os.makedirs(path_to_output)
 
-        # if output_file_name is None:
-        output_file_name = file.split(".")[0]  # input_data[plotting_idx]
+        output_file_name = variable_name
 
         plt.savefig(
             path_to_output + "/" + output_file_name + "_" + output_titles[plotting_idx],
