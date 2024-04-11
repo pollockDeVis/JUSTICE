@@ -14,9 +14,18 @@ import os
 import matplotlib.cm as cm
 from matplotlib.colors import to_rgb
 
+# Import sklearn minmaxscaler
+from sklearn.preprocessing import MinMaxScaler
+
 
 def process_input_data(
-    input_data, path_to_data, number_of_objectives, objective_of_interest
+    input_data,
+    path_to_data,
+    number_of_objectives,
+    objective_of_interest,
+    scaling=True,
+    scaling_index=0,
+    feature_adjustment_value=300,
 ):
     data = pd.DataFrame()
     output_file_name = ""
@@ -29,8 +38,24 @@ def process_input_data(
         _read_data = pd.read_csv(path_to_data + "/" + file)
         # Keep only the last objective columns
         _read_data = _read_data.iloc[:, -number_of_objectives:]
+
+        if scaling:
+            # Scale the data, slice the data and filter the data
+            scaler = MinMaxScaler(feature_range=(0, 1))
+
+            # Adjust the feature values if any values are over feature_adjustment_value, subtract feature_adjustment_value for the scaling_index
+            if np.max(_read_data.iloc[:, scaling_index]) > feature_adjustment_value:
+                _read_data.iloc[:, scaling_index] = (
+                    _read_data.iloc[:, scaling_index] - feature_adjustment_value
+                )
+
+            _read_data = pd.DataFrame(
+                scaler.fit_transform(_read_data), columns=_read_data.columns
+            )  # .iloc[:, scaling_index]
+
         data = pd.concat([data, _read_data])
         output_file_name = output_file_name + file.split(".")[0] + "_"
+
         data_length[index] = int(data.shape[0])
 
         sliced_data[index] = _read_data
@@ -151,7 +176,7 @@ def visualize_tradeoffs(
         axes.plot(
             filtered_data.iloc[j],
             color=color_palette[j],
-            linewidth=2,
+            linewidth=2.5,
             alpha=0.8,
         )
 
