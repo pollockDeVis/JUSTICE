@@ -242,6 +242,12 @@ def visualize_tradeoffs(
     plt.savefig(path_to_output + "/" + output_file_name, dpi=300)
 
 
+# TODO: Add scenario list
+# These are the same thing - Redundant
+# ssp_rcp_string_list = Scenario.get_ssp_rcp_strings() # These are the pretty strings
+# scenario_list = ['SSP245'] #list(Scenario.__members__.keys()) # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
+
+
 def plot_timeseries(
     figsize=(15, 10),
     set_style="white",
@@ -480,6 +486,12 @@ def process_country_data_for_choropleth_plot(
         ] = "Kosovo"
 
     return data_scenario_year_by_country
+
+
+# TODO: Add scenario list
+# These are the same thing - Redundant
+# ssp_rcp_string_list = Scenario.get_ssp_rcp_strings() # These are the pretty strings
+# scenario_list = ['SSP245'] #list(Scenario.__members__.keys()) # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
 
 
 def plot_choropleth(

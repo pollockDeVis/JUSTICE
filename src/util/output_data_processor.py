@@ -12,6 +12,87 @@ from ema_workbench import load_results, ema_logging
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
 
+def reevaluated_optimal_policy_variable_extractor(
+    scenario_list=None,
+    region_list=None,
+    list_of_years=None,
+    path_to_data="data/reevaluation",
+    path_to_output="data/reevaluation",
+    variable_name=None,
+    data_shape=None,
+    no_of_ensembles=None,
+    input_data=None,
+    output_file_names=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+):
+    # Assert if any arguments are None
+    assert scenario_list is not None, "Scenario list not provided"
+    assert region_list is not None, "Region list not provided"
+    assert list_of_years is not None, "List of years not provided"
+    assert variable_name is not None, "Variable name not provided"
+    assert data_shape is not None, "Data shape not provided"
+    assert no_of_ensembles is not None, "Number of ensembles not provided"
+    assert input_data is not None, "Input data not provided"
+
+    # Create a if condition to check if the input variable is 2D or 3D
+    if data_shape == 2:
+        data_scenario = np.zeros(
+            (len(scenario_list), len(list_of_years), no_of_ensembles)
+        )
+    elif data_shape == 3:
+        data_scenario = np.zeros(
+            (len(scenario_list), len(region_list), len(list_of_years), no_of_ensembles)
+        )
+
+    # Loop through the input data and plot the timeseries
+    for plotting_idx, file in enumerate(input_data):
+
+        # Get the string out of the input_data list
+        file_name = input_data[plotting_idx]
+        # Load the scenario data from the pickle file
+        with open(
+            path_to_data + "/" + file_name, "rb"
+        ) as f:  # input_data[plotting_idx]
+            scenario_data = pickle.load(f)
+
+        for idx, scenarios in enumerate(scenario_list):
+            print(scenarios)
+
+            if data_shape == 2:
+                data_scenario[idx, :, :] = scenario_data[scenarios][variable_name]
+                processed_data = pd.DataFrame(
+                    data_scenario[idx, :, :].T, columns=list_of_years
+                )
+            elif data_shape == 3:
+                data_scenario[idx, :, :, :] = scenario_data[scenarios][variable_name]
+                processed_data = data_scenario[idx, :, :, :]
+
+            if output_file_names is None:
+                output_file_name = (
+                    input_data[plotting_idx].split(".")[0]
+                    + "_"
+                    + scenarios
+                    + "_"
+                    + variable_name
+                    + ".pkl"
+                )
+            else:
+                output_file_name = (
+                    output_file_names[plotting_idx]
+                    + "_"
+                    + scenarios
+                    + "_"
+                    + variable_name
+                    + ".pkl"
+                )
+
+            # Save the processed data as a pickle file
+            with open(path_to_output + "/" + output_file_name, "wb") as f:
+                pickle.dump(processed_data, f)
+
+            # Print file saved as filename at location path
+            print(f"File saved as {output_file_name} at location {path_to_output}")
+
+
 def reevaluate_optimal_policy(
     input_data=[],
     output_data_name=None,
