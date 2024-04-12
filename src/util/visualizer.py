@@ -32,7 +32,6 @@ def process_input_data_for_tradeoff_plot(
     data = pd.DataFrame()
     output_file_name = ""
     sliced_data = {}
-    filtered_idx = 0
     filtered_data = np.zeros((number_of_objectives, number_of_objectives))
 
     data_length = np.zeros(len(input_data))
@@ -42,18 +41,18 @@ def process_input_data_for_tradeoff_plot(
         _read_data = _read_data.iloc[:, -number_of_objectives:]
 
         if scaling:
-            # # Scale the data, slice the data and filter the data
-            # scaler = MinMaxScaler(feature_range=(0, 1))
-
             # Adjust the feature values if any values are over feature_adjustment_value, subtract feature_adjustment_value for the scaling_index
+            # TODO: This operation happens twice. Might be good to combine the groups and apply the scaling together
             if np.max(_read_data.iloc[:, scaling_index]) > feature_adjustment_value:
-                _read_data.iloc[:, scaling_index] = (
-                    _read_data.iloc[:, scaling_index] - feature_adjustment_value
-                )
-
-            # _read_data = pd.DataFrame(
-            #     scaler.fit_transform(_read_data), columns=_read_data.columns
-            # )  # .iloc[:, scaling_index]
+                feature_range = (0.51, 1)
+                _read_data.iloc[:, scaling_index] = MinMaxScaler(
+                    feature_range
+                ).fit_transform(_read_data.iloc[:, scaling_index].values.reshape(-1, 1))
+            else:
+                feature_range = (0, 0.49)
+                _read_data.iloc[:, scaling_index] = MinMaxScaler(
+                    feature_range
+                ).fit_transform(_read_data.iloc[:, scaling_index].values.reshape(-1, 1))
 
         data = pd.concat([data, _read_data])
         output_file_name = output_file_name + file.split(".")[0] + "_"
@@ -62,30 +61,55 @@ def process_input_data_for_tradeoff_plot(
 
         sliced_data[index] = _read_data
 
-        filtered_idx = sliced_data[index].iloc[:, objective_of_interest].idxmin()
-        filtered_data[index, :] = _read_data.iloc[filtered_idx]
-
-    # Convert filtered data to a dataframe
-    filtered_data = pd.DataFrame(filtered_data, columns=data.columns)
-
     if scaling:
 
         # Scale the data, slice the data and filter the data
         scaler = MinMaxScaler(feature_range=(0, 1))
 
-        # Transform the filtered data
-        filtered_data = pd.DataFrame(
-            scaler.fit_transform(filtered_data), columns=filtered_data.columns
+        # Actual columns
+        actual_columns = data.columns
+        # Get the column name for the scaling index
+        scaling_column = data.columns[scaling_index]
+
+        # Get the list of columns without the scaling column
+        filtered_columns = data.columns.tolist()
+        filtered_columns.remove(scaling_column)
+
+        # Transform data except for the scaling column
+        data[filtered_columns] = pd.DataFrame(
+            scaler.fit_transform(data[filtered_columns]),
+            # columns=data.columns,
+        )
+        data.columns = actual_columns
+
+        # Create a single dataframe with all the data from sliced_data
+        combined_data = pd.concat(sliced_data.values(), ignore_index=True)
+
+        # Apply minmax scaling to the combined data
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        scaled_data = pd.DataFrame(
+            scaler.fit_transform(combined_data), columns=combined_data.columns
         )
 
-        # Transform sliced data
-        for i in range(len(sliced_data)):
-            sliced_data[i] = pd.DataFrame(
-                scaler.fit_transform(sliced_data[i]), columns=sliced_data[i].columns
-            )
+        # Redistribute the scaled data back to sliced_data
+        start_index = 0
+        for index, df in sliced_data.items():
+            end_index = start_index + len(df)
+            sliced_data[index] = scaled_data.iloc[start_index:end_index]
+            start_index = end_index
 
-        # Transform the data
-        data = pd.DataFrame(scaler.fit_transform(data), columns=data.columns)
+        # Iterate through sliced data and select the row with the minimum value for the objective of interest
+        for index, df in sliced_data.items():
+
+            # Reset index for sliced data
+            df.reset_index(drop=True, inplace=True)
+
+            # Get the index of the row with the minimum value for the objective of interest
+            filtered_idx = df.iloc[:, objective_of_interest].idxmin()
+            filtered_data[index, :] = df.iloc[filtered_idx].values
+
+    # Convert filtered data to a dataframe
+    filtered_data = pd.DataFrame(filtered_data, columns=data.columns)
 
     return data, data_length, output_file_name, sliced_data, filtered_data
 
@@ -467,6 +491,7 @@ def plot_choropleth(
     output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
     title="Mitigation Burden Distribution in ",
     data_label="Emission Control Rate",
+    legend_label="% Mitigation\n",
     colourmap="matter",
     projection="natural earth",
     height=700,
@@ -546,6 +571,8 @@ def plot_choropleth(
                     "x": 0.5,
                     "y": 0.95,
                 },
+                coloraxis_colorbar=dict(title=legend_label),
+                # coloraxis_colorbar_x=-0.1,
             )
 
             output_file_name = (
