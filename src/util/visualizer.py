@@ -509,6 +509,7 @@ def plot_choropleth(
     legend_label="% Mitigation\n",
     colourmap="matter",
     projection="natural earth",
+    scope="world",
     height=700,
     width=1200,
     start_year=2015,
@@ -570,6 +571,7 @@ def plot_choropleth(
                 locations="CountryCode",
                 color=data_label,
                 hover_name="CountryName",
+                scope=scope,
                 projection=projection,
                 title=choropleth_title,
                 height=height,
@@ -601,7 +603,7 @@ def plot_choropleth(
             fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     # plotting_idx = 2
-    return fig
+    return fig, data_scenario_year_by_country
 
 
 # TODO: Under Construction
