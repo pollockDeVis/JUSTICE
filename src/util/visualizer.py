@@ -262,6 +262,7 @@ def plot_timeseries(
     input_data=[],
     output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
     main_title="Global Temperature Rise - ",
+    show_title=False,
     yaxis_lower_limit=0,
     yaxis_upper_limit=10,
     alpha=0.1,
@@ -360,7 +361,9 @@ def plot_timeseries(
         plt.xlabel(x_label, fontsize=fontsize)
         plt.ylabel(y_label, fontsize=fontsize)
         plt.legend(loc="upper left", fontsize=fontsize)
-        plt.title(main_title + output_titles[plotting_idx], fontsize=fontsize)
+
+        if show_title:
+            plt.title(main_title + output_titles[plotting_idx], fontsize=fontsize)
 
         # Save the figure
         if not os.path.exists(path_to_output):
@@ -598,6 +601,7 @@ def plot_choropleth(
             fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     # plotting_idx = 2
+    return fig
 
 
 # TODO: Under Construction

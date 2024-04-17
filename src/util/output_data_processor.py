@@ -6,6 +6,9 @@ from scipy.interpolate import interp1d
 from JUSTICE_example import JUSTICE_stepwise_run
 from src.util.enumerations import *
 import pickle
+from src.util.enumerations import Scenario
+from src.util.model_time import TimeHorizon
+from src.util.data_loader import DataLoader
 
 from ema_workbench import load_results, ema_logging
 
@@ -317,12 +320,56 @@ def calculate_welfare(
 
 
 if __name__ == "__main__":
-    reevaluate_optimal_policy(
+    # reevaluate_optimal_policy(
+    #     input_data=[
+    #         "PRIOR_101765.csv",
+    #         "SUFF_102924.csv",
+    #     ],  # "UTIL_100049.csv", "EGAL_101948.csv",
+    #     output_data_name=None,
+    #     path_to_rbf_weights="data/optimized_rbf_weights/tradeoffs/",
+    #     path_to_output="data/reevaluation/",
+    # )
+    scenario_list = list(
+        Scenario.__members__.keys()
+    )  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
+    start_year = 2015
+    end_year = 2300
+    data_timestep = 5
+    timestep = 1
+
+    data_loader = DataLoader()
+    region_list = data_loader.REGION_LIST
+
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+
+    list_of_years = time_horizon.model_time_horizon
+    columns = list_of_years
+    # net_economic_output consumption, emissions, economic_damage, global_temperature
+    reevaluated_optimal_policy_variable_extractor(
+        scenario_list=scenario_list,  # ['SSP245'],
+        region_list=region_list,
+        list_of_years=list_of_years,
+        path_to_data="data/reevaluation",
+        path_to_output="data/reevaluation",
+        variable_name="global_temperature",
+        data_shape=2,
+        no_of_ensembles=1001,
         input_data=[
-            "PRIOR_101765.csv",
-            "SUFF_102924.csv",
-        ],  # "UTIL_100049.csv", "EGAL_101948.csv",
-        output_data_name=None,
-        path_to_rbf_weights="data/optimized_rbf_weights/tradeoffs/",
-        path_to_output="data/reevaluation/",
+            "UTIL_100049.pkl",
+            "EGAL_101948.pkl",
+            "PRIOR_101765.pkl",
+            "SUFF_102924.pkl",
+        ],
+        output_file_names=[
+            "Utilitarian",
+            "Egalitarian",
+            "Prioritarian",
+            "Sufficientarian",
+        ],
     )
