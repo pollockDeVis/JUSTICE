@@ -3,7 +3,7 @@ This module contains the uncertainty analysis for the JUSTICE model using EMA Wo
 """
 
 import functools
-
+import datetime
 import numpy as np
 import os
 
@@ -36,7 +36,6 @@ from ema_workbench.em_framework.optimization import (
     # HyperVolume,
 )
 
-
 # JUSTICE
 # Set this path to the src folder
 # export PYTHONPATH=$PYTHONPATH:/Users/palokbiswas/Desktop/pollockdevis_git/JUSTICE/src
@@ -49,35 +48,96 @@ from src.util.EMA_model_wrapper import (
 from src.util.model_time import TimeHorizon
 from src.util.data_loader import DataLoader
 
+from src.util.enumerations import WelfareFunction, get_welfare_function_name
+from config.default_parameters import SocialWelfareDefaults
+
+# TODO: Create a config file for loading values for analysis
+start_year = 2015
+end_year = 2300
+data_timestep = 5
+timestep = 1
+emission_control_start_year = 2025
+
+n_rbfs = 4
+n_inputs = 2
+nfe = 5000
+
+# TODO should have a configuration file for optimizations
+epsilons = [
+    0.1,
+    0.25,
+    10,
+    10,
+]  # epsilons for welfare, years_above_threshold, total_damage, total_abatement
+
+# # TODO should have a configuration file for optimizations
+# social_welfare_function = WelfareFunction.UTILITARIAN
 
 # Instantiate the DataLoader class
 data_loader = DataLoader()
 # Instantiate the TimeHorizon class
-time_horizon = TimeHorizon(start_year=2015, end_year=2300, data_timestep=5, timestep=1)
+time_horizon = TimeHorizon(
+    start_year=start_year,
+    end_year=end_year,
+    data_timestep=data_timestep,
+    timestep=timestep,
+)
+emission_control_start_timestep = time_horizon.year_to_timestep(
+    year=emission_control_start_year, timestep=timestep
+)
 
 
 def run_optimization_adaptive(
-    n_rbfs=4, n_inputs=2, nfe=5000, filename=None, folder=None
+    n_rbfs=n_rbfs, n_inputs=n_inputs, nfe=nfe, swf=0, filename=None, folder=None
 ):
+    social_welfare_function = WelfareFunction.from_index(swf)
+
+    # Get Social Welfare Defaults
+    social_welfare_defaults = SocialWelfareDefaults().get_defaults(
+        social_welfare_function.value[1]
+    )
+
     model = Model("JUSTICE", function=model_wrapper_emodps)
 
     # Define constants, uncertainties and levers
     model.constants = [
         Constant("n_regions", len(data_loader.REGION_LIST)),
         Constant("n_timesteps", len(time_horizon.model_time_horizon)),
+        Constant("emission_control_start_timestep", emission_control_start_timestep),
         Constant("n_rbfs", n_rbfs),
         Constant("n_inputs_rbf", n_inputs),
         Constant("n_outputs_rbf", len(data_loader.REGION_LIST)),
-        Constant("elasticity_of_marginal_utility_of_consumption", 1.45),
-        Constant("pure_rate_of_social_time_preference", 0.015),
+        Constant(
+            "elasticity_of_marginal_utility_of_consumption",
+            social_welfare_defaults["elasticity_of_marginal_utility_of_consumption"],
+        ),
+        Constant(
+            "pure_rate_of_social_time_preference",
+            social_welfare_defaults["pure_rate_of_social_time_preference"],
+        ),
+        Constant("inequality_aversion", social_welfare_defaults["inequality_aversion"]),
+        Constant(
+            "sufficiency_threshold", social_welfare_defaults["sufficiency_threshold"]
+        ),
+        Constant("egality_strictness", social_welfare_defaults["egality_strictness"]),
     ]
 
     # Speicify uncertainties
     model.uncertainties = [
         CategoricalParameter(
-            "ssp_rcp_scenario", (0, 1, 2, 3, 4, 5, 6, 7)
+            "ssp_rcp_scenario",
+            (
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+            ),  # TODO should have a configuration file for optimizations
         ),  # 8 SSP-RCP scenario combinations
-        CategoricalParameter("inequality_aversion", (0.0, 0.5, 1.45, 2.0)),
+        # CategoricalParameter("inequality_aversion", (0.0, 0.5, 1.45, 2.0)),
     ]
 
     # Set the model levers, which are the RBF parameters
@@ -95,7 +155,9 @@ def run_optimization_adaptive(
     weights_levers = []
 
     for i in range(centers_shape):
-        centers_levers.append(RealParameter(f"center {i}", -1.0, 1.0))
+        centers_levers.append(
+            RealParameter(f"center {i}", -1.0, 1.0)
+        )  # TODO should have a configuration file for optimizations
         radii_levers.append(RealParameter(f"radii {i}", 0.0, 1.0))
 
     for i in range(weights_shape):
@@ -135,27 +197,35 @@ def run_optimization_adaptive(
     reference_scenario = Scenario(
         "reference",
         ssp_rcp_scenario=2,
-        inequality_aversion=0.0,
     )
+
+    # Add social_welfare_function.value[1] to the filename
+    filename = f"{social_welfare_function.value[1]}_{nfe}.tar.gz"
+    date = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    directory_name = f"./data/output_{date}"
+    # Create a directory inside ./data/ with name output_{date} to save the results
+    os.mkdir(directory_name)
+    # Set the directory path to a variable
 
     convergence_metrics = [
         ArchiveLogger(
-            "./data/output",
+            directory_name,  # "./data/output",
             [l.name for l in model.levers],
             [o.name for o in model.outcomes],
-            base_filename="JUSTICE_dps_archive.tar.gz",
+            base_filename=filename,  # "JUSTICE_dps_archive.tar.gz"
         ),
         EpsilonProgress(),
     ]
 
     with MPIEvaluator(model) as evaluator:
+        # with SequentialEvaluator(model) as evaluator:
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
-            epsilons=[0.01] * len(model.outcomes),  # * len(model.outcomes)
+            epsilons=epsilons,  # [0.01] * len(model.outcomes),  # * len(model.outcomes)
             reference=reference_scenario,
             convergence=convergence_metrics,
-            # population_size=10,
+            population_size=2,
         )
 
         # if filename is None:

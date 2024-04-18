@@ -108,31 +108,32 @@ class NeoclassicalEconomyModel:
             self._interpolate_gdp()
             self._interpolate_population()
 
-        # Initializing the capital array
+        # Initializing the capital array Unit: Trill 2005 USD PPP
         self.capital = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Intializing the investment array
+        # Intializing the investment array Unit: Trill 2005 USD PPP / year
         self.investment = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initializing the gross output array
+        # Initializing the gross output array Unit: Trill 2005 USD PPP / year
         self.gross_output = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
+        # Initializing the net output array Unit: Trill 2005 USD PPP / year
         self.net_output = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initializing the damage array
+        # Initializing the damage array Unit: Trill 2005 USD PPP / year
         self.damage = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
-        # Initializing the abatement array
+        # Initializing the abatement array Unit: Trill 2005 USD PPP / year
         self.abatement = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
@@ -357,6 +358,8 @@ class NeoclassicalEconomyModel:
     def calculate_consumption(self, savings_rate):  # Validated
         """
         This method calculates the consumption.
+        Unit: Trill 2005 USD PPP / year
+
         """
         # TODO: Check shape of savings rate
 
@@ -427,6 +430,10 @@ class NeoclassicalEconomyModel:
         return population
 
     def get_consumption_per_capita(self, savings_rate):
+        """
+        This method calculates the consumption per capita.
+        Unit: Thousands 2005 USD PPP per year
+        """
         consumption = self.calculate_consumption(savings_rate)
         consumption_per_capita = (  # Validated
             1e3 * consumption / self.population_array[:, :, np.newaxis]

@@ -34,7 +34,7 @@ class JUSTICE:
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
+        social_welfare_function=WelfareFunction.UTILITARIAN,  # TODO: Check if this is needed
         **kwargs,
     ):
         """
@@ -115,13 +115,15 @@ class JUSTICE:
         print("         OK")
 
         # Instantiate the SocialWelfareDefaults class
-        social_welfare_defaults = SocialWelfareDefaults()
+        social_welfare_defaults = (
+            SocialWelfareDefaults()
+        )  # TODO: Check if this is needed
 
         # TODO: Incomplete Implementation
         # if self.social_welfare_function == WelfareFunction.UTILITARIAN:
 
         # Fetch the defaults for UTILITARIAN
-        utilitarian_defaults = social_welfare_defaults.get_defaults(
+        utilitarian_defaults = social_welfare_defaults.get_defaults(  # TODO: Change the variable name and fetch values based on the Welfare Function provided
             WelfareFunction.UTILITARIAN.name
         )
 
@@ -136,6 +138,14 @@ class JUSTICE:
         )
         self.inequality_aversion = kwargs.get(
             "inequality_aversion", utilitarian_defaults["inequality_aversion"]
+        )
+
+        self.sufficiency_threshold = kwargs.get(
+            "sufficiency_threshold", utilitarian_defaults["sufficiency_threshold"]
+        )
+
+        self.egality_strictness = kwargs.get(
+            "egality_strictness", utilitarian_defaults["egality_strictness"]
         )
 
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
@@ -182,6 +192,8 @@ class JUSTICE:
             elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
             pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
             inequality_aversion=self.inequality_aversion,
+            sufficiency_threshold=self.sufficiency_threshold,
+            egality_strictness=self.egality_strictness,
         )
 
         # Get the fixed savings rate for model time horizon
@@ -671,3 +683,9 @@ class JUSTICE:
         Get the list of outcomes of the model.
         """
         return self.data.keys()
+
+    def __getattribute__(self, __name: str) -> Any:
+        """
+        This method returns the value of the attribute of the class.
+        """
+        return object.__getattribute__(self, __name)

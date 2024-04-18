@@ -9,8 +9,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from src.util.enumerations import get_economic_scenario, WelfareFunction
+from src.objectives.objective_functions import calculate_gini_index
 
 
+# TODO: Need to change the name of this class to a more general name
 class Utilitarian:
     """
     This class computes the utilitarian welfare for the JUSTICE model.
@@ -24,6 +26,8 @@ class Utilitarian:
         elasticity_of_marginal_utility_of_consumption,
         pure_rate_of_social_time_preference,
         inequality_aversion,
+        sufficiency_threshold,
+        egality_strictness,
     ):
         """
         This method initializes the Utilitarian class.
@@ -39,6 +43,8 @@ class Utilitarian:
         )
         self.pure_rate_of_social_time_preference = pure_rate_of_social_time_preference
         self.inequality_aversion = inequality_aversion
+        self.sufficiency_threshold = sufficiency_threshold
+        self.egality_strictness = egality_strictness
 
         # Time horizon
         timestep_list = np.arange(
@@ -69,12 +75,17 @@ class Utilitarian:
         """
         This method calculates the utilitarian welfare.
         """
+        # New feature - sufficiency_threshold - subtracted from consumption_per_capita
+        consumption_per_capita = consumption_per_capita - self.sufficiency_threshold
+
         # New feature: consumption_per_capita is checked to have negative values
         # If there are negative values, they are replaced with 1e-6. -inf if it becomes 0 # 0.1025329474
         # This is essential to calculate utility that's not a NaN (or complex number)
         consumption_per_capita = np.where(
             consumption_per_capita < 0, 1e-6, consumption_per_capita
         )
+
+        # Adjust consumption_per_capita with sufficiency threshold
 
         # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
         consumption_per_capita_inequality_aversion = np.power(  # Validated
@@ -91,6 +102,9 @@ class Utilitarian:
             population_weighted_consumption_per_capita  # # has nans 25th region
         )
 
+        # Get the gini of disentalgled utility
+        gini_disentangled_utility = calculate_gini_index(disentangled_utility)
+
         # Calculate the regional disentangled utility powered - For regional welfare calculation # has nans 25th region
         disentangled_utility_regional_powered = np.power(
             disentangled_utility,
@@ -100,13 +114,18 @@ class Utilitarian:
             ),
         )
 
-        # TODO: BUG - Something is wrong with the calculation of the disentangled utility summed
         # Sum the disentangled utility
         disentangled_utility_summed = np.sum(
             population_weighted_consumption_per_capita, axis=0
         )
 
-        # Calculate the disentangled utility powered
+        # Applying gini to disentangled utility summed
+        # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
+        disentangled_utility_summed = disentangled_utility_summed * (
+            1 - gini_disentangled_utility * self.egality_strictness
+        )
+
+        # Calculate the disentangled utility powered # TODO- Change this
         disentangled_utility_powered = np.power(
             disentangled_utility_summed,
             (
@@ -115,10 +134,10 @@ class Utilitarian:
             ),
         )
 
-        # Calculate the utilitarian welfare disaggregated temporally
+        # Calculate the utilitarian welfare disaggregated temporally # TODO- Change this
         welfare_utilitarian_temporal = (
             (
-                disentangled_utility_powered
+                (disentangled_utility_powered)
                 / (1 - self.elasticity_of_marginal_utility_of_consumption)
             )
             - 1
