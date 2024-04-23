@@ -607,89 +607,138 @@ def plot_choropleth(
 
 
 # TODO: Under Construction
-def plot_ssp_rcp_subplots():
+def plot_ssp_rcp_subplots(
+    path_to_data="data/reevaluation",
+    path_to_output="data/reevaluation",
+    variable_name="global_temperature",
+    scenario_list=[],
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    output_file_names=[],
+    colourmap="bright",
+    data_loader=None,
+    sns_set_style="white",
+    figsize=(50, 24),
+    font_scale=3,
+    subplot_rows=2,
+    subplot_columns=4,
+    alpha=0.07,
+    lower_percentile_value=5,
+    upper_percentile_value=95,
+    title_font_size=20,
+    main_title="",
+    yaxis_lower_limit=0,
+    yaxis_upper_limit=8,
+):
 
-    ssp_rcp_string_list = [
-        "SSP1-RCP1.9",
-        "SSP1-RCP2.6",
-        "SSP2-RCP4.5",
-        "SSP3-RCP7.0",
-        "SSP4-RCP3.4",
-        "SSP4-RCP6.0",
-        "SSP5-RCP3.4-overshoot",
-        "SSP5-RCP8.5",
-    ]
+    # Assert if scenario list, output file names, and data loader is None
+    assert scenario_list, "No scenario list provided for visualization."
+    assert output_file_names, "No output file names provided for visualization."
+    assert data_loader, "Data loader is not provided."
 
-    # scenario = list(Scenario)
-    # # Color Mapping
-    # colors = ["red", "orange", "green", "blue", "indigo"]
+    # region_list = data_loader.REGION_LIST
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
 
-    # # Time Horizon Setup
-    # time_horizon = TimeHorizon(
-    #     start_year=2015, end_year=2300, data_timestep=5, timestep=1
-    # )
-    # list_of_years = time_horizon.model_time_horizon
+    list_of_years = time_horizon.model_time_horizon
+    # columns = list_of_years
 
-    # # rice50_temp = pd.DataFrame(interpolated_TATM, columns=list_of_years)
-    # # damages_array_summed = np.sum(damages_array, axis=1)
-    # # damages_array_summed = pd.DataFrame(damages_array_summed, columns=list_of_years)
-    # # Sum the damages for all regions
-    # rice50_damages = np.sum(interpolated_damages, axis=1)
-    # # Use the list of years as x-axis and the interpolated damages for each scenario as y-axis
-    # rice50_damages = pd.DataFrame(rice50_damages, columns=list_of_years)
+    sns.set_style(sns_set_style)
 
-    # # Create subplots in grid of 4 rows and 2 columns
-    # fig, axs = plt.subplots(2, 4, figsize=(25, 12))
+    # Create subplots in grid of 4 rows and 2 columns
+    fig, axs = plt.subplots(subplot_rows, subplot_columns, figsize=figsize)
 
-    # # Reshape axs to 1D for easy iteration
-    # axs = axs.ravel()
+    sns.set_theme(font_scale=font_scale)
 
-    # # find overall min and max temperatures (5th and 95th percentile respectively) amongst all data
-    # global_min = np.min(
-    #     [
-    #         np.percentile(np.sum(damages_array_sorted[i], axis=1), 5, axis=0)
-    #         for i in range(8)
-    #     ]
-    # )
-    # global_max = np.max(
-    #     [
-    #         np.percentile(np.sum(damages_array_sorted[i], axis=1), 95, axis=0)
-    #         for i in range(8)
-    #     ]
-    # )
+    # Reshape axs to 1D for easy iteration
+    axs = axs.ravel()
 
-    # for i in range(8):
-    #     # calculate 5th and 95th percentiles
-    #     p_5 = np.percentile(np.sum(damages_array_sorted[i], axis=1), 5, axis=0)
-    #     p_95 = np.percentile(np.sum(damages_array_sorted[i], axis=1), 95, axis=0)
+    lines = []
 
-    #     # Get the economic scenario corresponding to the index
-    #     idx = get_economic_scenario(i)
+    # colors = ["red", "orange", "green", "blue"]
+    color_palette = sns.color_palette(colourmap)
+    # Iterate through each scenario list and iterate through each output file name to read the pickle file
+    for scenario_idx, scenario in enumerate(scenario_list):
+        for pf_idx, output_file_name in enumerate(output_file_names):
+            with open(
+                f"{path_to_data}/{output_file_name}_{scenario}_{variable_name}.pkl",
+                "rb",
+            ) as f:
+                loaded_data = pickle.load(f)
 
-    #     # Plot percentiles as bands
-    #     axs[i].fill_between(list_of_years, p_5, p_95, color=colors[idx], alpha=0.2)
+                # Check if the data is a 3D array
+                if len(loaded_data.shape) == 3:
+                    # Sum up all the regions
+                    loaded_data = np.sum(loaded_data, axis=0)
+                elif len(loaded_data.shape) == 2:
+                    loaded_data = loaded_data.T
 
-    #     # Plot
-    #     sns.lineplot(data=rice50_damages.iloc[idx, :], color=colors[idx], ax=axs[i])
+                # Calculate the 5th and 95th percentile
+                lower_percentile = np.percentile(
+                    loaded_data, lower_percentile_value, axis=1
+                )
+                upper_percentile = np.percentile(
+                    loaded_data, upper_percentile_value, axis=1
+                )
 
-    #     # Styling each subplot
-    #     axs[i].spines["right"].set_visible(False)
-    #     axs[i].spines["top"].set_visible(False)
-    #     axs[i].xaxis.set_ticks_position("bottom")
-    #     axs[i].yaxis.set_ticks_position("left")
+                # Fill between the 5th and 95th percentile
+                axs[scenario_idx].fill_between(
+                    list_of_years,
+                    lower_percentile,
+                    upper_percentile,
+                    alpha=alpha,
+                    color=color_palette[pf_idx],
+                )
 
-    #     # axs[i].set_xlabel('Year')
-    #     axs[i].set_ylabel("Economic Damages Trillion $")
-    #     axs[i].legend([f"SSP {idx+1}"], loc="upper left")
-    #     # Set title for each subplot
-    #     axs[i].set_title(ssp_rcp_string_list[i])  # (scenario[i].value[2])
-    #     # Set title font size
-    #     axs[i].title.set_size(20)
+                # Mean across ensemble members
+                loaded_data = np.mean(loaded_data, axis=1)
 
-    #     axs[i].set_ylim(global_min, global_max)
+                # Plot the data
+                line = sns.lineplot(
+                    x=list_of_years,
+                    y=loaded_data,
+                    ax=axs[scenario_idx],
+                    color=color_palette[pf_idx],
+                    label=output_file_name,
+                )  #
+                lines.append(line)
+                # Set the title and axis labels
+                axs[scenario_idx].title.set_fontsize(title_font_size)
 
-    #     plt.tight_layout()
-    #     plt.show()
+                axs[scenario_idx].set_title(scenario)
+
+                # axs[scenario_idx].set_xlabel('Year')
+                axs[scenario_idx].set_ylabel("")
+                # Styling each subplot
+                axs[scenario_idx].spines["right"].set_visible(False)
+                axs[scenario_idx].spines["top"].set_visible(False)
+                axs[scenario_idx].xaxis.set_ticks_position("bottom")
+                axs[scenario_idx].yaxis.set_ticks_position("left")
+                axs[scenario_idx].set_ylim(yaxis_lower_limit, yaxis_upper_limit)
+
+    # Remove the unused subplots
+    for i in range(len(scenario_list), len(axs)):
+        fig.delaxes(axs[i])
+
+    # Add title to the figure
+    fig.suptitle(main_title, fontsize=title_font_size * 2)
+    # Adjust the layout and spacing
+    fig.tight_layout()
+
+    # Save the figure
+    if not os.path.exists(path_to_output):
+        os.makedirs(path_to_output)
+
+    plt.savefig(f"{path_to_output}/{variable_name}_subplots.png", dpi=300)
+
+    return fig
 
 
 if __name__ == "__main__":
