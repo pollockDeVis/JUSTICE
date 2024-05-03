@@ -12,10 +12,11 @@ from collections import defaultdict
 import json
 import pycountry
 import pandas as pd
+import numpy as np
 
 
 def get_region_mapping(
-    aggregated_region_dict, disaggregated_region_dict, similarity_threshold=0.02
+    aggregated_region_dict, disaggregated_region_dict, similarity_threshold=0.01
 ):
     mapping_dictionary = {}
 
@@ -45,11 +46,31 @@ def get_region_mapping(
             # print(key, rice_50_names[key], mapped_key)
             mapping_dictionary[key] = mapped_key
 
-    return mapping_dictionary
+        # Inverted mapping
+        inverted_mapping = {}
+
+        for key, value in mapping_dictionary.items():
+            if value not in inverted_mapping:
+                inverted_mapping[value] = [key]
+            else:
+                inverted_mapping[value].append(key)
+
+    return inverted_mapping
 
 
-def justice_region_aggregator(data_loader, region_config, data):
+def justice_region_aggregator(
+    data_loader, region_config, data, similarity_threshold=0.01
+):
+    """
+    This function aggregates the emissions data from the JUSTICE model regions to the aggregated regions.
 
+    Args:
+    data_loader (DataLoader): An instance of the DataLoader class.
+    region_config (dict): A dictionary containing the region configuration for the aggregation.
+    data (np.ndarray): A 3D numpy array containing the emissions data.
+    similarity_threshold (float): The similarity threshold for mapping regions, default is 0.01.
+
+    """
     # Read the json file
     with open("data/input/rice50_regions_dict.json", "r") as f:
         rice_50_dict_ISO3 = json.load(f)
@@ -62,7 +83,22 @@ def justice_region_aggregator(data_loader, region_config, data):
     mapping_dictionary = get_region_mapping(
         aggregated_region_dict=region_config,
         disaggregated_region_dict=rice_50_dict_ISO3,
-        similarity_threshold=0.02,
+        similarity_threshold=similarity_threshold,
     )
 
-    return mapping_dictionary
+    # Create a dictionary to map regions to their indices
+    region_index_map = {region: index for index, region in enumerate(region_list)}
+
+    # Preallocate the aggregated_emissions array
+    aggregated_data = np.zeros((len(mapping_dictionary), data.shape[1], data.shape[2]))
+
+    # Iterate through the inverted mapping and aggregate the emissions
+    for index, (key, value) in enumerate(mapping_dictionary.items()):
+
+        # Get the indices of the regions in the value list
+        indices = [region_index_map[region] for region in value]
+
+        # Sum the emissions for the regions in the value list
+        aggregated_data[index, :, :] = np.sum(data[indices, :, :], axis=0)
+
+    return aggregated_data
