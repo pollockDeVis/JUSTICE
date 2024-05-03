@@ -395,13 +395,8 @@ def process_country_data_for_choropleth_plot(
     assert data is not None, "Data is not provided."
     assert list_of_years is not None, "List of years is not provided."
 
-    # Get the list of regions as byte strings
-
-    regions_df = pd.DataFrame(region_list)
-    regions_byte = regions_df[0].values
-
-    # Decode byte strings to normal strings
-    regions_str = [region.decode("utf-8") for region in regions_byte]
+    # Convert the region list, a numpy array, to a list
+    regions_str = region_list.tolist()
 
     # Selecting data for the specific scenario
     data_scenario = data[ssp_scenario, :, :, :]
@@ -433,7 +428,7 @@ def process_country_data_for_choropleth_plot(
         list(region_to_country.items()), columns=["Region", "CountryCode"]
     )
 
-    # Merge the mapping dataframe with the range of emis_2050 dataframe
+    # Merge the mapping dataframe with the dataframe
     data_scenario_year = pd.merge(
         mapping_df,
         data_scenario_year.reset_index().rename(

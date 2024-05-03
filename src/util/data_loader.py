@@ -9,7 +9,6 @@ import h5py
 
 
 class DataLoader:
-
     """
     This class loads all the input data for the JUSTICE model.
 
@@ -57,7 +56,9 @@ class DataLoader:
 
         # Load the region list
         with h5py.File(os.path.join(data_file_path, "region_list.hdf5"), "r") as f:
-            self.REGION_LIST = f["region_list"][:]
+            regions_df = pd.DataFrame(f["region_list"][:])
+            regions_str = regions_df[0].apply(lambda x: x.decode("utf-8")).values
+            self.REGION_LIST = regions_str
 
         # Load PPP2MER conversion factor
         with h5py.File(os.path.join(data_file_path, "ppp2mer.hdf5"), "r") as f:
