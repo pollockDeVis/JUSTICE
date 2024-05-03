@@ -17,6 +17,7 @@ class Negotiator:
         policy_period=5.0,
     ):
         self.region_model = region
+        self.policy_start_year = policy_start_year
         self.policy = np.array(
             [
                 [policy_start_year, policy_start_year + policy_period, policy_end_year],
@@ -29,7 +30,7 @@ class Negotiator:
         # Maximum emission cutting rate gradient per year
         self.max_cutting_rate_gradient = 0.04
 
-        self.regional_pressure_later_ecr = 0
+        self.regional_pressure_later_ecr = policy_end_year
         self.regional_pressure_earlier_ecr = 0
 
     def international_netzero_proposal(self):
@@ -50,6 +51,7 @@ class Negotiator:
         if (
             self.policy[0, 1] == current_time
             and self.policy[0, 1] + self.policy_period < self.policy[0, 2]
+            and self.policy[1,1] != 1
         ):
             # identify new target
             now = self.policy[:, 1].copy()
@@ -69,7 +71,10 @@ class Negotiator:
             )  # support = share of opposition, neutral and support
 
             range_of_shift = self.delta_shift_range()
-            delta_shift = range_of_shift * support[2] - (self.policy[1, 0] - self.policy[1, 1]) * support[0]
+            delta_shift = (
+                range_of_shift * support[2]
+                - (self.policy[1, 0] - self.policy[1, 1]) * support[0]
+            )
 
             # delta_shift = (np.random.random() - 0.5) * 2
             # print(delta_shift)
@@ -87,7 +92,13 @@ class Negotiator:
             self.policy[1, 1] = min(delta_shift + self.policy[1, 1], 1)
 
             (self.region_model.twolevelsgame_model.f_policy)[1].writerow(
-                [self.region_model.id, current_time, self.policy.shape[1], range_of_shift,  delta_shift]
+                [
+                    self.region_model.id,
+                    current_time,
+                    self.policy.shape[1],
+                    range_of_shift,
+                    delta_shift,
+                ]
                 + [p for p in self.policy[1]]
                 + [y for y in self.policy[0]]
                 + [s for s in support]
@@ -98,10 +109,20 @@ class Negotiator:
                 self.policy[0, 2] - self.policy[0, 1]
             )
             if gradient > max_cutting_rate_gradient:
-                self.regional_pressure_later_ecr = (
-                    0.7 * self.regional_pressure_later_ecr
-                    + 0.3 * (1 / max_cutting_rate_gradient * (1 - self.policy[1, 1]))
+                # Compute earliest achievable target:
+                earliest_possible_target = (
+                    self.policy[1, 2] - self.policy[1, 1]
+                ) / max_cutting_rate_gradient + self.policy[0, 1]
+                self.regional_pressure_later_ecr = np.max(
+                    self.regional_pressure_later_ecr, earliest_possible_target
                 )
+
+    def expected_year_ecr_max(self):
+        # The time it will take from policy goal in policy[:,1] to reach target ecr=1 given track record
+        # Plus the time assigned for goal in policy[:,1]
+        return (1 - self.policy[1, 1]) * self.policy[0, 1] / self.policy[
+            1, 1
+        ] + self.policy[0, 1]
 
         # policy = self.policy
         # shift_year = self.region_model.aggregate_households_opinions()

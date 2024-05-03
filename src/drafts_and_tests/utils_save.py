@@ -5,7 +5,7 @@ import glob
 import matplotlib.pyplot as plt
 
 # "../../data/output/SAVE_2024_03_13_2004/"
-path_list = glob.glob("../../data/output/SAVE_2024_05_03_1549")
+path_list = glob.glob("../../data/output/SAVE_2024_05_03_1656")
 # print(path_list)
 for save_path in path_list:
     print(save_path)
@@ -13,7 +13,7 @@ for save_path in path_list:
     print("\t" + f.read())
     df = pd.read_csv(save_path + "\policy.csv", header=None)
 
-    region = 3
+    region = 51
 
     region_mask = df[0] == region
     count_rows = np.count_nonzero(region_mask)

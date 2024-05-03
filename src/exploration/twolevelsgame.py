@@ -93,8 +93,10 @@ class TwoLevelsGame:
         self.coalitions[edges[:, 1], edges[:, 0]] = 1
 
         # Parameters for international negotiations
-        self.Y_nego = 5 # How many years between a new set of international negotiation rounds
-        self.Y_policy = 5 # How many years between a new set of regional policy update
+        self.Y_nego = (
+            5  # How many years between a new set of international negotiation rounds
+        )
+        self.Y_policy = 5  # How many years between a new set of regional policy update
 
     def step(self, timestep):
         """
@@ -124,8 +126,7 @@ class TwoLevelsGame:
         # Size is 57*1
         self.justice_model.consumption_per_capita = np.mean(
             self.justice_model.economy.get_consumption_per_capita_per_timestep(
-                self.justice_model.savings_rate[:, timestep],
-                timestep
+                self.justice_model.savings_rate[:, timestep], timestep
             ),
             axis=1,
         )
@@ -143,7 +144,8 @@ class TwoLevelsGame:
         """
 
         # TODO APN: This is very simplified way of seeing international negotiations. It might also not work properly when the delta is negative and large (not respecting maximum changing rate of emission control rate)
-        if False:
+        if True:
+            # Compute the average target year for ECR=1 in current regional policies
             avg_global_net_zero_year = 0
             for region in self.regions:
                 policy = region.negotiator.policy
@@ -151,17 +153,36 @@ class TwoLevelsGame:
             avg_global_net_zero_year = avg_global_net_zero_year / len(self.regions)
 
             for region in self.regions:
-                delta_regional_pressure_ecr = (
+                # Take into account possible public opinion pressure to delay ECR=1 target
+                regional_earliest_achievable_end_target = (
                     region.negotiator.regional_pressure_later_ecr
-                    - region.negotiator.regional_pressure_earlier_ecr
                 )
-                policy = region.negotiator.policy
-                max_policy_rate = region.negotiator.max_cutting_rate_gradient
-                current_time = timestep + self.justice_model.time_horizon.start_year
 
-                region.negotiator.policy[0, -1] = (
-                    policy[0, -1] + delta_regional_pressure_ecr
-                )
+                # take into account track record for expected target year
+                regional_expected_end_target = region.negotiator.expected_year_ecr_max()
+
+                # New policy is at least the earliest achievable
+                # It is also a mean between expected and pledged
+                # And the result should be dragged toward mean target if above
+                tentative_end_year_pledge = (
+                    region.negotiator.policy[0, -1] + regional_expected_end_target
+                ) / 2
+                if tentative_end_year_pledge > avg_global_net_zero_year:
+                    tentative_end_year_pledge = (
+                        tentative_end_year_pledge + avg_global_net_zero_year
+                    ) / 2
+                if tentative_end_year_pledge < regional_earliest_achievable_end_target:
+                    print(
+                        "For region ",
+                        region.id,
+                        " new pledge impossible because ",
+                        tentative_end_year_pledge,
+                        " > ",
+                        regional_earliest_achievable_end_target,
+                    )
+                    tentative_end_year_pledge = regional_earliest_achievable_end_target
+
+                region.negotiator.policy[0, -1] = tentative_end_year_pledge
         return
         # For now nothing happens
 
