@@ -12,13 +12,15 @@ from src.util.data_loader import DataLoader
 from src.util.enumerations import *
 from src.util.model_time import TimeHorizon
 from src.model import JUSTICE
-#from src.model_abm import OLD_ABM_JUSTICE
+
+# from src.model_abm import OLD_ABM_JUSTICE
 from src.model_abm_justice import AbmJustice
 import matplotlib
 from matplotlib import pyplot as plt
 from alive_progress import alive_bar
 from src.util.emission_control_constraint import EmissionControlConstraint
-matplotlib.rcParams['figure.dpi']=300
+
+matplotlib.rcParams["figure.dpi"] = 300
 
 
 # matplotlib.use('Qt5Agg') #For real time display
@@ -32,43 +34,51 @@ for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
     print(idx, scenarios)
 
 
-
 scenarios = 7
-model = AbmJustice(
-    start_year=2015,  # Model is only tested for start year 2015
-    end_year=2300,  # Model is only tested for end year 2300
-    timestep=1,  # Model is only tested for timestep 1
-    scenario=scenarios,
-    economy_type=Economy.NEOCLASSICAL,
-    damage_function_type=DamageFunction.KALKUHL,
-    abatement_type=Abatement.ENERDATA,
-    social_welfare_function=WelfareFunction.UTILITARIAN,
-    # climate_ensembles=570, # This is to select a specific climate ensemble
-    # Declaring for endogenous fixed savings rate
-    elasticity_of_marginal_utility_of_consumption=1.45,
-    pure_rate_of_social_time_preference=0.015,
-    seed=None,
-    utility_params=[0,0,0,0,0]
-)
 
 
-###############################################################################
-#####################       Step-by-Step Run        ###########################
-###############################################################################
-print("Step-by-step run:")
-with alive_bar(len(model.time_horizon.model_time_horizon), force_tty=True) as bar:
-    for timestep in range(len(model.time_horizon.model_time_horizon)):
+for i in range(1):
+    rng = np.random.default_rng()
+    print(i, " out of 20")
+    utility_params_conf = [
+        -1 * rng.random(),
+        -1 * rng.random(),
+        +1 * rng.random(),
+        +1 * rng.random(),
+    ]
+    model = AbmJustice(
+        start_year=2015,  # Model is only tested for start year 2015
+        end_year=2300,  # Model is only tested for end year 2300
+        timestep=1,  # Model is only tested for timestep 1
+        scenario=scenarios,
+        economy_type=Economy.NEOCLASSICAL,
+        damage_function_type=DamageFunction.KALKUHL,
+        abatement_type=Abatement.ENERDATA,
+        social_welfare_function=WelfareFunction.UTILITARIAN,
+        # climate_ensembles=570, # This is to select a specific climate ensemble
+        # Declaring for endogenous fixed savings rate
+        elasticity_of_marginal_utility_of_consumption=1.45,
+        pure_rate_of_social_time_preference=0.015,
+        seed=None,
+        utility_params=utility_params_conf,
+    )
 
-        model.abm_stepwise_run(
-            timestep=timestep, endogenous_savings_rate=True
-        )  # savings_rate = fixed_savings_rate[:, timestep],
-        datasets = model.stepwise_evaluate(timestep=timestep)
+    ###############################################################################
+    #####################       Step-by-Step Run        ###########################
+    ###############################################################################
+    print("Step-by-step run:")
+    with alive_bar(len(model.time_horizon.model_time_horizon), force_tty=True) as bar:
+        for timestep in range(len(model.time_horizon.model_time_horizon)):
 
-        bar()
+            model.abm_stepwise_run(
+                timestep=timestep, endogenous_savings_rate=True
+            )  # savings_rate = fixed_savings_rate[:, timestep],
+            datasets = model.stepwise_evaluate(timestep=timestep)
 
+            bar()
 
-model.close_files()
-print("DONE! :D")
+    model.close_files()
+    print("DONE! :D")
 
 # Shape of disentangled_utility, disentangled_utility_summed, disentangled_utility_powered, welfare_utilitarian
 # Shape of discount_rate
@@ -121,7 +131,7 @@ titles = [
     "Economic Damages",
     "Abatement Cost",
     "Emission rate",
-    "Temperature (regional)"
+    "Temperature (regional)",
 ]
 
 
@@ -158,8 +168,6 @@ for region_index in list_region_index:
         axs[i].set_title(titles[i])
         axs[i].set_xlabel("Year")
         axs[i].set_ylabel("Value")
-
-
 
     # Remove the unused subplots
     for i in range(len(data_list), len(axs)):

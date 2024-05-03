@@ -50,6 +50,7 @@ class Information:
         # self.inequality_aversion = 0
 
         self.IPCC_report_period = 2000
+        self.local_policy_update_period = 5
 
         # TODO APN: Change to numpy arrays
         self.global_temperature_information = []
@@ -64,6 +65,17 @@ class Information:
         # Estimations of future temperature elevation (ground) at local scale at future years BELIEF_YEAR_OFFSET
         # TODO APN: 57 is the number of regions: use global var or get from JUSTICE model
 
+
+        self.global_temperature_projection1 = []
+        self.local_temperature_projection1 = []
+        self.local_consumption_per_capita1 = []
+        self.global_temperature_projection2 = []
+        self.local_temperature_projection2= []
+        self.local_consumption_per_capita2 = []
+        self.global_temperature_projection3 = []
+        self.local_temperature_projection3 = []
+        self.local_consumption_per_capita3 = []
+
     def step(self, timestep):
 
         # TODO APN: don't use timestep as it may not correspond 1::1 to a year increment
@@ -71,6 +83,86 @@ class Information:
             self.generate_information()
         self.construct_flsi(timestep)
 
+        return
+
+    def generate_projections(self, time_step, regions):
+        """
+        Take into account a JUSTICE model and future emissions control rate for all regions.
+        Return the full set of data for the execution of the JUSTICE model over 5 years under these conditions.
+        Is used in the model a a source of information (eg. similar to an IPCC report)
+
+        Parameters
+        ----------
+        justice_model : TYPE
+            DESCRIPTION. A deepcopy of the current JUSTICE model
+        emissions_control_rate : TYPE
+            DESCRIPTION. array: region * time horizon array
+
+        Returns
+        -------
+        None.
+
+        """
+
+        # Get a fresh model
+        # information_model = JUSTICE()
+        print("      -> RUNNING PROJECTION MODEL")
+        projection_model_base = JusticeProjection(self.justice_model)
+        projection_model_support = JusticeProjection(self.justice_model)
+        projection_model_opposition = JusticeProjection(self.justice_model)
+
+
+        ecr1=[]
+        ecr2=[]
+        ecr3=[]
+
+
+        for i in range(time_step, time_step + 5):
+            projection_model_base.stepwise_run(
+                ecr1[:, i], timestep=i, endogenous_savings_rate=True
+            )  # savings_rate = fixed_savings_rate[:, timestep],
+            projection_model_support.stepwise_run(
+                ecr2[:, i], timestep=i, endogenous_savings_rate=True
+            )  # savings_rate = fixed_savings_rate[:, timestep],
+            projection_model_opposition.stepwise_run(
+                ecr3[:, i], timestep=i, endogenous_savings_rate=True
+            )  # savings_rate = fixed_savings_rate[:, timestep],
+            datasets_base = projection_model_base.stepwise_evaluate(timestep=i)
+            datasets_support = projection_model_support.stepwise_evaluate(timestep=i)
+            datasets_opposition = projection_model_opposition.stepwise_evaluate(
+                timestep=i)
+
+
+        means_global_temp = datasets_base["global_temperature"].mean(axis=1)
+        std_global_temp = datasets_base["global_temperature"].std(axis=1)
+        self.global_temperature_projection1 = [means_global_temp, std_global_temp]
+        means_local_temp =  datasets_base["regional_temperature"].mean(axis=2)
+        std_local_temp =  datasets_base["regional_temperature"].std(axis=2)
+        self.local_temperature_projection1 = [means_local_temp, std_local_temp]
+        self.local_consumption_per_capita1 = datasets_base["consumption"].mean(axis=2)
+
+        means_global_temp = datasets_support["global_temperature"].mean(axis=1)
+        std_global_temp = datasets_support["global_temperature"].std(axis=1)
+        self.global_temperature_projection2 = [means_global_temp, std_global_temp]
+        means_local_temp =  datasets_support["regional_temperature"].mean(axis=2)
+        std_local_temp =  datasets_support["regional_temperature"].std(axis=2)
+        self.local_temperature_projection2 = [means_local_temp, std_local_temp]
+        self.local_consumption_per_capita2 = datasets_support["consumption"].mean(axis=2)
+
+        means_global_temp = datasets_opposition["global_temperature"].mean(axis=1)
+        std_global_temp = datasets_opposition["global_temperature"].std(axis=1)
+        self.global_temperature_projection3 = [means_global_temp, std_global_temp]
+        means_local_temp =  datasets_opposition["regional_temperature"].mean(axis=2)
+        std_local_temp =  datasets_opposition["regional_temperature"].std(axis=2)
+        self.local_temperature_projection3 = [means_local_temp, std_local_temp]
+        self.local_consumption_per_capita3 = datasets_opposition["consumption"].mean(axis=2)
+
+
+        print(
+            "         L> PROJECTION DONE!",
+        )
+
+        # print(datasets["consumption_per_capita"])
         return
 
     def generate_information(self):
@@ -94,11 +186,11 @@ class Information:
 
         # Get a fresh model
         # information_model = JUSTICE()
-        print("      -> RUNNING PROJECTION MODEL")
+        print("      -> RUNNING INFORMATION MODEL")
         information_model = JusticeProjection(self.justice_model)
         information_model.run(
             emission_control_rate=self.justice_model.emission_control_rate,
-            endogenous_savings_rate=True
+            endogenous_savings_rate=True,
         )
         datasets = (
             information_model.evaluate()
@@ -107,12 +199,12 @@ class Information:
             datasets["global_temperature"], datasets["regional_temperature"]
         )
         print(
-            "         L> PROJECTION DONE! (2300 mean temperature :",
+            "         L> INFORMATION DONE! (2300 mean temperature :",
             self.global_temperature_information[0][-1],
             "C!)",
         )
 
-        #print(datasets["consumption_per_capita"])
+        # print(datasets["consumption_per_capita"])
         return
 
     def generate_climate_information(self, g_temp, l_temp):
@@ -134,6 +226,31 @@ class Information:
         # array of shape region * time horizon
         self.local_temperature_information = [means_local_temp, std_local_temp]
         # array of shape  2 * region * time_horizon
+        return
+
+    def generate_projection_information(self, l_cons_per_cap, g_temp, l_temp):
+        # g_temp An array of time horizon * number of ensembles
+        # l_temp An array of size regions * time horizon * number of ensembles
+
+        # Global Temperatures: expected means and variances
+        means_global_temp = g_temp.mean(axis=1)
+        # array of shape time horizon
+        std_global_temp = g_temp.std(axis=1)
+        # array of shape time horizon
+        self.global_temperature_projection = [means_global_temp, std_global_temp]
+        # array of shape  2 * time_horizon
+
+        # Local Temperatures: expected means and variances
+        means_local_temp = l_temp.mean(axis=2)
+        # array of shape region * time horizon
+        std_local_temp = l_temp.std(axis=2)
+        # array of shape region * time horizon
+        self.local_temperature_projection = [means_local_temp, std_local_temp]
+        # array of shape  2 * region * time_horizon
+
+        self.local_consumption_per_capita = l_cons_per_cap.mean(axis=2)
+
+        print(self.local_consumption_per_capita.shape())
         return
 
     def construct_flsi(self, time):

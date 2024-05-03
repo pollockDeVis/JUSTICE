@@ -18,13 +18,17 @@ class AbmJustice(JUSTICE):
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=WelfareFunction.UTILITARIAN,
         seed=None,
+        utility_params=[0, 0, 0, 0, 0],
         **kwargs,
     ):
         # INSTANTIATE JUSTICE MODULE
         print("--> Initialisation of ABM-JUSTICE model")
-        self.rng = np.random.default_rng(seed=seed);
+        self.rng = np.random.default_rng(seed=seed)
         print("   -> Instantiation of JUSTICE module")
         JUSTICE.__init__(self)
+
+        consumption_per_capita = []
+
         # Populating data with new informations
         self.data["emission_cutting_rate"] = np.zeros(
             (
@@ -36,7 +40,9 @@ class AbmJustice(JUSTICE):
         print("      OK")
         # INSTANTIATE POLICY MODULE
         print("   -> Instantiation of policy module")
-        self.two_levels_game = TwoLevelsGame(self, timestep=timestep)
+        self.two_levels_game = TwoLevelsGame(
+            self, timestep=timestep, utility_params=utility_params
+        )
         print("      OK")
 
         # INSTANTIATE INFORMATION MODULE
@@ -65,8 +71,6 @@ class AbmJustice(JUSTICE):
         savings_rate=None,
         endogenous_savings_rate=False,
     ):
-        self.information_model.step(timestep)
-        self.two_levels_game.step(timestep)
         emission_control_rate = self.emission_control_rate[:, timestep]
         self.stepwise_run(
             emission_control_rate=emission_control_rate,
@@ -74,6 +78,9 @@ class AbmJustice(JUSTICE):
             savings_rate=savings_rate,
             endogenous_savings_rate=endogenous_savings_rate,
         )
+
+        self.information_model.step(timestep)
+        self.two_levels_game.step(timestep)
 
     def close_files(self):
         self.two_levels_game.close_files()

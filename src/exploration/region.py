@@ -35,7 +35,7 @@ class Region:
 
     """
 
-    def __init__(self, twolevelsgame_model, id, N, timestep):
+    def __init__(self, twolevelsgame_model, id, N, timestep, utility_params):
         """
         policy_model the overarching policy class
         id a unique identifier for the region
@@ -52,7 +52,7 @@ class Region:
 
         for i in range(N):
             # Initialisation of different households and their perspectives. TODO: Should be region dependant in the future.
-            self.households += [Household(self)]
+            self.households += [Household(self, utility_params)]
 
         # ------ Local Opinions Dynamics Parameters ------
         # TODO APN: All OD processes relies on same OD params. Could be interesting to have a specific class for OD defined with proper conf for each different considerations.
@@ -77,11 +77,16 @@ class Region:
         self.negotiator = Negotiator(self)
         self.update_state_policy_from_constituency(timestep)
 
-    def aggregate_households_opinions(self):
-        array_utility = np.array(
-            [hh.assess_policy() for hh in self.households]
-        )
+    def aggregate_households_opinions(self, timestep):
+        array_utility = np.array([hh.assess_policy(timestep) for hh in self.households])
         array_support = array_utility > 0
+        array_opposition = array_utility < 0
+
+        share_support = np.count_nonzero(array_support) / self.n_households
+        share_opposition = np.count_nonzero(array_opposition) / self.n_households
+        share_neutral = 1 - (share_support+share_opposition)
+
+        """
         # Is there more support or opposition?
         if np.count_nonzero(array_support) / self.n_households > 0.5:
             # More support, average positive support
@@ -89,7 +94,9 @@ class Region:
         else:
             # More opposition, average negative support
             return int(np.mean(array_utility[np.logical_not(array_support)]))
-        return
+        """
+
+        return [share_opposition, share_neutral, share_support]
 
     def update_regional_opinion(self):
         # Update on observations (uses FaIR-Perspectives ==> Understanding)
@@ -100,17 +107,92 @@ class Region:
 
     def update_from_information(self):
         for hh in self.households:
-            hh.update_climate_distrib_beliefs(self.twolevelsgame_model.justice_model.rng)
+            hh.update_climate_distrib_beliefs(
+                self.twolevelsgame_model.justice_model.rng
+            )
         return
 
     def update_from_social_network(self):
-        self.spreading_climate_worries(self.twolevelsgame_model.justice_model.rng)  # TODO APN: Distinguish monetary vs non-monetary aspects
-        self.spreading_abatement_worries(self.twolevelsgame_model.justice_model.rng)
+        self.update_climate_distrib_beliefs_from_social()
+        # self.spreading_climate_worries(self.twolevelsgame_model.justice_model.rng)  # TODO APN: Distinguish monetary vs non-monetary aspects
+        # self.spreading_abatement_worries(self.twolevelsgame_model.justice_model.rng)
         return
 
     def update_state_policy_from_constituency(self, timestep):
         self.negotiator.shifting_policy(timestep)
         return
+
+    def update_climate_distrib_beliefs_from_social(self):
+        """
+        Update the means of the beliefs upon future local temperatures for agents.
+        """
+        n = len(self.households)
+        I = np.eye(n) != np.eye(n)
+        k = 0
+
+        v1 = np.ones((1, 1, 10))
+
+        mat_mean_temperature = np.zeros(
+            [self.n_households, Household.N_CLIMATE_BELIEFS]
+        )
+        # A table with all the beliefs distributions about temperature elevation from all households
+        beliefs_table = np.zeros(
+            [
+                self.n_households,
+                Household.N_CLIMATE_BELIEFS,
+                int(len(Household.DISTRIB_X_AXIS)),
+            ]
+        )
+        i = 0
+        for hh in self.households:
+            beliefs_table[i, :, :] = hh.climate_old_distrib_beliefs
+            # Get expected mean temperatures for each households
+            mat_mean_temperature[i, :] = np.array(
+                [
+                    Household.mean_distribution(hh.climate_old_distrib_beliefs[i])
+                    for i in range(Household.N_CLIMATE_BELIEFS)
+                ]
+            )
+            i += 1
+
+        # Create a network structure for closest individuals expectations (they are 0.5C difference at most)
+        tensor_mean_temperature = np.kron(mat_mean_temperature, v1.T)
+        for i in range(Household.N_CLIMATE_BELIEFS):
+            L = (
+                abs(
+                    tensor_mean_temperature[:, :, i]
+                    - tensor_mean_temperature[:, :, i].T
+                )
+                < 2
+            ) * I
+
+            for ih in range(self.n_households):
+                # Take beliefs distributions of all neighbors and sum them
+                nb_neighbors = np.sum(L[ih, :])
+                if nb_neighbors != 0:
+                    mean_distrib_beliefs = np.sum(
+                        beliefs_table[L[ih, :], i, :]
+                    ) / np.sum(L[ih, :])
+
+                    # Update current beliefs with summed beliefs from neighbors
+                    self.households[ih].climate_distrib_beliefs = (
+                        self.households[ih].climate_distrib_beliefs
+                        * mean_distrib_beliefs
+                    )
+
+            # Ensure normalization and update the old distribution of beliefs
+            for ih in range(self.n_households):
+                norm_coeff = np.sum(self.households[ih].climate_distrib_beliefs, axis=1)
+                self.households[ih].climate_distrib_beliefs = np.array(
+                    [
+                        self.households[ih].climate_distrib_beliefs[i, :]
+                        / norm_coeff[i]
+                        for i in range(Household.N_CLIMATE_BELIEFS)
+                    ]
+                )
+                self.households[ih].climate_old_distrib_beliefs = self.households[
+                    ih
+                ].climate_distrib_beliefs.copy()
 
     def spreading_climate_worries(self, rng):
         n = len(self.households)

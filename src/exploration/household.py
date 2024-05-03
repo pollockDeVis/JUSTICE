@@ -31,13 +31,20 @@ class Household:
     # global_distrib_flsi = [[] for i in range(N_CLIMATE_BELIEFS)]; get from the information module
     # regional_distrib_flsi = [[[]] for r in range(56)] get from the information module
 
-    def __init__(self, region):
+    def __init__(self, region, utility_params):
         self.model_region = region
 
         # Initialising climate intuition
-        self.climate_init_mean_beliefs = np.array([1, 1.5, 1.7, 2.0])
+        self.climate_init_mean_beliefs = np.array(
+            [
+                np.random.random() * Household.DISTRIB_MAX_VALUE,
+                np.random.random() * Household.DISTRIB_MAX_VALUE,
+                np.random.random() * Household.DISTRIB_MAX_VALUE,
+                np.random.random() * Household.DISTRIB_MAX_VALUE,
+            ]
+        )
         # Temperature expected for BELIEF_YEAR_OFFSET years
-        self.climate_init_var_beliefs = np.array([0.01, 0.05, 0.15, 0.3])
+        self.climate_init_var_beliefs = np.array([0.01, 0.01, 0.01, 0.01])
         # Confidance in the expectation
 
         distrib_beliefs = np.array(
@@ -52,6 +59,14 @@ class Household:
         # Here range(nb_beliefs) depending on the number of beliefs to be modelled
         norm_coeff = np.sum(distrib_beliefs, axis=1)
         self.climate_distrib_beliefs = np.array(
+            [
+                distrib_beliefs[i, :] / norm_coeff[i]
+                for i in range(self.N_CLIMATE_BELIEFS)
+            ]
+        )
+
+        # used in the opinion update
+        self.climate_old_distrib_beliefs = np.array(
             [
                 distrib_beliefs[i, :] / norm_coeff[i]
                 for i in range(self.N_CLIMATE_BELIEFS)
@@ -81,12 +96,16 @@ class Household:
 
         # TODO APN: The following is completely wrong and ad hoc, but it's for the purpose of testing the shifting_policy function (having negative utility values)
         if self.model_region.id % 2 == 0:
-            self.utility_parameters = [-1, +10, +10, -10, 1]
-            # Abatement Costs coeff + Damage Costs coeff + Environent Worry level coeff + Abatement Worry level coeff + Perceived Willingness to contribute
+            self.utility_parameters = [-10, -10, +10, +10]
+            # - expected temperature elevation and CC dmgs (future) - experienced temperature elevation and Xtrm weather events (present)
+            # + expected economic cost of abatement (future) + experienced economic context (present)
         else:
-            self.utility_parameters = [-1, -10, +10, -10, 1]
-        self.psi_2 = 2.67 * 10**-3
+            self.utility_parameters = [-1, -10, +10, -10]
+
         # Coefficient for climate damage evaluation (see RICE2013R: psi_2)
+        self.psi_2 = 2.67 * 10**-3
+
+        self.utility_parameters = utility_params
 
     def expected_climate_damages(self):
         temp_profile = Household.belief_to_projection(
@@ -94,8 +113,13 @@ class Household:
         )
         return np.sum(self.psi_2 * temp_profile**2)
 
+    def experienced_weather_events(self):
+        return 0
+
     def expected_abatement_costs(self):
-        # TODO Implement
+        return 0
+
+    def experienced_economic_context(self):
         return 0
 
     def filtered_climate_information(self):
@@ -164,7 +188,7 @@ class Household:
             ]
         )
 
-    def assess_policy(self):
+    def assess_policy(self, timestep):
         """
         Compute the Utility equivalent of the current policy. If U is positive, then the agent is pushing for more stringent emission reductions;
         Else, the agent if pushing for less stringent policy.
@@ -176,15 +200,68 @@ class Household:
 
         """
         # TODO APN: self.utility_parameters[0] = -1\coeff * np.log(GDP/Capita)   [See Peter Andre 2023, "representative evidence on the actual and perceived support for climate action"]
-        U = self.utility_parameters @ np.array(
-            [
-                self.expected_abatement_costs(),
-                self.expected_climate_damages(),
-                self.climate_worry,
-                self.abatement_worry,
-                self.perceived_WTC,
+
+        # expected_temperature_evaluation = +1 -1 0
+        temp = Household.mean_distribution(self.climate_distrib_beliefs[-1])
+        if temp > 2:
+            expected_temperature_evaluation = 1  # Support
+        else:
+            expected_temperature_evaluation = 0  # Neutral
+
+        # experienced_economic_context = +1 -1 +0
+        regional_consumption_per_capita = (
+            self.model_region.twolevelsgame_model.justice_model.consumption_per_capita[
+                self.model_region.id
             ]
         )
+        global_mean_consumption_per_capita = np.mean(
+            self.model_region.twolevelsgame_model.justice_model.consumption_per_capita
+        )
+
+        experienced_economic_context = 0  # Neutral
+        if regional_consumption_per_capita > 1.2 * global_mean_consumption_per_capita:
+            experienced_economic_context = 1  # Support
+        elif (
+            regional_consumption_per_capita < 0.99 * global_mean_consumption_per_capita
+        ):
+            experienced_economic_context = -1  # Opposition
+
+        (self.model_region.twolevelsgame_model.f_household)[1].writerow(
+            [self.model_region.id, timestep]
+            + [expected_temperature_evaluation]
+            + [experienced_economic_context]
+        )
+        U = (
+            expected_temperature_evaluation
+            + experienced_economic_context
+            - self.model_region.negotiator.policy[1, 0]
+        )
+
+        # + expected temperature elevation and CC dmgs (future) + experienced temperature elevation and Xtrm weather events (present)
+        # - expected economic cost of abatement (future) - experienced economic context (present)
+        """
+        baseline_expected_climate_damages = self.expected_climate_damages()
+        support_expected_climate_damages = self.expected_climate_damages()
+        opposition_expected_climate_damages = self.expected_climate_damages()
+
+        baseline_expected_abatement_costs = self.expected_abatement_costs()
+        support_expected_abatement_costs = self.expected_abatement_costs()
+        opposition_expected_abatement_costs = self.expected_abatement_costs()
+
+        experienced_climate_change_and_weather_events = self.experienced_weather_events()
+        experienced_economic_context = self.experienced_economic_context()
+
+        
+        U = self.utility_parameters @ np.array(
+            [
+                self.expected_climate_damages(),
+                self.experienced_weather_events(),
+                self.expected_abatement_costs(),
+                self.experienced_economic_context()
+            ]
+        )
+        """
+
         return U
 
     ###########################################################################

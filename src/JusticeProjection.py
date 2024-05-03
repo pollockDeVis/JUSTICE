@@ -122,6 +122,13 @@ class JusticeProjection(JUSTICE):
             "global_temperature": np.zeros(
                 (len(self.time_horizon.model_time_horizon), self.no_of_ensembles)
             ),
+            "damage_fraction": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
             "economic_damage": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
@@ -171,4 +178,3 @@ class JusticeProjection(JUSTICE):
             ),
             "welfare_utilitarian": np.zeros((self.no_of_ensembles,)),
         }
-

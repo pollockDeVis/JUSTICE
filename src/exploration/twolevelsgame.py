@@ -21,7 +21,12 @@ class TwoLevelsGame:
     """
 
     def __init__(
-        self, justice_model, number_regions=57, population_size_by_region=10, timestep=0
+        self,
+        justice_model,
+        number_regions=57,
+        population_size_by_region=10,
+        timestep=0,
+        utility_params=[0, 0, 0, 0, 0],
     ):
         """
         justice_model is a reference to the overarching justice model
@@ -44,7 +49,7 @@ class TwoLevelsGame:
             f2,
             csv.writer(f2, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
-        # self.f_policy[1].writerow(['Region ID', 'Timestep', 'Policy Size', 'Policy Values', 'Policy Years'])
+        # self.f_policy[1].writerow(['Region ID', 'Timestep', 'Policy Size', 'Policy Shift', 'Policy Values', 'Policy Years'])
         f3 = open(path + "negotiator.csv", "w", newline="")
         self.f_negotiator = (
             f3,
@@ -66,11 +71,15 @@ class TwoLevelsGame:
             csv.writer(f6, delimiter=";", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
 
+        self.f_parameters = open(path + "parameters.txt", "w", newline="")
+        self.f_parameters.write("Utility Parameters : " + str(utility_params))
+
         # Initialise Agents (ie. regions)
         self.justice_model = justice_model
         self.N = number_regions
         self.regions = [
-            Region(self, i, population_size_by_region, timestep) for i in range(self.N)
+            Region(self, i, population_size_by_region, timestep, utility_params)
+            for i in range(self.N)
         ]
 
         # Coalitions (ad hoc, now a cycle graph)
@@ -84,8 +93,8 @@ class TwoLevelsGame:
         self.coalitions[edges[:, 1], edges[:, 0]] = 1
 
         # Parameters for international negotiations
-        self.Y_nego = 1000
-        # How many years between a new set of international negotiation rounds
+        self.Y_nego = 5 # How many years between a new set of international negotiation rounds
+        self.Y_policy = 5 # How many years between a new set of regional policy update
 
     def step(self, timestep):
         """
@@ -96,7 +105,7 @@ class TwoLevelsGame:
 
         # 2 - Negotiating an international agreement (every Y_nego years)
         if timestep % self.Y_nego == 0:
-            self.international_negotiations()
+            self.international_negotiations(timestep)
 
         # 3 - Deduce an emission control for all region depending on constituency, international agreement, and inertia
         self.update_emission_control_rate(timestep)
@@ -108,17 +117,52 @@ class TwoLevelsGame:
             - Taking into account opinion dynamics
             - Assessing the current policy
         """
+
+        # TODO uncomment to use the projections of alternative ecr scenarios over shortime
+        # self.justice_model.information_model.generate_projections(timestep, self.regions)
+
+        # Size is 57*1
+        self.justice_model.consumption_per_capita = np.mean(
+            self.justice_model.economy.get_consumption_per_capita_per_timestep(
+                self.justice_model.savings_rate[:, timestep],
+                timestep
+            ),
+            axis=1,
+        )
+
         for a in self.regions:
             a.update_regional_opinion()
-            a.update_state_policy_from_constituency(timestep)
+            if timestep % self.Y_policy == 0:
+                a.update_state_policy_from_constituency(timestep)
 
-    def international_negotiations(self):
+    def international_negotiations(self, timestep):
         """
         This function allows negotiators to make pledges of emissions cuts for the future years.
         Each negotiator have to come up with a target year associated to a cutting rate goal.
         Pledges are assumed to be linear by other negotiators in their implementation.
         """
 
+        # TODO APN: This is very simplified way of seeing international negotiations. It might also not work properly when the delta is negative and large (not respecting maximum changing rate of emission control rate)
+        if False:
+            avg_global_net_zero_year = 0
+            for region in self.regions:
+                policy = region.negotiator.policy
+                avg_global_net_zero_year += policy[0, -1]
+            avg_global_net_zero_year = avg_global_net_zero_year / len(self.regions)
+
+            for region in self.regions:
+                delta_regional_pressure_ecr = (
+                    region.negotiator.regional_pressure_later_ecr
+                    - region.negotiator.regional_pressure_earlier_ecr
+                )
+                policy = region.negotiator.policy
+                max_policy_rate = region.negotiator.max_cutting_rate_gradient
+                current_time = timestep + self.justice_model.time_horizon.start_year
+
+                region.negotiator.policy[0, -1] = (
+                    policy[0, -1] + delta_regional_pressure_ecr
+                )
+        return
         # For now nothing happens
 
         # """
@@ -174,4 +218,5 @@ class TwoLevelsGame:
         self.f_household[0].close()
         self.f_negotiator[0].close()
         self.f_information[0].close()
+        self.f_parameters.close()
         return
