@@ -512,11 +512,14 @@ def plot_choropleth(
     data_timestep=5,
     timestep=1,
     no_of_ensembles=1001,
+    saving=False,
+    scenario_list=[],
 ):
 
     # Assert if input_data list and output_titles list is None
     assert input_data, "No input data provided for visualization."
     assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
 
     time_horizon = TimeHorizon(
         start_year=start_year,
@@ -537,11 +540,13 @@ def plot_choropleth(
             scenario_data = pickle.load(f)
 
         data_scenario = np.zeros(
-            (len(Scenario), len(region_list), len(list_of_years), no_of_ensembles)
+            (len(scenario_list), len(region_list), len(list_of_years), no_of_ensembles)
         )
 
         # Loop through all the scenarios and store the data in a 4D numpy array
-        for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
+        for idx, scenarios in enumerate(
+            scenario_list
+        ):  # list(Scenario.__members__.keys())
             data_scenario[idx, :, :, :] = scenario_data[scenarios][variable_name]
 
             # Process the data for choropleth plot
@@ -558,7 +563,7 @@ def plot_choropleth(
                 title
                 + str(year_to_visualize)
                 + "-"
-                + Scenario.get_ssp_rcp_strings()[idx]
+                + Scenario[scenarios].value[-1]  # Scenario.get_ssp_rcp_strings()[idx]
             )
 
             fig = px.choropleth(
@@ -594,8 +599,9 @@ def plot_choropleth(
                 + "_"
                 + Scenario.get_ssp_rcp_strings()[idx]
             )
-            # Save the plot as a png file
-            fig.write_image(path_to_output + "/" + output_file_name + ".png")
+            if saving:
+                # Save the plot as a png file
+                fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     # plotting_idx = 2
     return fig, data_scenario_year_by_country
