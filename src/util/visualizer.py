@@ -10,6 +10,7 @@ import seaborn as sns
 import os
 from src.util.model_time import TimeHorizon
 from src.util.enumerations import *
+from src.util.regional_configuration import justice_region_aggregator
 import pickle
 from src.util.data_loader import DataLoader
 
@@ -486,12 +487,6 @@ def process_country_data_for_choropleth_plot(
     return data_scenario_year_by_country
 
 
-# TODO: Add scenario list
-# These are the same thing - Redundant
-# ssp_rcp_string_list = Scenario.get_ssp_rcp_strings() # These are the pretty strings
-# scenario_list = ['SSP245'] #list(Scenario.__members__.keys()) # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
-
-
 def plot_choropleth(
     variable_name="constrained_emission_control_rate",
     path_to_data="data/reevaluation/",
@@ -550,6 +545,7 @@ def plot_choropleth(
             data_scenario[idx, :, :, :] = scenario_data[scenarios][variable_name]
 
             # Process the data for choropleth plot
+            # TODO: Make this an array
             data_scenario_year_by_country = process_country_data_for_choropleth_plot(
                 region_list=region_list,
                 data=data_scenario,
@@ -558,7 +554,7 @@ def plot_choropleth(
                 data_label=data_label,
                 ssp_scenario=idx,
             )
-
+            # TODO: Separate the the loops and carry normalization here
             choropleth_title = (
                 title
                 + str(year_to_visualize)
@@ -762,3 +758,133 @@ if __name__ == "__main__":
         alpha=0.1,
         linewidth=2.5,
     )
+
+
+def plot_stacked_area_chart(
+    variable_name=None,
+    region_name_path="data/input/rice50_region_names.json",
+    path_to_data="data/reevaluation",
+    path_to_output="./data/plots",
+    input_data=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    scenario_list=[],
+    title=None,
+    title_x=0.5,
+    xaxis_label=None,
+    yaxis_label=None,
+    legend_label=None,
+    colour_palette=px.colors.qualitative.Light24,
+    height=800,
+    width=1200,
+    visualization_start_year=2015,
+    visualization_end_year=2300,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    template="plotly_white",
+    plot_title=None,
+    groupnorm=None,
+    region_aggegation=True,
+    region_dict=None,
+    saving=False,
+):
+
+    # Assert if input_data list, scenario_list and output_titles list is None
+    assert input_data, "No input data provided for visualization."
+    assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
+
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    data_loader = DataLoader()
+
+    region_list = data_loader.REGION_LIST  # (data_loader.REGION_LIST).tolist()
+
+    if region_aggegation == True:
+        assert region_dict, "Region dictionary is not provided."
+        region_list = list(region_dict.keys())
+    else:
+        with open(region_name_path, "r") as f:
+            region_names = json.load(f)
+
+        # Use region list to get the region names using the region names dictionary
+        region_list = [region_names[region] for region in region_list]
+        # Convert into a flat list
+        region_list = [item for sublist in region_list for item in sublist]
+
+    print(region_list)
+
+    # Load the data
+    # Enumerate through the input data and load the data
+    for idx, file in enumerate(input_data):
+        for scenario in scenario_list:
+            print("Loading data for: ", scenario, " - ", file)
+            with open(
+                path_to_data
+                + "/"
+                + file
+                + "_"
+                + scenario
+                + "_"
+                + variable_name
+                + ".pkl",
+                "rb",
+            ) as f:
+                data = pickle.load(f)
+
+            # Check if region_aggegation is True
+            if region_aggegation:
+                # Aggregated Input Data
+                data = justice_region_aggregator(data_loader, region_dict, data)
+
+            # Check shape of data
+            if len(data.shape) == 3:
+                data = np.mean(data, axis=2)
+
+            # Create a dataframe from the data
+            data = pd.DataFrame(data, index=region_list, columns=list_of_years)
+
+            # Create the slice according to visualization years
+            data = data.loc[:, visualization_start_year:visualization_end_year]
+
+            # Create plotly figure
+            fig = px.area(
+                data.T,
+                x=data.columns,
+                y=data.index,
+                title=plot_title,
+                template=template,
+                labels={"value": variable_name, "variable": "Region", "x": "Year"},
+                height=height,
+                width=width,
+                color_discrete_sequence=colour_palette,
+                groupnorm=groupnorm,
+            )
+            # Update layout
+            fig.update_layout(
+                legend_title_text=legend_label,
+                # X-axis label
+                xaxis_title=xaxis_label,
+                # Y-axis label
+                yaxis_title=yaxis_label,
+                title_text=title,
+                title_x=title_x,
+            )
+            if saving:
+                # Save the figure
+                if not os.path.exists(path_to_output):
+                    os.makedirs(path_to_output)
+
+                output_file_name = variable_name + "_" + output_titles[idx]
+                print("Saving plot for: ", scenario, " - ", output_file_name)
+                # fig.write_image(path_to_output + "/" + output_file_name + ".png")
+
+    return fig

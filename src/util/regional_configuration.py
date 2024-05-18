@@ -10,7 +10,7 @@ https://en.wikipedia.org/wiki/ISO_3166-1
 
 from collections import defaultdict
 import json
-import pycountry
+import pycountry  # TODO Use this to get country names for ISO3 codes
 import pandas as pd
 import numpy as np
 
