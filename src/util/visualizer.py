@@ -243,12 +243,6 @@ def visualize_tradeoffs(
     plt.savefig(path_to_output + "/" + output_file_name, dpi=300)
 
 
-# TODO: Add scenario list
-# These are the same thing - Redundant
-# ssp_rcp_string_list = Scenario.get_ssp_rcp_strings() # These are the pretty strings
-# scenario_list = ['SSP245'] #list(Scenario.__members__.keys()) # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
-
-
 def plot_timeseries(
     figsize=(15, 10),
     set_style="white",
@@ -263,7 +257,7 @@ def plot_timeseries(
     input_data=[],
     output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
     main_title="Global Temperature Rise - ",
-    show_title=False,
+    show_title=True,
     yaxis_lower_limit=0,
     yaxis_upper_limit=10,
     alpha=0.1,
@@ -274,7 +268,42 @@ def plot_timeseries(
     end_year=2300,
     data_timestep=5,
     timestep=1,
+    visualization_start_year=2015,
+    visualization_end_year=2300,
+    saving=False,
+    scenario_list=[],
 ):
+    """
+    @param figsize: Tuple, default=(15, 10)
+    @param set_style: String, default="white"
+    @param colourmap: String, default="bright"
+    @param path_to_data: String, default="data/reevaluation"
+    @param path_to_output: String, default="./data/plots"
+    @param fontsize: Integer, default=15
+    @param x_label: String, default="Years"
+    @param y_label: String, default="Temperature Rise (°C)"
+    @param variable_name: String, default="global_temperature"
+    @param no_of_ensembles: Integer, default=1001
+    @param input_data: List, default=[]
+    @param output_titles: List, default=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"]
+    @param main_title: String, default="Global Temperature Rise - "
+    @param show_title: Boolean, default=True
+    @param yaxis_lower_limit: Integer, default=0
+    @param yaxis_upper_limit: Integer, default=10
+    @param alpha: Float, default=0.1
+    @param linewidth: Float, default=2.5
+    @param lower_percentile: Integer, default=0
+    @param upper_percentile: Integer, default=100
+    @param start_year: Integer, default=2015
+    @param end_year: Integer, default=2300
+    @param data_timestep: Integer, default=5
+    @param timestep: Integer, default=1
+    @param visualization_start_year: Integer, default=2015
+    @param visualization_end_year: Integer, default=2300
+    @param saving: Boolean, default=False
+    @param scenario_list: List, default=[], Accepted values: ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
+
+    """
 
     # Assert if input_data list is empty
     assert input_data, "No input data provided for visualization."
@@ -289,93 +318,144 @@ def plot_timeseries(
         data_timestep=data_timestep,
         timestep=timestep,
     )
+
     list_of_years = time_horizon.model_time_horizon
-    columns = list_of_years
-    data_scenario = np.zeros((len(Scenario), len(list_of_years), no_of_ensembles))
-    ssp_rcp_string_list = Scenario.get_ssp_rcp_strings()
+
+    data_scenario = np.zeros((len(scenario_list), len(list_of_years), no_of_ensembles))
 
     # Loop through the input data and plot the timeseries
     for plotting_idx, file in enumerate(input_data):
         # Load the scenario data from the pickle file
-        with open(path_to_data + "/" + file, "rb") as f:  # input_data[plotting_idx]
+        with open(path_to_data + "/" + file, "rb") as f:
             scenario_data = pickle.load(f)
 
-        for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
+        # Loop through the scenarios
+        for idx, scenarios in enumerate(scenario_list):
+
             data_scenario[idx, :, :] = scenario_data[scenarios][variable_name]
 
-        mean_data = np.zeros((len(Scenario), len(list_of_years)))
+        # Select list of years for visualization
+        list_of_years_sliced = list_of_years[
+            time_horizon.year_to_timestep(
+                visualization_start_year, timestep=timestep
+            ) : (
+                time_horizon.year_to_timestep(visualization_end_year, timestep=timestep)
+                + timestep
+            )
+        ]
+
+        median_data = np.zeros((len(scenario_list), len(list_of_years_sliced)))
+
         sns.set_style(set_style)
-        fig, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots(
+            1, 2, figsize=figsize, gridspec_kw={"width_ratios": [3, 0.5]}
+        )
 
         # Set y-axis limits
         plt.ylim(yaxis_lower_limit, yaxis_upper_limit)
 
-        for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
+        label_list = []
+        for idx, scenarios in enumerate(scenario_list):
 
-            print(scenarios)
             temp_df = pd.DataFrame(data_scenario[idx, :, :].T, columns=list_of_years)
-            print(temp_df.max().max())
-            label = ssp_rcp_string_list[idx]
-            color = color_palette[idx]  # colors[idx]
+            # Select temp_df for visualization
+            temp_df = temp_df.loc[:, list_of_years_sliced]
+
+            label = Scenario[scenarios].value[-1]
+            color = color_palette[idx]
 
             # Calculate the percentiles
             p_l = np.percentile(temp_df, lower_percentile, axis=0)
             p_h = np.percentile(temp_df, upper_percentile, axis=0)
 
-            # Calculate the mean
-            mean_data[idx, :] = temp_df.mean()
+            # Calculate the median
+            median_data[idx, :] = np.median(temp_df, axis=0)
+
+            label = Scenario[scenarios].value[-1]  # ssp_rcp_string_list[idx]
+            label_list.append(label)
+            color = color_palette[idx]
 
             # Plot percentiles as bands
-            ax.fill_between(list_of_years, p_l, p_h, color=color, alpha=alpha)
+            ax[0].fill_between(list_of_years_sliced, p_l, p_h, color=color, alpha=alpha)
+
+            # Select the last year of the data for the KDE plot
+            temp_df_last_year = temp_df.iloc[:, -1]
+
+            # Plot the KDE plot
+            sns.kdeplot(
+                y=temp_df_last_year, color=color, ax=ax[1], fill=True, alpha=alpha
+            )
 
         # Convert the mean_data to a dataframe
-        mean_data = pd.DataFrame(mean_data, columns=list_of_years)
+        median_data = pd.DataFrame(median_data, columns=list_of_years_sliced)
 
-        for i in range(mean_data.shape[0]):
-            label = ssp_rcp_string_list[i]
+        for i in range(median_data.shape[0]):
+            label = label_list[i]
             color = color_palette[i]
             sns.lineplot(
-                data=mean_data.iloc[i],
+                data=median_data.iloc[i],
                 color=color,
-                alpha=alpha * 8,
+                alpha=alpha * 10,
                 linewidth=linewidth,
                 label=label,
-                ax=ax,
+                ax=ax[0],
             )
-        # Access the current Axes instance on the current figure:
+            ax[0].legend(loc="upper left", fontsize=fontsize)
 
-        ax = plt.gca()
+        # Set the x-axis limit to end at the last year
+        ax[0].set_xlim(visualization_start_year, visualization_end_year)
 
-        # Remove top and right border
-        ax.spines["right"].set_visible(False)
-        ax.spines["top"].set_visible(False)
+        # Set y-axis limits
+        ax[0].set_ylim(yaxis_lower_limit, yaxis_upper_limit)
+
+        # Adjust the space between subplots
+        plt.subplots_adjust(wspace=0.1)
+
+        # Remove top and right border for both plots
+        ax[0].spines["right"].set_visible(False)
+        ax[0].spines["top"].set_visible(False)
+        ax[1].spines["right"].set_visible(False)
+        ax[1].spines["top"].set_visible(False)
 
         # Remove top and right ticks
-        ax.xaxis.set_ticks_position("bottom")
-        ax.yaxis.set_ticks_position("left")
+        ax[0].xaxis.set_ticks_position("bottom")
+        ax[0].yaxis.set_ticks_position("left")
+        ax[1].xaxis.set_ticks_position("bottom")
+        # ax[1].yaxis.set_ticks_position('left')
 
-        # Set font size of axis labels
-        plt.xticks(fontsize=fontsize)
-        plt.yticks(fontsize=fontsize)
+        # Remove ticks for the second plot
+        ax[1].set_yticks([])
 
-        # Add labels, legend and title
-        plt.xlabel(x_label, fontsize=fontsize)
-        plt.ylabel(y_label, fontsize=fontsize)
-        plt.legend(loc="upper left", fontsize=fontsize)
+        # Set the labels
+        ax[0].set_xlabel(x_label, fontsize=fontsize)
+        ax[0].set_ylabel(y_label, fontsize=fontsize)
+        ax[1].set_xlabel("Distribution", fontsize=fontsize)
+        ax[1].set_ylabel(" ", fontsize=fontsize)
+
+        # Set the font size of the tick labels
+        ax[0].tick_params(axis="both", which="major", labelsize=fontsize)
+        ax[1].tick_params(axis="both", which="major", labelsize=fontsize)
 
         if show_title:
-            plt.title(main_title + output_titles[plotting_idx], fontsize=fontsize)
+            plt.suptitle(main_title, fontsize=fontsize)
 
-        # Save the figure
-        if not os.path.exists(path_to_output):
-            os.makedirs(path_to_output)
+        if saving:
+            # Save the figure
+            if not os.path.exists(path_to_output):
+                os.makedirs(path_to_output)
 
-        output_file_name = variable_name
+            output_file_name = variable_name
 
-        plt.savefig(
-            path_to_output + "/" + output_file_name + "_" + output_titles[plotting_idx],
-            dpi=300,
-        )
+            plt.savefig(
+                path_to_output
+                + "/"
+                + output_file_name
+                + "_"
+                + output_titles[plotting_idx],
+                dpi=300,
+            )
+
+    return fig
 
 
 def process_country_data_for_choropleth_plot(
@@ -738,28 +818,6 @@ def plot_ssp_rcp_subplots(
     return fig
 
 
-if __name__ == "__main__":
-    plot_timeseries(
-        path_to_data="data/reevaluation",
-        path_to_output="./data/plots",
-        x_label="Years",
-        y_label="Temperature Rise (°C)",
-        variable_name="global_temperature",
-        input_data=[
-            "UTIL_100049.pkl",
-            "EGAL_101948.pkl",
-            "PRIOR_101765.pkl",
-            "SUFF_102924.pkl",
-        ],
-        output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
-        main_title="Global Temperature Rise - ",
-        yaxis_lower_limit=0,
-        yaxis_upper_limit=10,
-        alpha=0.1,
-        linewidth=2.5,
-    )
-
-
 def plot_stacked_area_chart(
     variable_name=None,
     region_name_path="data/input/rice50_region_names.json",
@@ -843,7 +901,9 @@ def plot_stacked_area_chart(
             # Check if region_aggegation is True
             if region_aggegation:
                 # Aggregated Input Data
-                data = justice_region_aggregator(data_loader, region_dict, data)
+                data = justice_region_aggregator(
+                    data_loader=data_loader, region_config=region_dict, data=data
+                )
 
             # Check shape of data
             if len(data.shape) == 3:
@@ -883,8 +943,32 @@ def plot_stacked_area_chart(
                 if not os.path.exists(path_to_output):
                     os.makedirs(path_to_output)
 
-                output_file_name = variable_name + "_" + output_titles[idx]
+                output_file_name = (
+                    variable_name + "_" + output_titles[idx] + "_" + scenario
+                )
                 print("Saving plot for: ", scenario, " - ", output_file_name)
-                # fig.write_image(path_to_output + "/" + output_file_name + ".png")
+                fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     return fig
+
+
+if __name__ == "__main__":
+    plot_timeseries(
+        path_to_data="data/reevaluation",
+        path_to_output="./data/plots",
+        x_label="Years",
+        y_label="Temperature Rise (°C)",
+        variable_name="global_temperature",
+        input_data=[
+            "UTIL_100049.pkl",
+            "EGAL_101948.pkl",
+            "PRIOR_101765.pkl",
+            "SUFF_102924.pkl",
+        ],
+        output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+        main_title="Global Temperature Rise - ",
+        yaxis_lower_limit=0,
+        yaxis_upper_limit=10,
+        alpha=0.1,
+        linewidth=2.5,
+    )

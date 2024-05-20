@@ -58,6 +58,7 @@ def get_region_mapping(
     return inverted_mapping
 
 
+# TODO: Bug
 def justice_region_aggregator(
     data_loader, region_config, data, similarity_threshold=0.01
 ):
@@ -86,6 +87,8 @@ def justice_region_aggregator(
         similarity_threshold=similarity_threshold,
     )
 
+    print(mapping_dictionary)
+
     # Create a dictionary to map regions to their indices
     region_index_map = {region: index for index, region in enumerate(region_list)}
 
@@ -97,7 +100,7 @@ def justice_region_aggregator(
 
         # Get the indices of the regions in the value list
         indices = [region_index_map[region] for region in value]
-
+        # print(indices, key, value)
         # Sum the emissions for the regions in the value list
         aggregated_data[index, :, :] = np.sum(data[indices, :, :], axis=0)
 
