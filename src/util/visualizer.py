@@ -864,11 +864,11 @@ def plot_stacked_area_chart(
 
     data_loader = DataLoader()
 
-    region_list = data_loader.REGION_LIST  # (data_loader.REGION_LIST).tolist()
+    region_list = data_loader.REGION_LIST
 
     if region_aggegation == True:
         assert region_dict, "Region dictionary is not provided."
-        region_list = list(region_dict.keys())
+        # region_list = list(region_dict.keys())
     else:
         with open(region_name_path, "r") as f:
             region_names = json.load(f)
@@ -901,7 +901,7 @@ def plot_stacked_area_chart(
             # Check if region_aggegation is True
             if region_aggegation:
                 # Aggregated Input Data
-                data = justice_region_aggregator(
+                region_list, data = justice_region_aggregator(
                     data_loader=data_loader, region_config=region_dict, data=data
                 )
 
