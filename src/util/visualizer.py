@@ -467,7 +467,7 @@ def process_country_data_for_choropleth_plot(
     data_label="Emission Control Rate",
     ssp_scenario=0,
     region_to_country_mapping="data/input/rice50_regions_dict.json",
-    scaler=True,
+    scaler=False,
     feature_scale=(0, 1),
     data_correction=True,
 ):
@@ -589,7 +589,9 @@ def plot_choropleth(
     no_of_ensembles=1001,
     saving=False,
     scenario_list=[],
+    feature_scale=(0, 1),
     choropleth_data_length=3,
+    data_normalization=True,
 ):
 
     # Assert if input_data list and output_titles list is None
@@ -613,7 +615,6 @@ def plot_choropleth(
 
     # Loop through the input data and plot the choropleth
     for plotting_idx, file in enumerate(input_data):
-        print(plotting_idx, file)
         # Load the scenario data from the pickle file
         with open(path_to_data + file, "rb") as f:
             scenario_data = pickle.load(f)
@@ -637,10 +638,38 @@ def plot_choropleth(
                 year_to_visualize=year_to_visualize,
                 data_label=data_label,
                 ssp_scenario=idx,
+                scaler=False,
             )
 
             data_scenario_year_by_country_dict[(plotting_idx, scenarios)] = (
                 data_scenario_year_by_country
+            )
+
+    if data_normalization:
+        # Initialize the scaler
+        scaler = MinMaxScaler(feature_scale)
+        # Find the global minimum and maximum
+        global_min = min(
+            df[data_label].min() for df in data_scenario_year_by_country_dict.values()
+        )
+        global_max = max(
+            df[data_label].max() for df in data_scenario_year_by_country_dict.values()
+        )
+
+        print(global_min, global_max)
+
+        # Set the scaler's min and max
+        scaler.min_, scaler.scale_ = global_min, 1.0 / (global_max - global_min)
+        # Loop over the keys in the dictionary
+        for key in data_scenario_year_by_country_dict.keys():
+            print(key)
+            # Reshape the 'Emission' column to fit the scaler
+            emissions = data_scenario_year_by_country_dict[key][
+                data_label
+            ].values.reshape(-1, 1)
+            # Transform the 'Emission' column
+            data_scenario_year_by_country_dict[key][data_label] = scaler.transform(
+                emissions
             )
 
     # Loop through the input data and plot the choropleth
