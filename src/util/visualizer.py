@@ -589,6 +589,7 @@ def plot_choropleth(
     no_of_ensembles=1001,
     saving=False,
     scenario_list=[],
+    choropleth_data_length=3,
 ):
 
     # Assert if input_data list and output_titles list is None
@@ -607,6 +608,8 @@ def plot_choropleth(
 
     region_list = data_loader.REGION_LIST
     columns = list_of_years
+
+    data_scenario_year_by_country_dict = {}
 
     # Loop through the input data and plot the choropleth
     for plotting_idx, file in enumerate(input_data):
@@ -634,6 +637,16 @@ def plot_choropleth(
                 data_label=data_label,
                 ssp_scenario=idx,
             )
+
+            data_scenario_year_by_country_dict[scenarios] = (
+                data_scenario_year_by_country
+            )
+
+    # Loop through the input data and plot the choropleth
+    for plotting_idx, file in enumerate(input_data):
+
+        # Loop through all the scenarios and store the data in a 4D numpy array
+        for idx, scenarios in enumerate(scenario_list):
             # TODO: Separate the the loops and carry normalization here
             choropleth_title = (
                 title
@@ -643,7 +656,7 @@ def plot_choropleth(
             )
 
             fig = px.choropleth(
-                data_scenario_year_by_country,
+                data_scenario_year_by_country_dict[scenarios],
                 locations="CountryCode",
                 color=data_label,
                 hover_name="CountryName",
@@ -846,6 +859,7 @@ def plot_stacked_area_chart(
     region_aggegation=True,
     region_dict=None,
     saving=False,
+    fontsize=15,
 ):
 
     # Assert if input_data list, scenario_list and output_titles list is None
@@ -937,6 +951,7 @@ def plot_stacked_area_chart(
                 yaxis_title=yaxis_label,
                 title_text=title,
                 title_x=title_x,
+                font=dict(size=fontsize),
             )
             if saving:
                 # Save the figure
