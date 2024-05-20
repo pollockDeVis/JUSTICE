@@ -613,6 +613,7 @@ def plot_choropleth(
 
     # Loop through the input data and plot the choropleth
     for plotting_idx, file in enumerate(input_data):
+        print(plotting_idx, file)
         # Load the scenario data from the pickle file
         with open(path_to_data + file, "rb") as f:
             scenario_data = pickle.load(f)
@@ -638,7 +639,7 @@ def plot_choropleth(
                 ssp_scenario=idx,
             )
 
-            data_scenario_year_by_country_dict[scenarios] = (
+            data_scenario_year_by_country_dict[(plotting_idx, scenarios)] = (
                 data_scenario_year_by_country
             )
 
@@ -656,7 +657,7 @@ def plot_choropleth(
             )
 
             fig = px.choropleth(
-                data_scenario_year_by_country_dict[scenarios],
+                data_scenario_year_by_country_dict[(plotting_idx, scenarios)],
                 locations="CountryCode",
                 color=data_label,
                 hover_name="CountryName",
