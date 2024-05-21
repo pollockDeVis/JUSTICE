@@ -567,6 +567,22 @@ def process_country_data_for_choropleth_plot(
     return data_scenario_year_by_country
 
 
+def min_max_scaler(X, global_min, global_max):
+
+    # Check if data is a numpy array
+    if not isinstance(X, np.ndarray):
+        print("Data is not a numpy array.")
+        X = np.array(X)
+
+    # print(np.nanmin(X), np.nanmax(X))
+
+    X_std = (X - np.nanmin(X)) / (np.nanmax(X) - np.nanmin(X))
+
+    X_scaled = X_std * (global_max - global_min) + global_min
+
+    return X_scaled
+
+
 def plot_choropleth(
     variable_name="constrained_emission_control_rate",
     path_to_data="data/reevaluation/",
@@ -647,7 +663,7 @@ def plot_choropleth(
 
     if data_normalization:
         # Initialize the scaler
-        scaler = MinMaxScaler(feature_scale)
+        # scaler = MinMaxScaler(feature_scale)
         # Find the global minimum and maximum
         global_min = min(
             df[data_label].min() for df in data_scenario_year_by_country_dict.values()
@@ -656,12 +672,11 @@ def plot_choropleth(
             df[data_label].max() for df in data_scenario_year_by_country_dict.values()
         )
 
-        print(global_min, global_max)
+        print("Global Min & Max", global_min, global_max)
 
         # Set the scaler's min and max
-        scaler.min_, scaler.scale_ = global_min, 1.0 / (global_max - global_min)
-        # scaler.data_min_ = global_min
-        # scaler.data_max_ = global_max
+        # scaler.min_, scaler.scale_ = global_min, 1.0 / (global_max - global_min)
+
         # Loop over the keys in the dictionary
         for key in data_scenario_year_by_country_dict.keys():
             print(key)
@@ -669,11 +684,16 @@ def plot_choropleth(
             normalized_data = data_scenario_year_by_country_dict[key][
                 data_label
             ].values.reshape(-1, 1)
-            # print(normalized_data)
+
             # Transform the 'Emission' column
-            data_scenario_year_by_country_dict[key][data_label] = scaler.transform(
-                normalized_data
+            data_scenario_year_by_country_dict[key][data_label] = min_max_scaler(
+                normalized_data, global_min, global_max
             )
+
+            # print(data_scenario_year_by_country_dict[key][data_label])
+            # data_scenario_year_by_country_dict[key][data_label] = scaler.transform(
+            #     normalized_data
+            # )
 
     # Loop through the input data and plot the choropleth
     for plotting_idx, file in enumerate(input_data):
@@ -723,7 +743,7 @@ def plot_choropleth(
             )
             if saving:
                 # Save the plot as a png file
-                print("Saving plot for: ", scenarios, " - ", output_file_name)
+                # print("Saving plot for: ", scenarios, " - ", output_file_name)
                 fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     # plotting_idx = 2

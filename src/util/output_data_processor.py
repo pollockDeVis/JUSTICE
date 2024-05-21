@@ -357,8 +357,8 @@ if __name__ == "__main__":
         list_of_years=list_of_years,
         path_to_data="data/reevaluation",
         path_to_output="data/reevaluation",
-        variable_name="global_temperature",
-        data_shape=2,
+        variable_name="emissions",  # "global_temperature",
+        data_shape=3,
         no_of_ensembles=1001,
         input_data=[
             "UTIL_100049.pkl",
