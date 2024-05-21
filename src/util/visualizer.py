@@ -557,7 +557,7 @@ def process_country_data_for_choropleth_plot(
         # Check for the country code 'ATA' in the dataframe and set it to 0
         data_scenario_year_by_country.loc[
             data_scenario_year_by_country["CountryCode"] == "ATA", data_label
-        ] = 0
+        ] = np.nan  # 0
 
         # Check for the CountryCode 'KSV' and set the 'CountryName' to 'Kosovo'
         data_scenario_year_by_country.loc[
@@ -660,16 +660,19 @@ def plot_choropleth(
 
         # Set the scaler's min and max
         scaler.min_, scaler.scale_ = global_min, 1.0 / (global_max - global_min)
+        # scaler.data_min_ = global_min
+        # scaler.data_max_ = global_max
         # Loop over the keys in the dictionary
         for key in data_scenario_year_by_country_dict.keys():
             print(key)
             # Reshape the 'Emission' column to fit the scaler
-            emissions = data_scenario_year_by_country_dict[key][
+            normalized_data = data_scenario_year_by_country_dict[key][
                 data_label
             ].values.reshape(-1, 1)
+            # print(normalized_data)
             # Transform the 'Emission' column
             data_scenario_year_by_country_dict[key][data_label] = scaler.transform(
-                emissions
+                normalized_data
             )
 
     # Loop through the input data and plot the choropleth
@@ -720,6 +723,7 @@ def plot_choropleth(
             )
             if saving:
                 # Save the plot as a png file
+                print("Saving plot for: ", scenarios, " - ", output_file_name)
                 fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     # plotting_idx = 2
