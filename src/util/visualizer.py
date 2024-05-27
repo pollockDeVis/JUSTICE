@@ -453,6 +453,7 @@ def plot_timeseries(
                 + "_"
                 + output_titles[plotting_idx],
                 dpi=300,
+                bbox_inches="tight",
             )
 
     return fig
