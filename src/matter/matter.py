@@ -7,7 +7,6 @@ from scipy.interpolate import interp1d
 import numpy as np
 import copy
 
-from config.default_parameters import EconomyDefaults
 from src.util.enumerations import get_economic_scenario
 
 class MatterUse:
