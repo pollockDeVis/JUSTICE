@@ -1071,7 +1071,7 @@ def plot_hypervolume(
                     y=data["hypervolume"],
                     fill="tozeroy",
                     mode="lines",  #'none',
-                    line=dict(color=colour_palette[3], width=linewidth),
+                    line=dict(color=colour_palette[idx], width=linewidth),
                     showlegend=False,
                 )
             ]

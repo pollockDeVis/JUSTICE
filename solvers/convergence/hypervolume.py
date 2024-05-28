@@ -137,15 +137,24 @@ def calculate_hypervolume_from_archives(
 
 
 if __name__ == "__main__":
-    scores = calculate_hypervolume_from_archives(
-        list_of_objectives=[
-            "welfare_utilitarian",
-            "years_above_temperature_threshold",
-            "total_damage_cost",
-            "total_abatement_cost",
-        ],
-        input_data_path="data/optimized_rbf_weights/200k",
-        file_name="PRIORITARIAN_200000.tar.gz",
-        output_data_path="data/convergence_metrics",
-        saving=True,
-    )
+    filenames = [
+        "UTILITARIAN_100000.tar.gz",
+        "PRIORITARIAN_100000.tar.gz",
+        "EGALITARIAN_100000.tar.gz",
+        "SUFFICIENTARIAN_100000.tar.gz",
+    ]
+
+    # Enumerate through the filenames
+    for filename in filenames:
+        scores = calculate_hypervolume_from_archives(
+            list_of_objectives=[
+                "welfare_utilitarian",
+                "years_above_temperature_threshold",
+                "total_damage_cost",
+                "total_abatement_cost",
+            ],
+            input_data_path="data/optimized_rbf_weights",
+            file_name=filename,
+            output_data_path="data/convergence_metrics",
+            saving=True,
+        )
