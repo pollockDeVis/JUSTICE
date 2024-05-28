@@ -45,11 +45,11 @@ def load_archives(
 
     list_of_archives = []
     number_of_objectives = len(list_of_objectives)
-
-    # output_dir = f"../output/{name}/"
+    print("Loading archives for ", file_name)
     for keys in archives.keys():
-        print(keys)
-        archives_by_keys = archives[keys]  # pd.read_csv(output_dir + i)
+        # print(keys)
+
+        archives_by_keys = archives[keys]
 
         generations = []
         for nfe, generation in archives_by_keys.groupby("Unnamed: 0"):
@@ -66,6 +66,7 @@ def load_archives(
             list_of_archives.append(generation)
 
             # archives[keys][int(i.split("_")[0])] = generations
+    print("Archives loaded")
     return archives, list_of_archives
 
 
@@ -101,28 +102,30 @@ def calculate_hypervolume_from_archives(
 
     nfes = list(archives.keys())
 
+    # Check if there is a key with 0. If there is, remove it
+    if 0 in nfes:
+        nfes.remove(0)
+    print("nfes: \n", nfes)
     scores = []
-
+    overall_starttime = datetime.datetime.now()
     with multiprocessing.Pool() as pool:
         # Enumerate through the keys of the archives
-        for key in archives.keys():
-            if key != 0:
-                # Extract the generation from the archives
-                generation = archives[key]
-                print("generation: ", generation.shape)
-                # Select only the last 4 columns
-                generation = generation.iloc[:, -(len(list_of_objectives)) :]
-                # Normalize the generation
-                generation = transform_data(generation.values, scaler)
-                # Calculate the hypervolume
-                hv_results = pool.map(
-                    partial(calculate_hypervolume, maxima), [generation]
-                )
+        nfe_archives = [
+            transform_data(
+                ((archives[key]).iloc[:, -(len(list_of_objectives)) :]).values, scaler
+            )
+            for key in nfes
+            if key != 0
+        ]
+        print("Computing hypervolume for ", file_name)
+        hv_results = pool.map(partial(calculate_hypervolume, maxima), nfe_archives)
 
-                scores.append(
-                    pd.DataFrame.from_dict(dict(nfe=key, hypervolume=hv_results))
-                )
+        scores.append(pd.DataFrame.from_dict(dict(nfe=nfes, hypervolume=hv_results)))
 
+    delta_time = datetime.datetime.now() - overall_starttime
+    print(
+        f"Time taken for Hypervolume Calculation: {delta_time.total_seconds():.3f} seconds"
+    )
     scores = pd.concat(scores, axis=0, ignore_index=True)
 
     if saving:
