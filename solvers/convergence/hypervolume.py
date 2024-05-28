@@ -36,8 +36,8 @@ def load_archives(
         "total_damage_cost",
         "total_abatement_cost",
     ],
-    data_path="data/optimized_rbf_weights",
-    file_name="UTILITARIAN_100000.tar.gz",
+    data_path="data/optimized_rbf_weights/200k",
+    file_name="PRIORITARIAN_200000.tar.gz",
 ):
     """
 
@@ -127,7 +127,7 @@ def calculate_hypervolume_from_archives():
         # print("shape", hv_results.shape)
     # concat into single dataframe per rbf
     scores = pd.concat(scores, axis=0, ignore_index=True)
-    scores.to_csv(f"./data/Util_100k_hv.csv")
+    scores.to_csv(f"./data/Prior_200k_hv.csv")
 
     # hv = defaultdict(list)
     # for key in archives.keys():

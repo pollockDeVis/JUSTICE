@@ -9,6 +9,7 @@ import pickle
 from src.util.enumerations import Scenario
 from src.util.model_time import TimeHorizon
 from src.util.data_loader import DataLoader
+import os
 
 from ema_workbench import load_results, ema_logging
 
@@ -45,6 +46,9 @@ def reevaluated_optimal_policy_variable_extractor(
         data_scenario = np.zeros(
             (len(scenario_list), len(region_list), len(list_of_years), no_of_ensembles)
         )
+
+    # Print the working directory with os
+    print("Directory: ", os.getcwd())
 
     # Loop through the input data and plot the timeseries
     for plotting_idx, file in enumerate(input_data):
@@ -357,7 +361,7 @@ if __name__ == "__main__":
         list_of_years=list_of_years,
         path_to_data="data/reevaluation",
         path_to_output="data/reevaluation",
-        variable_name="emissions",  # "global_temperature",
+        variable_name="economic_damage",  # "emissions",  # "global_temperature",
         data_shape=3,
         no_of_ensembles=1001,
         input_data=[

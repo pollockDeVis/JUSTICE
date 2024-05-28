@@ -915,6 +915,8 @@ def plot_stacked_area_chart(
     region_dict=None,
     saving=False,
     fontsize=15,
+    yaxis_lower_limit=0,
+    yaxis_upper_limit=25,
 ):
 
     # Assert if input_data list, scenario_list and output_titles list is None
@@ -996,7 +998,11 @@ def plot_stacked_area_chart(
                 width=width,
                 color_discrete_sequence=colour_palette,
                 groupnorm=groupnorm,
+                category_orders={"variable": region_list},
             )
+            if groupnorm is None:
+                fig.update_layout(yaxis_range=[yaxis_lower_limit, yaxis_upper_limit])
+
             # Update layout
             fig.update_layout(
                 legend_title_text=legend_label,
@@ -1007,6 +1013,8 @@ def plot_stacked_area_chart(
                 title_text=title,
                 title_x=title_x,
                 font=dict(size=fontsize),
+                legend_traceorder="reversed",
+                # legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
             )
             if saving:
                 # Save the figure
