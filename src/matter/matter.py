@@ -96,8 +96,7 @@ class MatterUse:
         )
 
         #Intializing the material reserves array Unit: Gt per year
-        #TODO add initial material reserves array in data_loader
-        self.material_reserves = self.material_reserves_init
+        self.material_reserves = copy.deepcopy(input_dataset.MATERIAL_RESERVES_INIT_ARRAY)
 
         #Intializing the converted material reserves array Unit: Gt per year
         self.converted_material_reserves = np.zeros(
@@ -105,8 +104,7 @@ class MatterUse:
         )
 
         #Intializing the material resources array Unit: Gt per year
-        #TODO add initial material resources in data_loader/  or do it in the function
-        self.material_resources = self.material_resources_init
+        self.material_resources = copy.deepcopy(input_dataset.MATERIAL_RESOURCES_INIT_ARRAY)
 
         #Intializing the depletion ratio
         self.depletion_ratio = np.zeros(
