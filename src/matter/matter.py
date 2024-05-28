@@ -8,6 +8,14 @@ import numpy as np
 import copy
 
 from src.util.enumerations import get_economic_scenario
+from src.economy.neoclassical import NeoclassicalEconomyModel
+
+class MatterDefaults: #TODO move this to default_parameters.py
+    def __init__(self):
+        self.physical_use_ratio = 0.74 #per year
+        self.discard_rate = 0.013 # per year
+        self.conversion_rate_material_reserves = 0.0015 #per year
+        self.recycling_rate = 0.2 # per year
 
 class MatterUse:
     """
@@ -111,6 +119,7 @@ class MatterUse:
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
     
+
     def run (self, timestep, recycling_rate):
         if len(recycling_rate.shape) == 1:
            recycling_rate = recycling_rate.reshape(-1, 1)
@@ -194,7 +203,7 @@ class MatterUse:
         )
     
     
-    #TODO check ALL THIS BELOW
+    #TODO check ALL THIS BELOW I just copy this from the other modules
     def _interpolate_material_intensity(self): 
         interp_data = np.zeros(
             (
