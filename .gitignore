@@ -216,6 +216,7 @@ data/output/*
 data/optimized_rbf_weights/*
 data/plots/*
 data/reevaluation/*
+data/convergence_metrics/*
 
 #Mac
 .DS_Store

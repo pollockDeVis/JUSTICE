@@ -9,8 +9,10 @@ import pickle
 from src.util.enumerations import Scenario
 from src.util.model_time import TimeHorizon
 from src.util.data_loader import DataLoader
+import os
 
 from ema_workbench import load_results, ema_logging
+import pandas as pd
 
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
@@ -45,6 +47,9 @@ def reevaluated_optimal_policy_variable_extractor(
         data_scenario = np.zeros(
             (len(scenario_list), len(region_list), len(list_of_years), no_of_ensembles)
         )
+
+    # Print the working directory with os
+    print("Directory: ", os.getcwd())
 
     # Loop through the input data and plot the timeseries
     for plotting_idx, file in enumerate(input_data):
@@ -319,6 +324,37 @@ def calculate_welfare(
     return welfare_utilitarian_regional, welfare_utilitarian  #
 
 
+def get_best_performing_policies(
+    input_data=[],
+    lowest_n_percent=0.51,
+    data_path="data/optimized_rbf_weights/tradeoffs",
+    number_of_objectives=[
+        "welfare_utilitarian",
+        "years_above_temperature_threshold",
+        "total_damage_cost",
+        "total_abatement_cost",
+    ],
+):
+    indices_list = []
+    for file in input_data:
+        df = pd.read_csv(data_path + "/" + file)
+        df = df.iloc[:, -len(number_of_objectives) :]
+        indices_per_objective = []
+        indices_per_problem_formulation = []
+
+        for objective in number_of_objectives:
+            indices_per_objective = (
+                df[objective].nsmallest(int(lowest_n_percent * len(df))).index.tolist()
+            )
+            indices_per_problem_formulation.append(indices_per_objective)
+
+        # Use intersection to get the common indices in indices_list
+        indices_list.append(
+            list(set.intersection(*map(set, indices_per_problem_formulation)))
+        )
+    return indices_list
+
+
 if __name__ == "__main__":
     # reevaluate_optimal_policy(
     #     input_data=[
@@ -357,8 +393,8 @@ if __name__ == "__main__":
         list_of_years=list_of_years,
         path_to_data="data/reevaluation",
         path_to_output="data/reevaluation",
-        variable_name="global_temperature",
-        data_shape=2,
+        variable_name="economic_damage",  # "emissions",  # "global_temperature",
+        data_shape=3,
         no_of_ensembles=1001,
         input_data=[
             "UTIL_100049.pkl",
