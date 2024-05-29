@@ -116,3 +116,12 @@ class Abatement(Enum):
 
     ENERDATA = 0
     DICE = 1
+
+
+class EconomySubModules(Enum):
+    """
+    Submodules for the economy submodel
+    """
+
+    MATTER = 0
+    ENERGY = 1

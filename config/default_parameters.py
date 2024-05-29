@@ -157,3 +157,15 @@ class AbatementDefaults:
         Returns the default abatement-related parameters as per the specified type.
         """
         return self.defaults[type]
+
+
+class EconomicSubModules:
+    def __init__(self):
+        self.defaults = {
+            "MATTER": {
+                "physical_use_ratio": 0.74,
+                "discard_rate": 0.013,
+                "conversion_rate_material_reserves": 0.0015,
+                "recycling_rate": 0.2,
+            }
+        }

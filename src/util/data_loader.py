@@ -93,19 +93,29 @@ class DataLoader:
             os.path.join(data_file_path, "abatement_coefficient_b.hdf5"), "r"
         ) as f:
             self.ABATEMENT_COEFFICIENT_B = f["abatement_coefficient_b"][:]
-        
+
+        ###########################################################################
+        # Load the Material data in hdf5 format
+        ###########################################################################
+
         # Load Material Intensity
-        with h5py.File(os.path.join(data_file_path, "material_intensity_array.hdf5"), "r") as f:
+        with h5py.File(
+            os.path.join(data_file_path, "material_intensity_array.hdf5"), "r"
+        ) as f:
             self.MATERIAL_INTENSITY_ARRAY = f["material_intensity"][:]
-         
-        #In use stock initial values
+
+        # In use stock initial values
         with h5py.File(os.path.join(data_file_path, "in_use_init.hdf5"), "r") as f:
             self.IN_USE_STOCK_INIT_ARRAY = f["in_use_init"][:]
-        
-        #In use stock initial values
-        with h5py.File(os.path.join(data_file_path, "material_reserves_init.hdf5"), "r") as f:
+
+        # In use stock initial values
+        with h5py.File(
+            os.path.join(data_file_path, "material_reserves_init.hdf5"), "r"
+        ) as f:
             self.MATERIAL_RESERVES_INIT_ARRAY = f["material_reserves_init"][:]
-        
-        #In use stock initial values
-        with h5py.File(os.path.join(data_file_path, "material_resources_init.hdf5"), "r") as f:
+
+        # In use stock initial values
+        with h5py.File(
+            os.path.join(data_file_path, "material_resources_init.hdf5"), "r"
+        ) as f:
             self.MATERIAL_RESOURCES_INIT_ARRAY = f["material_resources_init"][:]
