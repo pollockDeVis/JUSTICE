@@ -7,7 +7,13 @@ import pandas as pd
 from typing import Any
 
 from src.util.data_loader import DataLoader
-from src.util.enumerations import Economy, DamageFunction, Abatement, WelfareFunction
+from src.util.enumerations import (
+    Economy,
+    DamageFunction,
+    Abatement,
+    WelfareFunction,
+    EconomySubModules,
+)
 from src.util.model_time import TimeHorizon
 from src.economy.neoclassical import NeoclassicalEconomyModel
 from src.emissions.emission import OutputToEmissions
@@ -17,6 +23,7 @@ from src.climate.temperature_downscaler import TemperatureDownscaler
 from src.abatement.abatement_enerdata import AbatementEnerdata
 from src.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
+from src.matter.matter import MatterUse
 
 
 class JUSTICE:
@@ -61,6 +68,10 @@ class JUSTICE:
             )
         else:
             self.welfare_function_type = social_welfare_function
+
+        # Check kwargs for "matter"
+        if "matter" in kwargs:
+            self.economy_submodule = kwargs["matter"]
 
         # Load the datasets by instantiating the DataLoader class
         self.data_loader = DataLoader()
@@ -183,6 +194,17 @@ class JUSTICE:
         else:
             # Assert and raise an error if the economy model is not implemented
             assert False, "The economy model is not provided!"
+
+        if self.economy_submodule == EconomySubModules.MATTER:
+            print("Matter Model Activated")  # For testing, remove later
+            # TODO: Angela - You can instantiate the matter model here after economy.
+            # Then you can run the matter model in the run() or stepwise_run() method
+            self.matter = MatterUse(
+                input_dataset=self.data_loader,
+                time_horizon=self.time_horizon,
+                climate_ensembles=self.no_of_ensembles,
+                economy=self.economy,
+            )
 
         self.emissions = OutputToEmissions(
             input_dataset=self.data_loader,
