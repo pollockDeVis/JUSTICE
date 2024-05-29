@@ -110,7 +110,8 @@ class JUSTICE:
         )  # TODO: Check if this is needed
 
         # TODO: Incomplete Implementation
-        # if self.social_welfare_function == WelfareFunction.UTILITARIAN:
+        if self.welfare_function == WelfareFunction.UTILITARIAN:
+            print("Utilitarian Welfare Function Activated")
 
         # Fetch the defaults for UTILITARIAN
         utilitarian_defaults = social_welfare_defaults.get_defaults(  # TODO: Change the variable name and fetch values based on the Welfare Function provided
@@ -141,20 +142,23 @@ class JUSTICE:
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
         # I think it is failing because I am checking self.economy_type instead of economy_type, which is passed as a parameter
         # TODO: Incomplete Implementation
-        # if self.damage_function_type == DamageFunction.KALKUHL:
+        if self.damage_function_type == DamageFunction.KALKUHL:
+            print("Kalkuhl Damage Function Activated")
         self.damage_function = DamageKalkuhl(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
             climate_ensembles=self.no_of_ensembles,
         )
         # TODO: Incomplete Implementation
-        # if self.abatement_type == Abatement.ENERDATA:
+        if self.abatement_type == Abatement.ENERDATA:
+            print("Enerdata Abatement Model Activated")
         self.abatement = AbatementEnerdata(
             input_dataset=self.data_loader, time_horizon=self.time_horizon
         )
 
         # TODO: Incomplete Implementation
-        # if self.economy_type == Economy.NEOCLASSICAL:
+        if self.economy_type == Economy.NEOCLASSICAL:
+            print("Neoclassical Economy Model Activated")
         self.economy = NeoclassicalEconomyModel(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
@@ -170,12 +174,13 @@ class JUSTICE:
             climate_ensembles=self.no_of_ensembles,
         )
 
-        # TODO: Incomplete Implementation
-        # if self.social_welfare_function == WelfareFunction.UTILITARIAN:
+        # TODO: Incomplete Implementation Can we combine this with the previous if condition?
+        if self.welfare_function == WelfareFunction.UTILITARIAN:
+            print("Utilitarian Welfare Function Activated")
         self.welfare_function = Utilitarian(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
-            population=self.economy.get_population(),
+            population=self.economy.get_population(),  # TODO: This makes welfare function dependent on economy model
             elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
             pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
             inequality_aversion=self.inequality_aversion,
