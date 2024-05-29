@@ -1,5 +1,5 @@
 import pandas as pd
-from emodps.rbf import RBF
+from solvers.emodps.rbf import RBF
 import numpy as np
 
 from src.util.data_loader import DataLoader
@@ -50,9 +50,13 @@ def get_linear_emission_control():
     return emissions_control_rate
 
 
-def JUSTICE_run(scenarios=0):
+def JUSTICE_run(scenarios=0, climate_ensembles=None):
     """
     Run the JUSTICE model for a given scenario
+
+    @param scenarios: Scenario to run the model
+    @param climate_ensembles: Climate ensembles. Default is None. Select an index from 0 to 1000 ensembles. Only one ensemble is selected.
+
     """
     model = JUSTICE(
         scenario=scenarios,
@@ -60,11 +64,7 @@ def JUSTICE_run(scenarios=0):
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=WelfareFunction.UTILITARIAN,
-        # climate_ensembles=570,
-        # Declaring for endogenous fixed savings rate
-        elasticity_of_marginal_utility_of_consumption=1.45,
-        pure_rate_of_social_time_preference=0.015,
-        inequality_aversion=0.5,
+        climate_ensembles=climate_ensembles,
     )
 
     # Get example emissions control rate
@@ -83,14 +83,12 @@ def JUSTICE_run(scenarios=0):
 
 def JUSTICE_stepwise_run(
     scenarios=0,
-    elasticity_of_marginal_utility_of_consumption=1.45,
-    pure_rate_of_social_time_preference=0.015,
-    inequality_aversion=0.5,
-    path_to_rbf_weights="data/optimized_rbf_weights/100k_Util_4Obj_JUSTICE_dps_archive_1-4-24/100027.csv",
+    social_welfare_function=WelfareFunction.UTILITARIAN,
+    path_to_rbf_weights=None,
     path_to_output="data/output/",
     saving=False,
     output_file_name=None,
-    rbf_policy_index=6809,
+    rbf_policy_index=500,
     n_inputs_rbf=2,
     max_annual_growth_rate=0.04,
     emission_control_start_timestep=10,
@@ -104,16 +102,36 @@ def JUSTICE_stepwise_run(
 ):
     """
     Run the JUSTICE model for a given scenario
+
+    @param scenarios: Scenario to run the model
+    @param social_welfare_function: Social welfare function. Default is UTILITARIAN
+    @param path_to_rbf_weights: Path to the RBF weights
+    @param path_to_output: Path to save the output
+    @param saving: Flag to save the output
+    @param output_file_name: Output file name
+    @param rbf_policy_index: RBF policy index - the index of the policy to be used inside the csv archive
+    @param n_inputs_rbf: Number of inputs for the RBF
+    @param max_annual_growth_rate: Maximum annual growth rate of emission control rate. Default is 0.04 or 4%
+    @param emission_control_start_timestep: Emission control start timestep. Default is 10, which is 2025
+    @param min_emission_control_rate: Minimum emission control rate. Default is 0.01 or 1%
+    @param allow_emission_fallback: Flag to allow emission fallback - that is going back on Mitigation. Default is False
+    @param endogenous_savings_rate: Flag to use endogenous savings rate. Default is True
+    @param max_temperature: Maximum future temperature in 2300. Default is 16.0 - Needed for Min Max Scaling
+    @param min_temperature: Minimum future temperature in 2300. Default is 0.0 - Needed for Min Max Scaling
+    @param max_difference: Maximum difference in temperature. Default is 2.0 - Needed for Min Max Scaling
+    @param min_difference: Minimum difference in temperature. Default is 0.0 - Needed for Min Max Scaling
     """
+
+    # Assert if the path to the RBF weights is provided
+    assert path_to_rbf_weights is not None, "Path to RBF weights is not provided"
+
+    # Initialize the model
     model = JUSTICE(
         scenario=scenarios,
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
-        elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
-        pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
-        inequality_aversion=inequality_aversion,
+        social_welfare_function=social_welfare_function,
     )
 
     time_horizon = model.__getattribute__("time_horizon")
@@ -286,6 +304,11 @@ def setup_RBF_for_emission_control(
 
 if __name__ == "__main__":
     # datasets = JUSTICE_run(scenarios=0)
-    datasets = JUSTICE_stepwise_run(scenarios=2)
+    datasets = JUSTICE_stepwise_run(
+        scenarios=2,
+        social_welfare_function=WelfareFunction.UTILITARIAN,
+        rbf_policy_index=500,
+        path_to_rbf_weights="data/optimized_rbf_weights/UTIL_100k/100049.csv",
+    )
     # Print the keys of the datasets
     print(datasets.keys())

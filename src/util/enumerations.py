@@ -99,6 +99,13 @@ class DamageFunction(Enum):
     KALKUHL = 1
     BURKE = 2
 
+    @staticmethod
+    def from_index(index):
+        for enum in DamageFunction:
+            if enum.value == index:
+                return enum
+        return None
+
 
 class Economy(Enum):
     """
@@ -108,6 +115,13 @@ class Economy(Enum):
     NEOCLASSICAL = 0
     POST_KEYNESIAN = 1
 
+    @staticmethod
+    def from_index(index):
+        for enum in Economy:
+            if enum.value == index:
+                return enum
+        return None
+
 
 class Abatement(Enum):
     """
@@ -116,3 +130,10 @@ class Abatement(Enum):
 
     ENERDATA = 0
     DICE = 1
+
+    @staticmethod
+    def from_index(index):
+        for enum in Abatement:
+            if enum.value == index:
+                return enum
+        return None

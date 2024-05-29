@@ -7,13 +7,12 @@ import datetime
 import numpy as np
 import os
 import random
+from src.util.enumerations import *
 
 # Suppress numpy version warnings
 import warnings
 
 warnings.filterwarnings("ignore")
-
-# stat = "mean"  # mean, median, 5th, 95th
 
 # EMA
 from ema_workbench import (
@@ -21,7 +20,6 @@ from ema_workbench import (
     RealParameter,
     ArrayOutcome,
     ScalarOutcome,
-    # TimeSeriesOutcome,
     CategoricalParameter,
     ema_logging,
     MultiprocessingEvaluator,
@@ -89,14 +87,20 @@ emission_control_start_timestep = time_horizon.year_to_timestep(
 
 
 def run_optimization_adaptive(
-    n_rbfs=n_rbfs, n_inputs=n_inputs, nfe=nfe, swf=0, filename=None, folder=None
+    n_rbfs=n_rbfs,
+    n_inputs=n_inputs,
+    nfe=nfe,
+    swf=0,
+    filename=None,
+    folder=None,
+    economy_type=Economy.NEOCLASSICAL,
+    damage_function_type=DamageFunction.KALKUHL,
+    abatement_type=Abatement.ENERDATA,
 ):
     social_welfare_function = WelfareFunction.from_index(swf)
-
-    # Get Social Welfare Defaults
-    social_welfare_defaults = SocialWelfareDefaults().get_defaults(
-        social_welfare_function.value[1]
-    )
+    social_welfare_function_type = social_welfare_function.value[
+        0
+    ]  # Gets the first value of the tuple with index 0
 
     model = Model("JUSTICE", function=model_wrapper_emodps)
 
@@ -108,19 +112,10 @@ def run_optimization_adaptive(
         Constant("n_rbfs", n_rbfs),
         Constant("n_inputs_rbf", n_inputs),
         Constant("n_outputs_rbf", len(data_loader.REGION_LIST)),
-        Constant(
-            "elasticity_of_marginal_utility_of_consumption",
-            social_welfare_defaults["elasticity_of_marginal_utility_of_consumption"],
-        ),
-        Constant(
-            "pure_rate_of_social_time_preference",
-            social_welfare_defaults["pure_rate_of_social_time_preference"],
-        ),
-        Constant("inequality_aversion", social_welfare_defaults["inequality_aversion"]),
-        Constant(
-            "sufficiency_threshold", social_welfare_defaults["sufficiency_threshold"]
-        ),
-        Constant("egality_strictness", social_welfare_defaults["egality_strictness"]),
+        Constant("social_welfare_function_type", social_welfare_function_type),
+        Constant("economy_type", economy_type.value),
+        Constant("damage_function_type", damage_function_type.value),
+        Constant("abatement_type", abatement_type.value),
     ]
 
     # Speicify uncertainties
@@ -138,7 +133,6 @@ def run_optimization_adaptive(
                 7,
             ),  # TODO should have a configuration file for optimizations
         ),  # 8 SSP-RCP scenario combinations
-        # CategoricalParameter("inequality_aversion", (0.0, 0.5, 1.45, 2.0)),
     ]
 
     # Set the model levers, which are the RBF parameters
@@ -168,13 +162,8 @@ def run_optimization_adaptive(
     model.levers = centers_levers + radii_levers + weights_levers
 
     model.outcomes = [
-        # ScalarOutcome(
-        #     "mean_welfare_utilitarian",
-        #     variable_name="welfare_utilitarian",
-        #     kind=ScalarOutcome.MAXIMIZE,
-        # ),
         ScalarOutcome(
-            "welfare_utilitarian",
+            "welfare",
             variable_name="welfare",
             kind=ScalarOutcome.MINIMIZE,
         ),
@@ -210,39 +199,30 @@ def run_optimization_adaptive(
 
     convergence_metrics = [
         ArchiveLogger(
-            directory_name,  # "./data/output",
+            directory_name,
             [l.name for l in model.levers],
             [o.name for o in model.outcomes],
-            base_filename=filename,  # "JUSTICE_dps_archive.tar.gz"
+            base_filename=filename,
         ),
         EpsilonProgress(),
     ]
 
-    with MPIEvaluator(model) as evaluator:
-        # with SequentialEvaluator(model) as evaluator:
+    with MPIEvaluator(model) as evaluator:  # Use this for HPC
+        # with SequentialEvaluator(model) as evaluator:  # Use this for local machine
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
-            epsilons=epsilons,  # [0.01] * len(model.outcomes),  # * len(model.outcomes)
+            epsilons=epsilons,
             reference=reference_scenario,
             convergence=convergence_metrics,
-            population_size=2,
+            # population_size=2,  # NOTE set population parameters for local machine. It is faster for testing
         )
-
-        # if filename is None:
-        #     file_name = f"JUSTICE_EMODPS_{nfe}.tar.gz"
-
-        # if folder is None:
-        #     target_directory = os.path.join(os.getcwd(), "data/output", file_name)
-        # else:
-        #     target_directory = os.path.join(folder, file_name)
-
-        # save_results(results, file_name="./data/output/adaptive_optimization.tar.gz")
-
-    # Hyperparameters -deap
 
 
 def run_optimization_static(nfe=5000, filename=None, folder=None):
+
+    # TODO: Update this model wrapper. [Deprecated]
+
     model = Model("JUSTICE", function=model_wrapper_static_optimization)
 
     # Define constants, uncertainties and levers
@@ -313,8 +293,8 @@ def run_optimization_static(nfe=5000, filename=None, folder=None):
 
 
 def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None):
+    # TODO: Update this model wrapper. [Deprecated]
     # Instantiate the model
-
     model = Model("JUSTICE", function=model_wrapper)
     model.constants = [
         Constant("n_regions", len(data_loader.REGION_LIST)),
