@@ -129,7 +129,6 @@ class JUSTICE:
         # Fetch the defaults for Social Welfare Function
         welfare_defaults = social_welfare_defaults.get_defaults(
             self.welfare_function_type.name
-            # WelfareFunction.UTILITARIAN.name
         )
         # Assign the defaults to the class attributes
         self.elasticity_of_marginal_utility_of_consumption = welfare_defaults[
@@ -149,7 +148,6 @@ class JUSTICE:
         ############################################################################################################################################################
         # TODO: Incomplete Implementation
         if self.damage_function_type == DamageFunction.KALKUHL:
-            print("Kalkuhl Damage Function Activated")
             self.damage_function = DamageKalkuhl(
                 input_dataset=self.data_loader,
                 time_horizon=self.time_horizon,
@@ -161,7 +159,6 @@ class JUSTICE:
 
         # TODO: Incomplete Implementation
         if self.abatement_type == Abatement.ENERDATA:
-            print("Enerdata Abatement Model Activated")
             self.abatement = AbatementEnerdata(
                 input_dataset=self.data_loader, time_horizon=self.time_horizon
             )
@@ -171,7 +168,6 @@ class JUSTICE:
 
         # TODO: Incomplete Implementation
         if self.economy_type == Economy.NEOCLASSICAL:
-            print("Neoclassical Economy Model Activated")
             self.economy = NeoclassicalEconomyModel(
                 input_dataset=self.data_loader,
                 time_horizon=self.time_horizon,
@@ -661,9 +657,6 @@ class JUSTICE:
             self.time_horizon.model_time_horizon
         ), "The given timestep is out of range."
 
-        # TODO : Check the enums. To be implemented later
-        # if welfare_function == WelfareFunction.UTILITARIAN:
-
         # TODO: Return step by step individual data/observations
         # TODO: FOr RL, we have to separate obeservation and rewards
 
@@ -700,8 +693,6 @@ class JUSTICE:
         """
         Evaluate the model.
         """
-        # TODO: to be implemented later. Checking the enums doesn't work well with EMA #need to make it self.welfare_function?
-        # if welfare_function == WelfareFunction.UTILITARIAN:
 
         (
             self.data["disentangled_utility"],
