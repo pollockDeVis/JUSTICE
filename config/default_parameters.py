@@ -169,3 +169,9 @@ class EconomicSubModules:
                 "recycling_rate": 0.2,
             }
         }
+
+    def get_defaults(self, type):
+        """
+        Returns the default economic sub-modules related parameters as per the specified type.
+        """
+        return self.defaults[type]
