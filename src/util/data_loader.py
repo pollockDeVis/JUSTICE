@@ -14,6 +14,9 @@ class DataLoader:
 
     """
 
+    # TODO: Future Optimization - Use scenario to instantiate the DataLoader and load only the required data
+    # TODO: Bring the interpolation here from economy. Instantiation should take time horizon - Can also select specific years
+
     def __init__(self):
         """
         This method initializes the DataLoader class.

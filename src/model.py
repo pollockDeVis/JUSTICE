@@ -34,7 +34,7 @@ class JUSTICE:
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
-        social_welfare_function=WelfareFunction.UTILITARIAN,  # TODO: Check if this is needed
+        social_welfare_function=WelfareFunction.UTILITARIAN,
         **kwargs,
     ):
         """
@@ -48,7 +48,15 @@ class JUSTICE:
         self.economy_type = economy_type
         self.damage_function_type = damage_function_type
         self.abatement_type = abatement_type
-        self.welfare_function = social_welfare_function
+
+        # This is implemented for EMA Workbench Support
+        if "social_welfare_function_type" in kwargs:
+            self.welfare_function_type = WelfareFunction.from_index(
+                kwargs["social_welfare_function_type"]
+            )
+        else:
+            self.welfare_function_type = social_welfare_function
+        # self.welfare_function_type = social_welfare_function
 
         # Load the data
         self.data_loader = DataLoader()
@@ -105,39 +113,56 @@ class JUSTICE:
         )
 
         # Instantiate the SocialWelfareDefaults class
-        social_welfare_defaults = (
-            SocialWelfareDefaults()
-        )  # TODO: Check if this is needed
-
-        # TODO: Incomplete Implementation
-        if self.welfare_function == WelfareFunction.UTILITARIAN:
-            print("Utilitarian Welfare Function Activated")
-
-        # Fetch the defaults for UTILITARIAN
-        welfare_defaults = social_welfare_defaults.get_defaults(  # TODO: Change the variable name and fetch values based on the Welfare Function provided
-            WelfareFunction.UTILITARIAN.name
+        social_welfare_defaults = SocialWelfareDefaults()
+        # Fetch the defaults for Social Welfare Function
+        welfare_defaults = social_welfare_defaults.get_defaults(
+            self.welfare_function_type.name
+            # WelfareFunction.UTILITARIAN.name
         )
+        # Assign the defaults to the class attributes
+        self.elasticity_of_marginal_utility_of_consumption = welfare_defaults[
+            "elasticity_of_marginal_utility_of_consumption"
+        ]
+        self.pure_rate_of_social_time_preference = welfare_defaults[
+            "pure_rate_of_social_time_preference"
+        ]
+        self.inequality_aversion = welfare_defaults["inequality_aversion"]
+        self.sufficiency_threshold = welfare_defaults["sufficiency_threshold"]
+        self.egality_strictness = welfare_defaults["egality_strictness"]
+
+        # Print the social welfare defaults
+        print(
+            "elasticity of marginal utility of consumption: ",
+            self.elasticity_of_marginal_utility_of_consumption,
+        )
+        print(
+            "pure rate of social time preference: ",
+            self.pure_rate_of_social_time_preference,
+        )
+        print("inequality aversion: ", self.inequality_aversion)
+        print("sufficiency threshold: ", self.sufficiency_threshold)
+        print("egality strictness: ", self.egality_strictness)
 
         # Assign the defaults to the class attributes
-        self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
-            "elasticity_of_marginal_utility_of_consumption",
-            welfare_defaults["elasticity_of_marginal_utility_of_consumption"],
-        )
-        self.pure_rate_of_social_time_preference = kwargs.get(
-            "pure_rate_of_social_time_preference",
-            welfare_defaults["pure_rate_of_social_time_preference"],
-        )
-        self.inequality_aversion = kwargs.get(
-            "inequality_aversion", welfare_defaults["inequality_aversion"]
-        )
+        # self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
+        #     "elasticity_of_marginal_utility_of_consumption",
+        #     welfare_defaults["elasticity_of_marginal_utility_of_consumption"],
+        # )
+        # self.pure_rate_of_social_time_preference = kwargs.get(
+        #     "pure_rate_of_social_time_preference",
+        #     welfare_defaults["pure_rate_of_social_time_preference"],
+        # )
+        # self.inequality_aversion = kwargs.get(
+        #     "inequality_aversion", welfare_defaults["inequality_aversion"]
+        # )
 
-        self.sufficiency_threshold = kwargs.get(
-            "sufficiency_threshold", welfare_defaults["sufficiency_threshold"]
-        )
+        # self.sufficiency_threshold = kwargs.get(
+        #     "sufficiency_threshold", welfare_defaults["sufficiency_threshold"]
+        # )
 
-        self.egality_strictness = kwargs.get(
-            "egality_strictness", welfare_defaults["egality_strictness"]
-        )
+        # self.egality_strictness = kwargs.get(
+        #     "egality_strictness", welfare_defaults["egality_strictness"]
+        # )
 
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
         # I think it is failing because I am checking self.economy_type instead of economy_type, which is passed as a parameter
@@ -174,9 +199,7 @@ class JUSTICE:
             climate_ensembles=self.no_of_ensembles,
         )
 
-        # TODO: Incomplete Implementation Can we combine this with the previous if condition?
-        if self.welfare_function == WelfareFunction.UTILITARIAN:
-            print("Utilitarian Welfare Function Activated")
+        # Instantiate the SocialWelfareFunction class
         self.welfare_function = SocialWelfareFunction(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
