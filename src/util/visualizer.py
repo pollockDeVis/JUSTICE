@@ -10,6 +10,7 @@ import seaborn as sns
 import os
 from src.util.model_time import TimeHorizon
 from src.util.enumerations import *
+from src.util.regional_configuration import justice_region_aggregator
 import pickle
 from src.util.data_loader import DataLoader
 
@@ -18,6 +19,7 @@ from sklearn.preprocessing import MinMaxScaler
 import json
 import pycountry
 import plotly.express as px
+import plotly.graph_objects as go
 
 
 def process_input_data_for_tradeoff_plot(
@@ -242,12 +244,6 @@ def visualize_tradeoffs(
     plt.savefig(path_to_output + "/" + output_file_name, dpi=300)
 
 
-# TODO: Add scenario list
-# These are the same thing - Redundant
-# ssp_rcp_string_list = Scenario.get_ssp_rcp_strings() # These are the pretty strings
-# scenario_list = ['SSP245'] #list(Scenario.__members__.keys()) # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
-
-
 def plot_timeseries(
     figsize=(15, 10),
     set_style="white",
@@ -262,7 +258,7 @@ def plot_timeseries(
     input_data=[],
     output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
     main_title="Global Temperature Rise - ",
-    show_title=False,
+    show_title=True,
     yaxis_lower_limit=0,
     yaxis_upper_limit=10,
     alpha=0.1,
@@ -273,7 +269,42 @@ def plot_timeseries(
     end_year=2300,
     data_timestep=5,
     timestep=1,
+    visualization_start_year=2015,
+    visualization_end_year=2300,
+    saving=False,
+    scenario_list=[],
 ):
+    """
+    @param figsize: Tuple, default=(15, 10)
+    @param set_style: String, default="white"
+    @param colourmap: String, default="bright"
+    @param path_to_data: String, default="data/reevaluation"
+    @param path_to_output: String, default="./data/plots"
+    @param fontsize: Integer, default=15
+    @param x_label: String, default="Years"
+    @param y_label: String, default="Temperature Rise (°C)"
+    @param variable_name: String, default="global_temperature"
+    @param no_of_ensembles: Integer, default=1001
+    @param input_data: List, default=[]
+    @param output_titles: List, default=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"]
+    @param main_title: String, default="Global Temperature Rise - "
+    @param show_title: Boolean, default=True
+    @param yaxis_lower_limit: Integer, default=0
+    @param yaxis_upper_limit: Integer, default=10
+    @param alpha: Float, default=0.1
+    @param linewidth: Float, default=2.5
+    @param lower_percentile: Integer, default=0
+    @param upper_percentile: Integer, default=100
+    @param start_year: Integer, default=2015
+    @param end_year: Integer, default=2300
+    @param data_timestep: Integer, default=5
+    @param timestep: Integer, default=1
+    @param visualization_start_year: Integer, default=2015
+    @param visualization_end_year: Integer, default=2300
+    @param saving: Boolean, default=False
+    @param scenario_list: List, default=[], Accepted values: ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
+
+    """
 
     # Assert if input_data list is empty
     assert input_data, "No input data provided for visualization."
@@ -288,93 +319,145 @@ def plot_timeseries(
         data_timestep=data_timestep,
         timestep=timestep,
     )
+
     list_of_years = time_horizon.model_time_horizon
-    columns = list_of_years
-    data_scenario = np.zeros((len(Scenario), len(list_of_years), no_of_ensembles))
-    ssp_rcp_string_list = Scenario.get_ssp_rcp_strings()
+
+    data_scenario = np.zeros((len(scenario_list), len(list_of_years), no_of_ensembles))
 
     # Loop through the input data and plot the timeseries
     for plotting_idx, file in enumerate(input_data):
         # Load the scenario data from the pickle file
-        with open(path_to_data + "/" + file, "rb") as f:  # input_data[plotting_idx]
+        with open(path_to_data + "/" + file, "rb") as f:
             scenario_data = pickle.load(f)
 
-        for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
+        # Loop through the scenarios
+        for idx, scenarios in enumerate(scenario_list):
+
             data_scenario[idx, :, :] = scenario_data[scenarios][variable_name]
 
-        mean_data = np.zeros((len(Scenario), len(list_of_years)))
+        # Select list of years for visualization
+        list_of_years_sliced = list_of_years[
+            time_horizon.year_to_timestep(
+                visualization_start_year, timestep=timestep
+            ) : (
+                time_horizon.year_to_timestep(visualization_end_year, timestep=timestep)
+                + timestep
+            )
+        ]
+
+        median_data = np.zeros((len(scenario_list), len(list_of_years_sliced)))
+
         sns.set_style(set_style)
-        fig, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots(
+            1, 2, figsize=figsize, gridspec_kw={"width_ratios": [3, 0.5]}
+        )
 
         # Set y-axis limits
         plt.ylim(yaxis_lower_limit, yaxis_upper_limit)
 
-        for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
+        label_list = []
+        for idx, scenarios in enumerate(scenario_list):
 
-            print(scenarios)
             temp_df = pd.DataFrame(data_scenario[idx, :, :].T, columns=list_of_years)
-            print(temp_df.max().max())
-            label = ssp_rcp_string_list[idx]
-            color = color_palette[idx]  # colors[idx]
+            # Select temp_df for visualization
+            temp_df = temp_df.loc[:, list_of_years_sliced]
+
+            label = Scenario[scenarios].value[-1]
+            color = color_palette[idx]
 
             # Calculate the percentiles
             p_l = np.percentile(temp_df, lower_percentile, axis=0)
             p_h = np.percentile(temp_df, upper_percentile, axis=0)
 
-            # Calculate the mean
-            mean_data[idx, :] = temp_df.mean()
+            # Calculate the median
+            median_data[idx, :] = np.median(temp_df, axis=0)
+
+            label = Scenario[scenarios].value[-1]  # ssp_rcp_string_list[idx]
+            label_list.append(label)
+            color = color_palette[idx]
 
             # Plot percentiles as bands
-            ax.fill_between(list_of_years, p_l, p_h, color=color, alpha=alpha)
+            ax[0].fill_between(list_of_years_sliced, p_l, p_h, color=color, alpha=alpha)
+
+            # Select the last year of the data for the KDE plot
+            temp_df_last_year = temp_df.iloc[:, -1]
+
+            # Plot the KDE plot
+            sns.kdeplot(
+                y=temp_df_last_year, color=color, ax=ax[1], fill=True, alpha=alpha
+            )
 
         # Convert the mean_data to a dataframe
-        mean_data = pd.DataFrame(mean_data, columns=list_of_years)
+        median_data = pd.DataFrame(median_data, columns=list_of_years_sliced)
 
-        for i in range(mean_data.shape[0]):
-            label = ssp_rcp_string_list[i]
+        for i in range(median_data.shape[0]):
+            label = label_list[i]
             color = color_palette[i]
             sns.lineplot(
-                data=mean_data.iloc[i],
+                data=median_data.iloc[i],
                 color=color,
-                alpha=alpha * 8,
+                alpha=alpha * 10,
                 linewidth=linewidth,
                 label=label,
-                ax=ax,
+                ax=ax[0],
             )
-        # Access the current Axes instance on the current figure:
+            ax[0].legend(loc="upper left", fontsize=fontsize)
 
-        ax = plt.gca()
+        # Set the x-axis limit to end at the last year
+        ax[0].set_xlim(visualization_start_year, visualization_end_year)
 
-        # Remove top and right border
-        ax.spines["right"].set_visible(False)
-        ax.spines["top"].set_visible(False)
+        # Set y-axis limits
+        ax[0].set_ylim(yaxis_lower_limit, yaxis_upper_limit)
+
+        # Adjust the space between subplots
+        plt.subplots_adjust(wspace=0.1)
+
+        # Remove top and right border for both plots
+        ax[0].spines["right"].set_visible(False)
+        ax[0].spines["top"].set_visible(False)
+        ax[1].spines["right"].set_visible(False)
+        ax[1].spines["top"].set_visible(False)
 
         # Remove top and right ticks
-        ax.xaxis.set_ticks_position("bottom")
-        ax.yaxis.set_ticks_position("left")
+        ax[0].xaxis.set_ticks_position("bottom")
+        ax[0].yaxis.set_ticks_position("left")
+        ax[1].xaxis.set_ticks_position("bottom")
+        # ax[1].yaxis.set_ticks_position('left')
 
-        # Set font size of axis labels
-        plt.xticks(fontsize=fontsize)
-        plt.yticks(fontsize=fontsize)
+        # Remove ticks for the second plot
+        ax[1].set_yticks([])
 
-        # Add labels, legend and title
-        plt.xlabel(x_label, fontsize=fontsize)
-        plt.ylabel(y_label, fontsize=fontsize)
-        plt.legend(loc="upper left", fontsize=fontsize)
+        # Set the labels
+        ax[0].set_xlabel(x_label, fontsize=fontsize)
+        ax[0].set_ylabel(y_label, fontsize=fontsize)
+        ax[1].set_xlabel("Distribution", fontsize=fontsize)
+        ax[1].set_ylabel(" ", fontsize=fontsize)
+
+        # Set the font size of the tick labels
+        ax[0].tick_params(axis="both", which="major", labelsize=fontsize)
+        ax[1].tick_params(axis="both", which="major", labelsize=fontsize)
 
         if show_title:
-            plt.title(main_title + output_titles[plotting_idx], fontsize=fontsize)
+            plt.suptitle(main_title, fontsize=fontsize)
 
-        # Save the figure
-        if not os.path.exists(path_to_output):
-            os.makedirs(path_to_output)
+        if saving:
+            # Save the figure
+            if not os.path.exists(path_to_output):
+                os.makedirs(path_to_output)
 
-        output_file_name = variable_name
+            output_file_name = variable_name
 
-        plt.savefig(
-            path_to_output + "/" + output_file_name + "_" + output_titles[plotting_idx],
-            dpi=300,
-        )
+            plt.savefig(
+                path_to_output
+                + "/"
+                + output_file_name
+                + "_"
+                + output_titles[plotting_idx],
+                dpi=300,
+                bbox_inches="tight",
+            )
+
+    return fig
 
 
 def process_country_data_for_choropleth_plot(
@@ -386,7 +469,7 @@ def process_country_data_for_choropleth_plot(
     data_label="Emission Control Rate",
     ssp_scenario=0,
     region_to_country_mapping="data/input/rice50_regions_dict.json",
-    scaler=True,
+    scaler=False,
     feature_scale=(0, 1),
     data_correction=True,
 ):
@@ -395,13 +478,8 @@ def process_country_data_for_choropleth_plot(
     assert data is not None, "Data is not provided."
     assert list_of_years is not None, "List of years is not provided."
 
-    # Get the list of regions as byte strings
-
-    regions_df = pd.DataFrame(region_list)
-    regions_byte = regions_df[0].values
-
-    # Decode byte strings to normal strings
-    regions_str = [region.decode("utf-8") for region in regions_byte]
+    # Convert the region list, a numpy array, to a list
+    regions_str = region_list.tolist()
 
     # Selecting data for the specific scenario
     data_scenario = data[ssp_scenario, :, :, :]
@@ -433,7 +511,7 @@ def process_country_data_for_choropleth_plot(
         list(region_to_country.items()), columns=["Region", "CountryCode"]
     )
 
-    # Merge the mapping dataframe with the range of emis_2050 dataframe
+    # Merge the mapping dataframe with the dataframe
     data_scenario_year = pd.merge(
         mapping_df,
         data_scenario_year.reset_index().rename(
@@ -481,7 +559,7 @@ def process_country_data_for_choropleth_plot(
         # Check for the country code 'ATA' in the dataframe and set it to 0
         data_scenario_year_by_country.loc[
             data_scenario_year_by_country["CountryCode"] == "ATA", data_label
-        ] = 0
+        ] = np.nan  # 0
 
         # Check for the CountryCode 'KSV' and set the 'CountryName' to 'Kosovo'
         data_scenario_year_by_country.loc[
@@ -491,10 +569,20 @@ def process_country_data_for_choropleth_plot(
     return data_scenario_year_by_country
 
 
-# TODO: Add scenario list
-# These are the same thing - Redundant
-# ssp_rcp_string_list = Scenario.get_ssp_rcp_strings() # These are the pretty strings
-# scenario_list = ['SSP245'] #list(Scenario.__members__.keys()) # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
+def min_max_scaler(X, global_min, global_max):
+
+    # Check if data is a numpy array
+    if not isinstance(X, np.ndarray):
+        print("Data is not a numpy array.")
+        X = np.array(X)
+
+    # print(np.nanmin(X), np.nanmax(X))
+
+    X_std = (X - np.nanmin(X)) / (np.nanmax(X) - np.nanmin(X))
+
+    X_scaled = X_std * (global_max - global_min) + global_min
+
+    return X_scaled
 
 
 def plot_choropleth(
@@ -517,11 +605,17 @@ def plot_choropleth(
     data_timestep=5,
     timestep=1,
     no_of_ensembles=1001,
+    saving=False,
+    scenario_list=[],
+    feature_scale=(0, 1),
+    choropleth_data_length=3,
+    data_normalization=True,
 ):
 
     # Assert if input_data list and output_titles list is None
     assert input_data, "No input data provided for visualization."
     assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
 
     time_horizon = TimeHorizon(
         start_year=start_year,
@@ -535,6 +629,8 @@ def plot_choropleth(
     region_list = data_loader.REGION_LIST
     columns = list_of_years
 
+    data_scenario_year_by_country_dict = {}
+
     # Loop through the input data and plot the choropleth
     for plotting_idx, file in enumerate(input_data):
         # Load the scenario data from the pickle file
@@ -542,14 +638,17 @@ def plot_choropleth(
             scenario_data = pickle.load(f)
 
         data_scenario = np.zeros(
-            (len(Scenario), len(region_list), len(list_of_years), no_of_ensembles)
+            (len(scenario_list), len(region_list), len(list_of_years), no_of_ensembles)
         )
 
         # Loop through all the scenarios and store the data in a 4D numpy array
-        for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
+        for idx, scenarios in enumerate(
+            scenario_list
+        ):  # list(Scenario.__members__.keys())
             data_scenario[idx, :, :, :] = scenario_data[scenarios][variable_name]
 
             # Process the data for choropleth plot
+            # TODO: Make this an array
             data_scenario_year_by_country = process_country_data_for_choropleth_plot(
                 region_list=region_list,
                 data=data_scenario,
@@ -557,17 +656,62 @@ def plot_choropleth(
                 year_to_visualize=year_to_visualize,
                 data_label=data_label,
                 ssp_scenario=idx,
+                scaler=False,
             )
 
+            data_scenario_year_by_country_dict[(plotting_idx, scenarios)] = (
+                data_scenario_year_by_country
+            )
+
+    if data_normalization:
+        # Initialize the scaler
+        # scaler = MinMaxScaler(feature_scale)
+        # Find the global minimum and maximum
+        global_min = min(
+            df[data_label].min() for df in data_scenario_year_by_country_dict.values()
+        )
+        global_max = max(
+            df[data_label].max() for df in data_scenario_year_by_country_dict.values()
+        )
+
+        print("Global Min & Max", global_min, global_max)
+
+        # Set the scaler's min and max
+        # scaler.min_, scaler.scale_ = global_min, 1.0 / (global_max - global_min)
+
+        # Loop over the keys in the dictionary
+        for key in data_scenario_year_by_country_dict.keys():
+            print(key)
+            # Reshape the 'Emission' column to fit the scaler
+            normalized_data = data_scenario_year_by_country_dict[key][
+                data_label
+            ].values.reshape(-1, 1)
+
+            # Transform the 'Emission' column
+            data_scenario_year_by_country_dict[key][data_label] = min_max_scaler(
+                normalized_data, global_min, global_max
+            )
+
+            # print(data_scenario_year_by_country_dict[key][data_label])
+            # data_scenario_year_by_country_dict[key][data_label] = scaler.transform(
+            #     normalized_data
+            # )
+
+    # Loop through the input data and plot the choropleth
+    for plotting_idx, file in enumerate(input_data):
+
+        # Loop through all the scenarios and store the data in a 4D numpy array
+        for idx, scenarios in enumerate(scenario_list):
+            # TODO: Separate the the loops and carry normalization here
             choropleth_title = (
                 title
                 + str(year_to_visualize)
                 + "-"
-                + Scenario.get_ssp_rcp_strings()[idx]
+                + Scenario[scenarios].value[-1]  # Scenario.get_ssp_rcp_strings()[idx]
             )
 
             fig = px.choropleth(
-                data_scenario_year_by_country,
+                data_scenario_year_by_country_dict[(plotting_idx, scenarios)],
                 locations="CountryCode",
                 color=data_label,
                 hover_name="CountryName",
@@ -599,8 +743,10 @@ def plot_choropleth(
                 + "_"
                 + Scenario.get_ssp_rcp_strings()[idx]
             )
-            # Save the plot as a png file
-            fig.write_image(path_to_output + "/" + output_file_name + ".png")
+            if saving:
+                # Save the plot as a png file
+                # print("Saving plot for: ", scenarios, " - ", output_file_name)
+                fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     # plotting_idx = 2
     return fig, data_scenario_year_by_country
@@ -737,6 +883,223 @@ def plot_ssp_rcp_subplots(
         os.makedirs(path_to_output)
 
     plt.savefig(f"{path_to_output}/{variable_name}_subplots.png", dpi=300)
+
+    return fig
+
+
+def plot_stacked_area_chart(
+    variable_name=None,
+    region_name_path="data/input/rice50_region_names.json",
+    path_to_data="data/reevaluation",
+    path_to_output="./data/plots",
+    input_data=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    scenario_list=[],
+    title=None,
+    title_x=0.5,
+    xaxis_label=None,
+    yaxis_label=None,
+    legend_label=None,
+    colour_palette=px.colors.qualitative.Light24,
+    height=800,
+    width=1200,
+    visualization_start_year=2015,
+    visualization_end_year=2300,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    template="plotly_white",
+    plot_title=None,
+    groupnorm=None,
+    region_aggegation=True,
+    region_dict=None,
+    saving=False,
+    fontsize=15,
+    yaxis_lower_limit=0,
+    yaxis_upper_limit=25,
+):
+
+    # Assert if input_data list, scenario_list and output_titles list is None
+    assert input_data, "No input data provided for visualization."
+    assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
+
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    data_loader = DataLoader()
+
+    region_list = data_loader.REGION_LIST
+
+    if region_aggegation == True:
+        assert region_dict, "Region dictionary is not provided."
+        # region_list = list(region_dict.keys())
+    else:
+        with open(region_name_path, "r") as f:
+            region_names = json.load(f)
+
+        # Use region list to get the region names using the region names dictionary
+        region_list = [region_names[region] for region in region_list]
+        # Convert into a flat list
+        region_list = [item for sublist in region_list for item in sublist]
+
+    print(region_list)
+
+    # Load the data
+    # Enumerate through the input data and load the data
+    for idx, file in enumerate(input_data):
+        for scenario in scenario_list:
+            print("Loading data for: ", scenario, " - ", file)
+            with open(
+                path_to_data
+                + "/"
+                + file
+                + "_"
+                + scenario
+                + "_"
+                + variable_name
+                + ".pkl",
+                "rb",
+            ) as f:
+                data = pickle.load(f)
+
+            # Check if region_aggegation is True
+            if region_aggegation:
+                # Aggregated Input Data
+                region_list, data = justice_region_aggregator(
+                    data_loader=data_loader, region_config=region_dict, data=data
+                )
+
+            # Check shape of data
+            if len(data.shape) == 3:
+                data = np.mean(data, axis=2)
+
+            # Create a dataframe from the data
+            data = pd.DataFrame(data, index=region_list, columns=list_of_years)
+
+            # Create the slice according to visualization years
+            data = data.loc[:, visualization_start_year:visualization_end_year]
+
+            # Create plotly figure
+            fig = px.area(
+                data.T,
+                x=data.columns,
+                y=data.index,
+                title=plot_title,
+                template=template,
+                labels={"value": variable_name, "variable": "Region", "x": "Year"},
+                height=height,
+                width=width,
+                color_discrete_sequence=colour_palette,
+                groupnorm=groupnorm,
+                category_orders={"variable": region_list},
+            )
+            if groupnorm is None:
+                fig.update_layout(yaxis_range=[yaxis_lower_limit, yaxis_upper_limit])
+
+            # Update layout
+            fig.update_layout(
+                legend_title_text=legend_label,
+                # X-axis label
+                xaxis_title=xaxis_label,
+                # Y-axis label
+                yaxis_title=yaxis_label,
+                title_text=title,
+                title_x=title_x,
+                font=dict(size=fontsize),
+                legend_traceorder="reversed",
+                # legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
+            )
+            if saving:
+                # Save the figure
+                if not os.path.exists(path_to_output):
+                    os.makedirs(path_to_output)
+
+                output_file_name = (
+                    variable_name + "_" + output_titles[idx] + "_" + scenario
+                )
+                print("Saving plot for: ", scenario, " - ", output_file_name)
+                fig.write_image(path_to_output + "/" + output_file_name + ".png")
+
+    return fig
+
+
+def plot_hypervolume(
+    path_to_data="data/convergence_metrics",
+    path_to_output="./data/plots/convergence_plots",
+    input_data=[],  # Provide the list of input data files with extension
+    xaxis_title="Number of Function Evaluations",
+    yaxis_title="Hypervolume",
+    linewidth=3,
+    colour_palette=px.colors.qualitative.Dark24,
+    template="plotly_white",
+    yaxis_upper_limit=0.7,
+    title_x=0.5,
+    width=1000,
+    height=800,
+    fontsize=15,
+    saving=False,
+):
+    # Assert if input_data list is empty
+    assert input_data, "No input data provided for visualization."
+
+    # Loop through the input data list and load the data
+    for idx, file in enumerate(input_data):
+        data = pd.read_csv(path_to_data + "/" + file)
+        # Keep only nfe and hypervolume columns
+        data = data[["nfe", "hypervolume"]]
+        data = data.sort_values(by="nfe")
+
+        # Find the max nfe value
+        nfe_max = data["nfe"].max()
+        # Get title text from filename
+        titletext = file.split("_")[0]
+        # Convert the titletext from all uppercase to title case
+        titletext = titletext.title()
+
+        fig = go.Figure(
+            data=[
+                go.Scatter(
+                    x=data["nfe"],
+                    y=data["hypervolume"],
+                    fill="tozeroy",
+                    mode="lines",  #'none',
+                    line=dict(color=colour_palette[idx], width=linewidth),
+                    showlegend=False,
+                )
+            ]
+        )
+
+        # Set the chart title and axis labels
+        fig.update_layout(
+            title=dict(text=titletext),
+            xaxis_title=xaxis_title,
+            yaxis_title=yaxis_title,
+            width=width,
+            height=height,
+            template=template,
+            yaxis_range=[0, yaxis_upper_limit],
+            title_x=title_x,
+            font=dict(size=fontsize),
+        )
+
+        # Avoid zero tick in the y-axis - minor cosmetic change
+        fig.update_yaxes(tickvals=(np.arange(0, yaxis_upper_limit, 0.1))[1:])
+
+        # Save the figure
+        if not os.path.exists(path_to_output):
+            os.makedirs(path_to_output)
+
+        if saving:
+            output_file_name = f"{titletext}_{nfe_max}_hypervolume_plot"
+            fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     return fig
 

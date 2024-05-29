@@ -6,6 +6,7 @@ import functools
 import datetime
 import numpy as np
 import os
+import random
 
 # Suppress numpy version warnings
 import warnings
@@ -511,7 +512,20 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
 
 
 if __name__ == "__main__":
+    seeds = [
+        9845531,
+        1644652,
+        3569126,
+        6075612,
+        521475,
+    ]
+    # TODO: Implement seed later
+    # for seed_index, seed in enumerate(seeds):
+    #     random.seed(seed)
+    #     np.random.seed(seed)
+
     ema_logging.log_to_stderr(ema_logging.DEBUG)
+
     # perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None)
     run_optimization_adaptive(n_rbfs=4, n_inputs=2, nfe=5, filename=None, folder=None)
     # run_optimization_static(nfe=5, filename=None, folder=None)
