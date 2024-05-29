@@ -275,26 +275,26 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
-            "welfare_utilitarian_regional_temporal": np.zeros(
+            "welfare_regional_temporal": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
                     self.no_of_ensembles,
                 )
             ),
-            "welfare_utilitarian_regional": np.zeros(
+            "welfare_regional": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     self.no_of_ensembles,
                 )
             ),
-            "welfare_utilitarian_temporal": np.zeros(
+            "welfare_temporal": np.zeros(
                 (
                     len(self.time_horizon.model_time_horizon),
                     self.no_of_ensembles,
                 )
             ),
-            "welfare_utilitarian": np.zeros((self.no_of_ensembles,)),
+            "welfare": np.zeros((self.no_of_ensembles,)),
         }
 
     def __getattribute__(self, __name: str) -> Any:
@@ -627,8 +627,8 @@ class JUSTICE:
 
         (
             self.data["disentangled_utility"][:, timestep, :],
-            self.data["welfare_utilitarian_regional_temporal"][:, timestep, :],
-            self.data["welfare_utilitarian_temporal"][timestep, :],
+            self.data["welfare_regional_temporal"][:, timestep, :],
+            self.data["welfare_temporal"][timestep, :],
         ) = self.welfare_function.calculate_stepwise_welfare(
             consumption_per_capita=self.data["consumption_per_capita"][:, timestep, :],
             timestep=timestep,
@@ -638,10 +638,10 @@ class JUSTICE:
         if timestep == (len(self.time_horizon.model_time_horizon) - 1):
             (
                 self.data["disentangled_utility"],
-                self.data["welfare_utilitarian_regional_temporal"],
-                self.data["welfare_utilitarian_temporal"],
-                self.data["welfare_utilitarian_regional"],
-                self.data["welfare_utilitarian"],
+                self.data["welfare_regional_temporal"],
+                self.data["welfare_temporal"],
+                self.data["welfare_regional"],
+                self.data["welfare"],
             ) = self.welfare_function.calculate_welfare(
                 consumption_per_capita=self.data["consumption_per_capita"]
             )
@@ -658,10 +658,10 @@ class JUSTICE:
 
         (
             self.data["disentangled_utility"],
-            self.data["welfare_utilitarian_regional_temporal"],
-            self.data["welfare_utilitarian_temporal"],
-            self.data["welfare_utilitarian_regional"],
-            self.data["welfare_utilitarian"],
+            self.data["welfare_regional_temporal"],
+            self.data["welfare_temporal"],
+            self.data["welfare_regional"],
+            self.data["welfare"],
         ) = self.welfare_function.calculate_welfare(
             consumption_per_capita=self.data["consumption_per_capita"]
         )

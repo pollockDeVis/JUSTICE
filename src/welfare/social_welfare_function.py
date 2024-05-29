@@ -1,5 +1,5 @@
 """
-This module calculate the utility based on the utilitarian principle.
+This module calculate the welfare based on the different Disributive Justice Principles.
 Derived from RICE50 model which is based on Berger et al. (2020).
 * REFERENCES
 * Berger, Loic, and Johannes Emmerling (2020): Welfare as Equity Equivalents, Journal of Economic Surveys 34, no. 4 (26 August 2020): 727-752. https://doi.org/10.1111/joes.12368.
@@ -15,7 +15,7 @@ from src.objectives.objective_functions import calculate_gini_index
 # TODO: Need to change the name of this class to a more general name
 class SocialWelfareFunction:
     """
-    This class computes the utilitarian welfare for the JUSTICE model.
+    This class computes the welfare for the JUSTICE model.
     """
 
     def __init__(
@@ -30,7 +30,7 @@ class SocialWelfareFunction:
         egality_strictness,
     ):
         """
-        This method initializes the Utilitarian class.
+        This method initializes the Social Welfare Function class.
         """
         self.region_list = input_dataset.REGION_LIST
 
@@ -73,7 +73,7 @@ class SocialWelfareFunction:
 
     def calculate_welfare(self, consumption_per_capita):
         """
-        This method calculates the utilitarian welfare.
+        This method calculates the welfare.
         """
         # New feature - sufficiency_threshold - subtracted from consumption_per_capita
         consumption_per_capita = consumption_per_capita - self.sufficiency_threshold
@@ -134,8 +134,8 @@ class SocialWelfareFunction:
             ),
         )
 
-        # Calculate the utilitarian welfare disaggregated temporally # TODO- Change this
-        welfare_utilitarian_temporal = (
+        # Calculate the welfare disaggregated temporally # TODO- Change this
+        welfare_temporal = (
             (
                 (disentangled_utility_powered)
                 / (1 - self.elasticity_of_marginal_utility_of_consumption)
@@ -144,7 +144,7 @@ class SocialWelfareFunction:
         ) * self.discount_rate[0, :, :]
 
         # Welfare disaggregated temporally and regionally - For regional welfare calculation
-        welfare_utilitarian_regional_temporal = (
+        welfare_regional_temporal = (
             (
                 disentangled_utility_regional_powered
                 / (1 - self.elasticity_of_marginal_utility_of_consumption)
@@ -153,28 +153,28 @@ class SocialWelfareFunction:
         ) * self.discount_rate
 
         # Welfare aggregated regionally
-        welfare_utilitarian_regional = np.sum(
-            welfare_utilitarian_regional_temporal,
+        welfare_regional = np.sum(
+            welfare_regional_temporal,
             axis=1,
         )
 
-        # Calculate the utilitarian welfare
-        welfare_utilitarian = np.sum(
-            welfare_utilitarian_temporal,
+        # Calculate the welfare
+        welfare = np.sum(
+            welfare_temporal,
             axis=0,
         )
 
         return (
             disentangled_utility,
-            welfare_utilitarian_regional_temporal,
-            welfare_utilitarian_temporal,
-            welfare_utilitarian_regional,
-            welfare_utilitarian,
+            welfare_regional_temporal,
+            welfare_temporal,
+            welfare_regional,
+            welfare,
         )
 
     def calculate_stepwise_welfare(self, consumption_per_capita, timestep):
         """
-        This method calculates the utilitarian welfare.
+        This method calculates the welfare.
         """
         # New feature: consumption_per_capita is checked to have negative values
         consumption_per_capita = np.where(
@@ -218,7 +218,7 @@ class SocialWelfareFunction:
         )
 
         # Welfare disaggregated temporally and regionally - For regional welfare calculation
-        welfare_utilitarian_regional_temporal = (
+        welfare_regional_temporal = (
             (
                 disentangled_utility_regional_powered
                 / (1 - self.elasticity_of_marginal_utility_of_consumption)
@@ -227,7 +227,7 @@ class SocialWelfareFunction:
         ) * self.discount_rate[:, timestep, :]
 
         # Welfare aggregated regionally, disaggregated temporally
-        welfare_utilitarian_temporal = (
+        welfare_temporal = (
             (
                 disentangled_utility_powered
                 / (1 - self.elasticity_of_marginal_utility_of_consumption)
@@ -237,8 +237,8 @@ class SocialWelfareFunction:
 
         return (
             disentangled_utility,
-            welfare_utilitarian_regional_temporal,
-            welfare_utilitarian_temporal,
+            welfare_regional_temporal,
+            welfare_temporal,
         )
 
     def __getattribute__(self, __name: str) -> Any:
