@@ -9,11 +9,8 @@ import numpy as np
 import copy
 from config.default_parameters import EconomicSubModules
 
-from src.util.enumerations import get_economic_scenario
-from src.economy.neoclassical import NeoclassicalEconomyModel
 
-
-class MatterDefaults:  # Already moved to default_parameters.py
+class MatterDefaults:  # Already moved to default_parameters.py #TODO remove
     def __init__(self):
         self.physical_use_ratio = 0.74  # per year
         self.discard_rate = 0.013  # per year
@@ -87,8 +84,10 @@ class MatterUse:
         """
 
         # TODO This should go into your run() method and not initialization. Net is only calculated in the run
+        # You can use the shape of gross economy from economy module to initialize this
         self.net_output = self.economy.net_output
 
+        # TODO: put the units of each variable in default_parameters.py
         # Intializing the material intensity array Unit: kg/USD per year
         self.material_intensity = self.material_intensity_array
 
@@ -141,6 +140,8 @@ class MatterUse:
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
+    # TODO Angela - if you are taking timestep as an argument, change the name to stepwise_run. You can create a run method that will just call the stepwise_run for the entire time horizon
+
     def run(self, timestep, recycling_rate):
         if len(recycling_rate.shape) == 1:
             recycling_rate = recycling_rate.reshape(-1, 1)
@@ -155,8 +156,13 @@ class MatterUse:
         self.get_material_resources(timestep)
         self.get_depletion_ratio(timestep)
 
-    """Matter-use variable calculations functions"""
+    ############################################################################################################
 
+    # Matter-use variable calculations functions
+
+    ############################################################################################################
+
+    # NOTE: if the following functions are only specific to this class, and not used anywhere else, you can use the decorator @classmethod to make them private
     def get_material_consumption(self, timestep):
         # Calculate the domestic material consumption based on material intensity and net economic output
         self.material_consumption[:, timestep, :] = (
