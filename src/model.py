@@ -43,33 +43,41 @@ class JUSTICE:
         @param timestep: The timestep of the model
         @param scenario: The scenario of the model
         """
-
-        # Save the model configuration #TODO - These are not fully implemented yet
+        ############################################################################################################################################################
+        #
+        #   Instatiating the JUSTICE Model
+        #
+        ############################################################################################################################################################
+        # Set the model blocks
         self.economy_type = economy_type
         self.damage_function_type = damage_function_type
         self.abatement_type = abatement_type
+        self.scenario = scenario
 
-        # This is implemented for EMA Workbench Support
+        # Check for Kwargs. This is implemented for EMA Workbench Support
         if "social_welfare_function_type" in kwargs:
             self.welfare_function_type = WelfareFunction.from_index(
                 kwargs["social_welfare_function_type"]
             )
         else:
             self.welfare_function_type = social_welfare_function
-        # self.welfare_function_type = social_welfare_function
 
-        # Load the data
+        # Load the datasets by instantiating the DataLoader class
         self.data_loader = DataLoader()
+        self.region_list = self.data_loader.REGION_LIST
 
         # TODO: Need to do the data slicing here for different start and end years
-
         # Instantiate the TimeHorizon class
         self.time_horizon = TimeHorizon(
             start_year=start_year, end_year=end_year, data_timestep=5, timestep=timestep
         )
 
-        self.scenario = scenario
-
+        ############################################################################################################################################################
+        #
+        #   Instatiating the FAIR Climate Model
+        #
+        ############################################################################################################################################################
+        # Instantiate the CoupledFAIR class
         self.climate = CoupledFAIR(ch4_method="Thornhill2021")
         self.downscaler = TemperatureDownscaler(input_dataset=self.data_loader)
 
@@ -85,7 +93,11 @@ class JUSTICE:
                 time_horizon=self.time_horizon, scenarios=self.scenario
             )
 
-        self.region_list = self.data_loader.REGION_LIST
+        ############################################################################################################################################################
+        #
+        #   Initializing the Data Structures & Loading the Default Parameters
+        #
+        ############################################################################################################################################################
 
         # Set the savings rate and emissions control rate levers
         # TODO: check if we need this
@@ -130,68 +142,47 @@ class JUSTICE:
         self.sufficiency_threshold = welfare_defaults["sufficiency_threshold"]
         self.egality_strictness = welfare_defaults["egality_strictness"]
 
-        # Print the social welfare defaults
-        print(
-            "elasticity of marginal utility of consumption: ",
-            self.elasticity_of_marginal_utility_of_consumption,
-        )
-        print(
-            "pure rate of social time preference: ",
-            self.pure_rate_of_social_time_preference,
-        )
-        print("inequality aversion: ", self.inequality_aversion)
-        print("sufficiency threshold: ", self.sufficiency_threshold)
-        print("egality strictness: ", self.egality_strictness)
-
-        # Assign the defaults to the class attributes
-        # self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
-        #     "elasticity_of_marginal_utility_of_consumption",
-        #     welfare_defaults["elasticity_of_marginal_utility_of_consumption"],
-        # )
-        # self.pure_rate_of_social_time_preference = kwargs.get(
-        #     "pure_rate_of_social_time_preference",
-        #     welfare_defaults["pure_rate_of_social_time_preference"],
-        # )
-        # self.inequality_aversion = kwargs.get(
-        #     "inequality_aversion", welfare_defaults["inequality_aversion"]
-        # )
-
-        # self.sufficiency_threshold = kwargs.get(
-        #     "sufficiency_threshold", welfare_defaults["sufficiency_threshold"]
-        # )
-
-        # self.egality_strictness = kwargs.get(
-        #     "egality_strictness", welfare_defaults["egality_strictness"]
-        # )
-
-        # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
-        # I think it is failing because I am checking self.economy_type instead of economy_type, which is passed as a parameter
+        ############################################################################################################################################################
+        #
+        #   Instantiating the Model Blocks
+        #
+        ############################################################################################################################################################
         # TODO: Incomplete Implementation
         if self.damage_function_type == DamageFunction.KALKUHL:
             print("Kalkuhl Damage Function Activated")
-        self.damage_function = DamageKalkuhl(
-            input_dataset=self.data_loader,
-            time_horizon=self.time_horizon,
-            climate_ensembles=self.no_of_ensembles,
-        )
+            self.damage_function = DamageKalkuhl(
+                input_dataset=self.data_loader,
+                time_horizon=self.time_horizon,
+                climate_ensembles=self.no_of_ensembles,
+            )
+        else:
+            # Assert and raise an error if the damage function is not implemented
+            assert False, "The damage function is not provided!"
+
         # TODO: Incomplete Implementation
         if self.abatement_type == Abatement.ENERDATA:
             print("Enerdata Abatement Model Activated")
-        self.abatement = AbatementEnerdata(
-            input_dataset=self.data_loader, time_horizon=self.time_horizon
-        )
+            self.abatement = AbatementEnerdata(
+                input_dataset=self.data_loader, time_horizon=self.time_horizon
+            )
+        else:
+            # Assert and raise an error if the abatement model is not implemented
+            assert False, "The abatement model is not provided!"
 
         # TODO: Incomplete Implementation
         if self.economy_type == Economy.NEOCLASSICAL:
             print("Neoclassical Economy Model Activated")
-        self.economy = NeoclassicalEconomyModel(
-            input_dataset=self.data_loader,
-            time_horizon=self.time_horizon,
-            scenario=self.scenario,
-            climate_ensembles=self.no_of_ensembles,
-            elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
-            pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
-        )
+            self.economy = NeoclassicalEconomyModel(
+                input_dataset=self.data_loader,
+                time_horizon=self.time_horizon,
+                scenario=self.scenario,
+                climate_ensembles=self.no_of_ensembles,
+                elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
+                pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
+            )
+        else:
+            # Assert and raise an error if the economy model is not implemented
+            assert False, "The economy model is not provided!"
 
         self.emissions = OutputToEmissions(
             input_dataset=self.data_loader,
@@ -215,6 +206,12 @@ class JUSTICE:
         self.fixed_savings_rate = self.economy.get_fixed_savings_rate(
             self.time_horizon.model_time_horizon
         )
+
+        ############################################################################################################################################################
+        #
+        #   Initializing the Output Data Structures
+        #
+        ############################################################################################################################################################
 
         # Create a data dictionary to store the data
         self.data = {
@@ -320,12 +317,23 @@ class JUSTICE:
             "welfare": np.zeros((self.no_of_ensembles,)),
         }
 
+    ############################################################################################################################################################
+    #
+    #   End of JUSTICE Initialization and Instantiation
+    #
+    ############################################################################################################################################################
+
     def __getattribute__(self, __name: str) -> Any:
         """
         This method returns the value of the attribute of the class.
         """
         return object.__getattribute__(self, __name)
 
+    ############################################################################################################################################################
+    #
+    #   JUSTICE Model Stepwise Run
+    #
+    ############################################################################################################################################################
     def stepwise_run(
         self,
         emission_control_rate,
@@ -480,6 +488,12 @@ class JUSTICE:
             )
         )
 
+    ############################################################################################################################################################
+    #
+    #   JUSTICE Model Run for the Entire Time Horizon
+    #
+    ############################################################################################################################################################
+
     def run(
         self,
         emission_control_rate,
@@ -623,6 +637,11 @@ class JUSTICE:
         self.data["economic_damage"] = self.economy.get_damages()
         self.data["abatement_cost"] = self.economy.get_abatement()
 
+    ############################################################################################################################################################
+    #
+    #   JUSTICE Model Stepwise Evaluation
+    #
+    ############################################################################################################################################################
     def stepwise_evaluate(
         self,
         timestep=0,
@@ -670,6 +689,11 @@ class JUSTICE:
             )
         return self.data
 
+    ############################################################################################################################################################
+    #
+    #   JUSTICE Model Evaluation for entire Time Horizon
+    #
+    ############################################################################################################################################################
     def evaluate(
         self,
     ):
