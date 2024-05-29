@@ -13,7 +13,7 @@ from src.objectives.objective_functions import calculate_gini_index
 
 
 # TODO: Need to change the name of this class to a more general name
-class Utilitarian:
+class SocialWelfareFunction:
     """
     This class computes the utilitarian welfare for the JUSTICE model.
     """

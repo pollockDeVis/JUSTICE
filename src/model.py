@@ -15,7 +15,7 @@ from src.damage.kalkuhl import DamageKalkuhl
 from src.climate.coupled_fair import CoupledFAIR
 from src.climate.temperature_downscaler import TemperatureDownscaler
 from src.abatement.abatement_enerdata import AbatementEnerdata
-from src.welfare.utilitarian import Utilitarian
+from src.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
 
 
@@ -114,29 +114,29 @@ class JUSTICE:
             print("Utilitarian Welfare Function Activated")
 
         # Fetch the defaults for UTILITARIAN
-        utilitarian_defaults = social_welfare_defaults.get_defaults(  # TODO: Change the variable name and fetch values based on the Welfare Function provided
+        welfare_defaults = social_welfare_defaults.get_defaults(  # TODO: Change the variable name and fetch values based on the Welfare Function provided
             WelfareFunction.UTILITARIAN.name
         )
 
         # Assign the defaults to the class attributes
         self.elasticity_of_marginal_utility_of_consumption = kwargs.get(
             "elasticity_of_marginal_utility_of_consumption",
-            utilitarian_defaults["elasticity_of_marginal_utility_of_consumption"],
+            welfare_defaults["elasticity_of_marginal_utility_of_consumption"],
         )
         self.pure_rate_of_social_time_preference = kwargs.get(
             "pure_rate_of_social_time_preference",
-            utilitarian_defaults["pure_rate_of_social_time_preference"],
+            welfare_defaults["pure_rate_of_social_time_preference"],
         )
         self.inequality_aversion = kwargs.get(
-            "inequality_aversion", utilitarian_defaults["inequality_aversion"]
+            "inequality_aversion", welfare_defaults["inequality_aversion"]
         )
 
         self.sufficiency_threshold = kwargs.get(
-            "sufficiency_threshold", utilitarian_defaults["sufficiency_threshold"]
+            "sufficiency_threshold", welfare_defaults["sufficiency_threshold"]
         )
 
         self.egality_strictness = kwargs.get(
-            "egality_strictness", utilitarian_defaults["egality_strictness"]
+            "egality_strictness", welfare_defaults["egality_strictness"]
         )
 
         # TODO: Checking the Enums in the init is sufficient as long as the name of the methods are same across all classes
@@ -177,7 +177,7 @@ class JUSTICE:
         # TODO: Incomplete Implementation Can we combine this with the previous if condition?
         if self.welfare_function == WelfareFunction.UTILITARIAN:
             print("Utilitarian Welfare Function Activated")
-        self.welfare_function = Utilitarian(
+        self.welfare_function = SocialWelfareFunction(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
             population=self.economy.get_population(),  # TODO: This makes welfare function dependent on economy model
