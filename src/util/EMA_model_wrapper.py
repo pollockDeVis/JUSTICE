@@ -2,13 +2,14 @@
 This module wraps the model for uncertainty analysis experiments using EMA.
 """
 
+# TODO: Move this to solvers. Create a clean solving interface for JUSTICE model using EMA Workbench
+
 import numpy as np
 
 from src.model import JUSTICE
 from src.util.enumerations import *
 from solvers.emodps.rbf import RBF
 from src.objectives.objective_functions import (
-    calculate_gini_index,
     years_above_temperature_threshold,
     total_damage_cost,
     total_abatement_cost,
@@ -27,17 +28,6 @@ def model_wrapper_emodps(**kwargs):
     scenario = kwargs.pop("ssp_rcp_scenario")
     social_welfare_function_type = kwargs.pop("social_welfare_function_type")
 
-    # elasticity_of_marginal_utility_of_consumption = kwargs.pop(
-    #     "elasticity_of_marginal_utility_of_consumption"
-    # )
-    # pure_rate_of_social_time_preference = kwargs.pop(
-    #     "pure_rate_of_social_time_preference"
-    # )
-    # inequality_aversion = kwargs.pop("inequality_aversion")
-
-    # sufficiency_threshold = kwargs.pop("sufficiency_threshold")
-    # egality_strictness = kwargs.pop("egality_strictness")
-
     # Check kwargs for "economy_type", "damage_function_type", "abatement_type
     if "economy_type" in kwargs:
         economy_type = Economy.from_index(kwargs["economy_type"])
@@ -46,11 +36,7 @@ def model_wrapper_emodps(**kwargs):
     if "abatement_type" in kwargs:
         abatement_type = Abatement.from_index(kwargs["abatement_type"])
 
-    # economy_type = kwargs.pop("economy_type", (Economy.NEOCLASSICAL,))
-    # damage_function_type = kwargs.pop("damage_function_type", (DamageFunction.KALKUHL,))
-    # abatement_type = kwargs.pop("abatement_type", (Abatement.ENERDATA,))
-    # welfare_function = kwargs.pop("welfare_function", (WelfareFunction.UTILITARIAN,))
-
+    # Loading the constants
     n_regions = kwargs.pop("n_regions")
     n_timesteps = kwargs.pop("n_timesteps")
     emission_control_start_timestep = kwargs.pop("emission_control_start_timestep")
@@ -97,10 +83,6 @@ def model_wrapper_emodps(**kwargs):
         damage_function_type=damage_function_type,
         abatement_type=abatement_type,
         social_welfare_function_type=social_welfare_function_type,
-        # # Declaring for endogenous fixed savings rate
-        # elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
-        # pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
-        # inequality_aversion=inequality_aversion,
     )
 
     # getattr(model, "no_of_ensembles")
@@ -153,8 +135,8 @@ def model_wrapper_emodps(**kwargs):
             emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(rbf_input)
 
     datasets = model.evaluate()
-    # Calculate the mean of ["welfare_utilitarian"]
-    # datasets["welfare_utilitarian"] = np.abs(np.mean(datasets["welfare_utilitarian"]))
+
+    # Calculate the mean of ["welfare"] over the 1000 ensembles
     welfare = np.abs(np.mean(datasets["welfare"]))
 
     # Get the years above temperature threshold
