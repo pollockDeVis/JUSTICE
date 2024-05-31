@@ -19,7 +19,6 @@ from src.damage.kalkuhl import DamageKalkuhl
 from src.climate.coupled_fair import CoupledFAIR
 from src.climate.temperature_downscaler import TemperatureDownscaler
 from src.abatement.abatement_enerdata import AbatementEnerdata
-from src.welfare.utilitarian import Utilitarian
 from src.exploration.twolevelsgame import TwoLevelsGame
 from src.exploration.household import Household
 from src.model import JUSTICE

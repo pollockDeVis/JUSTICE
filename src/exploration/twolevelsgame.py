@@ -145,7 +145,7 @@ class TwoLevelsGame:
                 Region(
                     self,
                     i,
-                    code.decode("ascii"),
+                    code,
                     population_size_by_region,
                     timestep,
                     dict_regions_distribution_income,
