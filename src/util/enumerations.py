@@ -34,14 +34,23 @@ class SSP(IntEnum):
 
 # TODO: Add the pretty strings in the tuple like (0, SSP.SSP1, "ssp119", "SSP1-RCP1.9")
 class Scenario(Enum):
-    SSP119 = (0, SSP.SSP1, "ssp119")  # SSP1-RCP1.9
-    SSP126 = (1, SSP.SSP1, "ssp126")  # SSP1-RCP2.6
-    SSP245 = (2, SSP.SSP2, "ssp245")  # SSP2-RCP4.5
-    SSP370 = (3, SSP.SSP3, "ssp370")  # SSP3-RCP7.0
-    SSP434 = (4, SSP.SSP4, "ssp434")  # SSP4-RCP3.4
-    SSP460 = (5, SSP.SSP4, "ssp460")  # SSP4-RCP6.0
-    SSP534 = (6, SSP.SSP5, "ssp534-over")  # SSP5-RCP3.4-overshoot
-    SSP585 = (7, SSP.SSP5, "ssp585")  # SSP5-RCP8.5
+    SSP119 = (0, SSP.SSP1, "ssp119", "SSP1-RCP1.9")
+    SSP126 = (1, SSP.SSP1, "ssp126", "SSP1-RCP2.6")
+    SSP245 = (2, SSP.SSP2, "ssp245", "SSP2-RCP4.5")
+    SSP370 = (3, SSP.SSP3, "ssp370", "SSP3-RCP7.0")
+    SSP434 = (4, SSP.SSP4, "ssp434", "SSP4-RCP3.4")
+    SSP460 = (5, SSP.SSP4, "ssp460", "SSP4-RCP6.0")
+    SSP534 = (
+        6,
+        SSP.SSP5,
+        "ssp534-over",
+        "SSP5-RCP3.4-overshoot",
+    )
+    SSP585 = (7, SSP.SSP5, "ssp585", "SSP5-RCP8.5")
+
+    @staticmethod
+    def get_ssp_rcp_strings():
+        return [scenario.value[3] for scenario in Scenario]
 
 
 def get_climate_scenario(index):
@@ -90,6 +99,13 @@ class DamageFunction(Enum):
     KALKUHL = 1
     BURKE = 2
 
+    @staticmethod
+    def from_index(index):
+        for enum in DamageFunction:
+            if enum.value == index:
+                return enum
+        return None
+
 
 class Economy(Enum):
     """
@@ -99,6 +115,13 @@ class Economy(Enum):
     NEOCLASSICAL = 0
     POST_KEYNESIAN = 1
 
+    @staticmethod
+    def from_index(index):
+        for enum in Economy:
+            if enum.value == index:
+                return enum
+        return None
+
 
 class Abatement(Enum):
     """
@@ -107,3 +130,10 @@ class Abatement(Enum):
 
     ENERDATA = 0
     DICE = 1
+
+    @staticmethod
+    def from_index(index):
+        for enum in Abatement:
+            if enum.value == index:
+                return enum
+        return None
