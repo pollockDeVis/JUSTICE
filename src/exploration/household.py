@@ -31,7 +31,7 @@ class Household:
     # global_distrib_flsi = [[] for i in range(N_CLIMATE_BELIEFS)]; get from the information module
     # regional_distrib_flsi = [[[]] for r in range(56)] get from the information module
 
-    def __init__(self, region, utility_params):
+    def __init__(self, region, quintile):
         self.model_region = region
 
         # Initialising climate intuition
@@ -73,39 +73,21 @@ class Household:
             ]
         )
 
-        # Initialising Climate worry
-        self.internal_climate_worry = 0
-        # Worry coming from interaction with other individuals
-        self.external_climate_worry = 0
-        # Worry coming from extreme weather events and media
-        self.climate_worry = 0
-        # Aggregation of above worries
-
-        # Initialising Abatement Cost worry
-        self.internal_abatement_worry = 0
-        # Worry coming from interaction with other individuals
-        self.external_abatement_worry = 0
-        # Worry coming from economy and media
-        self.abatement_worry = 0
-        # Aggregation of above worries
-
-        # Initialising perceived willingness to Contribute [See "representative evidence on the actual and perceived support for climate action", 2023 Peter Andre]
-        self.perceived_WTC = 0
-
-        # Utility function
-
-        # TODO APN: The following is completely wrong and ad hoc, but it's for the purpose of testing the shifting_policy function (having negative utility values)
-        if self.model_region.id % 2 == 0:
-            self.utility_parameters = [-10, -10, +10, +10]
-            # - expected temperature elevation and CC dmgs (future) - experienced temperature elevation and Xtrm weather events (present)
-            # + expected economic cost of abatement (future) + experienced economic context (present)
-        else:
-            self.utility_parameters = [-1, -10, +10, -10]
-
+        ###################################################
+        ################## Sensitivities ##################
+        ###################################################
+        # > Between 0 and 2
+        self.sensitivity_to_costs = 1
+        # > Between 0 and 8
+        self.threshold_expected_temperature_elevation = 1.5
+        # >Between -1 and 1
+        self.elasticity_expected_mitigation_distribution = 0
+        self.elasticity_expected_loss_damages_distribution = 0
         # Coefficient for climate damage evaluation (see RICE2013R: psi_2)
         self.psi_2 = 2.67 * 10**-3
 
-        self.utility_parameters = utility_params
+        #Wages and consumption
+        self.quintile = quintile;
 
     def expected_climate_damages(self):
         temp_profile = Household.belief_to_projection(
@@ -201,13 +183,48 @@ class Household:
         """
         # TODO APN: self.utility_parameters[0] = -1\coeff * np.log(GDP/Capita)   [See Peter Andre 2023, "representative evidence on the actual and perceived support for climate action"]
 
-        # expected_temperature_evaluation = +1 -1 0
+        # Expected temperature elevation (worry)
         temp = Household.mean_distribution(self.climate_distrib_beliefs[-1])
-        if temp > 2:
-            expected_temperature_evaluation = 1  # Support
+        #TODO: A better function for evaluation could be interesting
+        if temp >= self.threshold_expected_temperature_elevation:
+            expected_temperature_evaluation = temp / self.threshold_expected_temperature_elevation #support
         else:
-            expected_temperature_evaluation = 0  # Neutral
+            expected_temperature_evaluation = 0 #neutral
 
+        #Experienced extreme weather events (can also weave in a community based level of worry)
+        #TODO: find database of extreme weather events
+
+        #FIXME: Put real values down below
+        #Experienced climate damages
+        loss_and_damages = 0
+        #Experienced mitigation costs
+        mitigation_costs = 0
+        #Experienced Economic Context
+        if mitigation_costs > loss_and_damages:
+            experienced_economic_context = -1 #opposition
+        else:
+            experienced_economic_context = 1 #support
+
+        #FIXME: Put real values down below
+        #Expected climate damages
+        expected_loss_and_damages = 0 #self.expected_climate_damages #+*-/...
+        #Expected mitigation costs
+        expected_mitigation_costs = 0
+        #Expected Economic Context
+        if expected_mitigation_costs > expected_loss_and_damages:
+            expected_economic_context = -1 #opposition
+        else:
+            expected_economic_context = 1 #support
+
+        U = (
+                self.sensitivity_to_costs * expected_economic_context
+                + self.sensitivity_to_costs * experienced_economic_context
+                + expected_temperature_evaluation
+                - self.model_region.negotiator.policy[1, 0]
+        )
+
+
+        """
         # experienced_economic_context = +1 -1 +0
         regional_consumption_per_capita = (
             self.model_region.twolevelsgame_model.justice_model.consumption_per_capita[
@@ -237,29 +254,10 @@ class Household:
             - self.model_region.negotiator.policy[1, 0]
         )
 
+        U = min(-1 + np.random.random() * 0.01 * timestep, 1)
+
         # + expected temperature elevation and CC dmgs (future) + experienced temperature elevation and Xtrm weather events (present)
         # - expected economic cost of abatement (future) - experienced economic context (present)
-        """
-        baseline_expected_climate_damages = self.expected_climate_damages()
-        support_expected_climate_damages = self.expected_climate_damages()
-        opposition_expected_climate_damages = self.expected_climate_damages()
-
-        baseline_expected_abatement_costs = self.expected_abatement_costs()
-        support_expected_abatement_costs = self.expected_abatement_costs()
-        opposition_expected_abatement_costs = self.expected_abatement_costs()
-
-        experienced_climate_change_and_weather_events = self.experienced_weather_events()
-        experienced_economic_context = self.experienced_economic_context()
-
-        
-        U = self.utility_parameters @ np.array(
-            [
-                self.expected_climate_damages(),
-                self.experienced_weather_events(),
-                self.expected_abatement_costs(),
-                self.experienced_economic_context()
-            ]
-        )
         """
 
         return U

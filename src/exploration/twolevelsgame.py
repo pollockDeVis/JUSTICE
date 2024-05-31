@@ -10,7 +10,9 @@ from scipy.interpolate import interp1d
 import copy
 from src.exploration.region import Region
 import csv
+import json
 from datetime import datetime
+import pandas as pd
 
 
 class TwoLevelsGame:
@@ -26,7 +28,6 @@ class TwoLevelsGame:
         number_regions=57,
         population_size_by_region=10,
         timestep=0,
-        utility_params=[0, 0, 0, 0, 0],
     ):
         """
         justice_model is a reference to the overarching justice model
@@ -39,32 +40,75 @@ class TwoLevelsGame:
         path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
         os.makedirs(path, exist_ok=True)
 
+        # average net consumption, loss and damage per quintile, abatement costs per quintile, post-damage concumption per quintile, average of post damage concumption per quintile
         f1 = open(path + "regions.csv", "w", newline="")
         self.f_region = (
             f1,
             csv.writer(f1, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
+        self.f_region[1].writerow(
+            [
+                "Timestep",
+                "Region ID",
+                "Region code",
+                "First 20%",
+                "Second 20%",
+                "Third 20%",
+                "Fourth 20%",
+                "Fifth 20%",
+                "JUSTICE net avg. cons.",
+                "JUSTICE dmg.",
+                "JUSTICE abt.",
+                "First dmg.",
+                "Second dmg.",
+                "Third dmg.",
+                "Fourth dmg.",
+                "Fifth dmg.",
+                "First abt.",
+                "Second abt.",
+                "Third abt.",
+                "Fourth abt.",
+                "Fifth abt.",
+                "First cons. pre",
+                "Second cons. pre",
+                "Third cons. pre",
+                "Fourth cons. pre",
+                "Fifth cons. pre",
+                "First cons. post",
+                "Second cons. post",
+                "Third cons. post",
+                "Fourth cons. post",
+                "Fifth cons. post",
+                "net avg. cons.",
+            ]
+        )
+
+        # self.f_policy[1].writerow(['Region ID', 'Timestep', 'Policy Size', 'Range of Shift', 'Delta Shift', 'Policy goals', 'Policy Years', 'Support'])
         f2 = open(path + "policy.csv", "w", newline="")
         self.f_policy = (
             f2,
             csv.writer(f2, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
-        # self.f_policy[1].writerow(['Region ID', 'Timestep', 'Policy Size', 'Policy Shift', 'Policy Values', 'Policy Years'])
+
         f3 = open(path + "negotiator.csv", "w", newline="")
         self.f_negotiator = (
             f3,
             csv.writer(f3, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
+
         f4 = open(path + "information.csv", "w", newline="")
         self.f_information = (
             f4,
             csv.writer(f4, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
+
         f5 = open(path + "household.csv", "w", newline="")
         self.f_household = (
             f5,
             csv.writer(f5, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
+
+        # id region, emission control rate profile (historical + pledges)
         f6 = open(path + "emissions.csv", "w", newline="")
         self.f_emissions = (
             f6,
@@ -72,22 +116,50 @@ class TwoLevelsGame:
         )
 
         self.f_parameters = open(path + "parameters.txt", "w", newline="")
-        self.f_parameters.write("Utility Parameters : " + str(utility_params))
 
-        # Initialise Agents (ie. regions)
+        # Initialise Regions
+        df = pd.read_excel(
+            "data/input/inputs_ABM/Distribution_of_income_or_consumption.xlsx",
+            header=0,
+            index_col=0,
+            usecols="A,E:I",
+            engine="openpyxl",
+            skiprows=[0, 2, 3],
+            skipfooter=62,
+        )
+        dict_regions_rows = json.load(
+            open("data/input/inputs_ABM/rice50_region_names_to_world_bank.json")
+        )
+        dict_regions_distribution_income = {}
+        for key in dict_regions_rows.keys():
+            if key != "_comment":
+                dict_regions_distribution_income[key] = df.loc[
+                    dict_regions_rows[key]
+                ].mean(axis=0)
+
         self.justice_model = justice_model
-        self.N = number_regions
-        self.regions = [
-            Region(self, i, population_size_by_region, timestep, utility_params)
-            for i in range(self.N)
-        ]
+        i = 0
+        self.regions = []
+        for code in self.justice_model.data_loader.REGION_LIST:
+            self.regions += [
+                Region(
+                    self,
+                    i,
+                    code.decode("ascii"),
+                    population_size_by_region,
+                    timestep,
+                    dict_regions_distribution_income,
+                )
+            ]
+            i += 1
+        self.N_regions = i
 
         # Coalitions (ad hoc, now a cycle graph)
         """ Coalitions could appear in the context of international agreement. They would result from a change in the 
         structure of the network graph linking all regions together. By default the graph is a connected graph of
         valency 2 (eg. a cycle graph).
         This is not used yet. """
-        edges = np.array([[i, (i + 1) % self.N] for i in range(self.N)])
+        edges = np.array([[i, (i + 1) % self.N_regions] for i in range(self.N_regions)])
         self.coalitions = np.zeros((edges.max() + 1, edges.max() + 1))
         self.coalitions[edges[:, 0], edges[:, 1]] = 1
         self.coalitions[edges[:, 1], edges[:, 0]] = 1
@@ -120,7 +192,7 @@ class TwoLevelsGame:
             - Assessing the current policy
         """
 
-        # TODO uncomment to use the projections of alternative ecr scenarios over shortime
+        # IDEA uncomment to use the projections of alternative ecr scenarios over shortime
         # self.justice_model.information_model.generate_projections(timestep, self.regions)
 
         # Size is 57*1
@@ -131,10 +203,85 @@ class TwoLevelsGame:
             axis=1,
         )
 
-        for a in self.regions:
-            a.update_regional_opinion()
+        # Update income of quintiles within regions
+        # Size is 57*1 (mean over all possibilities)
+        net_average_consumption = self.justice_model.consumption_per_capita
+
+        average_damages = np.mean(
+            self.justice_model.economy.get_damages()[:, timestep, :], axis=1
+        )
+        average_abatement = np.mean(
+            self.justice_model.economy.get_abatement()[:, timestep, :], axis=1
+        )
+
+        for region in self.regions:
+
+            if region.code == "chn" and timestep==25:
+                print("flag pour debug")
+
+            # Size is 57*5: consumption (net of damages and mitigation costs) for regions and each quintiles
+            test = 0
+            disaggregated_predmg_consumption = (
+                5
+                * net_average_consumption[region.id]
+                * (1 + average_damages[region.id])
+                / (1 - average_abatement[region.id])
+                * region.distribution_income
+            )
+
+            #
+            xi_damage = 0
+            xi_abatement = 0
+
+            damage_share = (
+                np.power(region.distribution_income, xi_damage)
+                * 1
+                / np.sum(np.power(region.distribution_income, xi_damage))
+            )
+            abatement_share = (
+                    np.power(region.distribution_income, xi_abatement)
+                    * 1
+                    / np.sum(np.power(region.distribution_income, xi_abatement))
+            )
+
+
+            quintiles_damage_costs = (
+                5
+                * net_average_consumption[region.id]
+                * average_damages[region.id]
+                * damage_share
+            )
+
+
+            quintiles_abatement_costs = (
+                5
+                * net_average_consumption[region.id]
+                * ((1+average_damages[region.id]) * average_abatement[region.id])/(1 - average_abatement[region.id])
+                * abatement_share
+            )
+
+            # Theoretically it should be such that the sum of disaggregated post costs is equivalent to the net average consumption
+            disaggregated_post_costs_consumption = (
+                disaggregated_predmg_consumption
+                - quintiles_damage_costs
+                - quintiles_abatement_costs
+            )
+
+            (self.f_region)[1].writerow(
+                [timestep, region.id, region.code]
+                + [d for d in region.distribution_income]
+                + [net_average_consumption[region.id]]
+                + [average_damages[region.id], average_abatement[region.id]]
+                + [q for q in quintiles_damage_costs]
+                + [a for a in quintiles_abatement_costs]
+                + [p for p in disaggregated_predmg_consumption]
+                + [p for p in disaggregated_post_costs_consumption]
+                + [np.mean(disaggregated_post_costs_consumption)]
+            )
+
+            region.update_regional_opinion()
             if timestep % self.Y_policy == 0:
-                a.update_state_policy_from_constituency(timestep)
+                region.update_state_policy_from_constituency(timestep)
 
     def international_negotiations(self, timestep):
         """

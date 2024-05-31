@@ -1,0 +1,7 @@
+##########################################################
+###                SOURCES OF INPUTS                   ###
+##########################################################
+
+→ Distribution_of_income_or_consumption
+https://wdi.worldbank.org/table/1.3
+

@@ -18,7 +18,6 @@ class AbmJustice(JUSTICE):
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=WelfareFunction.UTILITARIAN,
         seed=None,
-        utility_params=[0, 0, 0, 0, 0],
         **kwargs,
     ):
         # INSTANTIATE JUSTICE MODULE
@@ -41,7 +40,7 @@ class AbmJustice(JUSTICE):
         # INSTANTIATE POLICY MODULE
         print("   -> Instantiation of policy module")
         self.two_levels_game = TwoLevelsGame(
-            self, timestep=timestep, utility_params=utility_params
+            self, timestep=timestep
         )
         print("      OK")
 

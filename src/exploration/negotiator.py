@@ -71,10 +71,12 @@ class Negotiator:
             )  # support = share of opposition, neutral and support
 
             range_of_shift = self.delta_shift_range()
-            delta_shift = (
-                range_of_shift * support[2]
-                - (self.policy[1, 0] - self.policy[1, 1]) * support[0]
-            )
+            if support[2]>support[0]:
+                delta_shift = range_of_shift * support[2]
+            elif support[2]<support[0]:
+                delta_shift = - (self.policy[1, 0] - self.policy[1, 1]) * support[0]
+            else:
+                delta_shift = 0
 
             # delta_shift = (np.random.random() - 0.5) * 2
             # print(delta_shift)
@@ -82,6 +84,7 @@ class Negotiator:
             max_cutting_rate_gradient = self.max_cutting_rate_gradient
 
             # shift the target
+            #TODO APN: to be removed not useful anylonger
             # Ensuring we are in the correct range of acceptable shift values
             if self.delta_shift_range() < delta_shift:
                 delta_shift = self.delta_shift_range()
@@ -89,6 +92,7 @@ class Negotiator:
                 delta_shift = -self.policy[1, 1] + self.policy[1, 0]
 
             # Shifting policy target
+            #TODO APN: Forbid carbon capture for now (look @ AR6 database later)
             self.policy[1, 1] = min(delta_shift + self.policy[1, 1], 1)
 
             (self.region_model.twolevelsgame_model.f_policy)[1].writerow(

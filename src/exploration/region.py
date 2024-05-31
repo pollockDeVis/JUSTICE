@@ -35,7 +35,7 @@ class Region:
 
     """
 
-    def __init__(self, twolevelsgame_model, id, N, timestep, utility_params):
+    def __init__(self, twolevelsgame_model, id, code, N, timestep, dict_regions_distribution_income):
         """
         policy_model the overarching policy class
         id a unique identifier for the region
@@ -44,15 +44,20 @@ class Region:
 
         self.twolevelsgame_model = twolevelsgame_model
         self.id = id
+        self.code = code
+        self.distribution_income = dict_regions_distribution_income[self.code]/100
+        print("=======V "+self.code+" V========")
+        print(self.distribution_income)
+        print(np.sum(self.distribution_income))
 
         # Generating the N households (ie, constituency. N = 100 by default from Policy() )
         self.n_households = N
         self.households = []
-        # self.constituency = np.matrix([0,0,0]).T #An agreggation of the wills of the households regarding future evolution of current Policy
 
         for i in range(N):
-            # Initialisation of different households and their perspectives. TODO: Should be region dependant in the future.
-            self.households += [Household(self, utility_params)]
+            # Initialisation of different households and their perspectives.
+            quintile = i/(0.2*N)-1
+            self.households += [Household(self, quintile)]
 
         # ------ Local Opinions Dynamics Parameters ------
         # TODO APN: All OD processes relies on same OD params. Could be interesting to have a specific class for OD defined with proper conf for each different considerations.
@@ -66,12 +71,6 @@ class Region:
         self.opdyn_threshold_close = 0.5
         self.opdyn_threshold_far = 1
         self.opdyn_external_worry_decay = 0.7
-
-        # Media and Extreme weather events worry
-        self.media_climate_worry = 0
-        self.extreme_weather_events_worry = 0
-        self.media_abatement_worry = 0
-        self.economic_conjuncture_worry = 0
 
         # Negotiator, negotiation strategy depends on constituency
         self.negotiator = Negotiator(self)
@@ -113,7 +112,8 @@ class Region:
         return
 
     def update_from_social_network(self):
-        self.update_climate_distrib_beliefs_from_social()
+        #TODO Update the content of this function
+        #self.update_climate_distrib_beliefs_from_social()
         # self.spreading_climate_worries(self.twolevelsgame_model.justice_model.rng)  # TODO APN: Distinguish monetary vs non-monetary aspects
         # self.spreading_abatement_worries(self.twolevelsgame_model.justice_model.rng)
         return
@@ -122,10 +122,15 @@ class Region:
         self.negotiator.shifting_policy(timestep)
         return
 
+    """
+    This function is used to update the households distribution of expected future temperature elevation on interactions between the households.
+    I have commented it, because it is a bit complicated process and most likely not that necessary. Instead, it seems more interesting to have different weights 
+    on the expected dmgs due to climate change
+    
     def update_climate_distrib_beliefs_from_social(self):
-        """
-        Update the means of the beliefs upon future local temperatures for agents.
-        """
+        
+        #Update the means of the beliefs upon future local temperatures for agents.
+        
         n = len(self.households)
         I = np.eye(n) != np.eye(n)
         k = 0
@@ -193,6 +198,8 @@ class Region:
                 self.households[ih].climate_old_distrib_beliefs = self.households[
                     ih
                 ].climate_distrib_beliefs.copy()
+    """
+
 
     def spreading_climate_worries(self, rng):
         n = len(self.households)
