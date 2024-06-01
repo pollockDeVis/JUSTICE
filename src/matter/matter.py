@@ -7,16 +7,7 @@ from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
 import copy
-from config.default_parameters import EconomicSubModules
-
-
-class MatterDefaults:  # Already moved to default_parameters.py #TODO remove
-    def __init__(self):
-        self.physical_use_ratio = 0.74  # per year
-        self.discard_rate = 0.013  # per year
-        self.conversion_rate_material_reserves = 0.0015  # per year
-        self.recycling_rate = 0.2  # per year
-
+from config.default_parameters import EconomicSubModules, EmissionsAvoidedDefaults
 
 class MatterUse:
     """
@@ -34,24 +25,19 @@ class MatterUse:
 
         # Load the defaults #TODO Angela - you can implement this
         matter_defaults = EconomicSubModules().get_defaults("MATTER")
-
-        # Initialize defaults
-        defaults = MatterDefaults()
+        # Load the emissions avoided defaults
+        emissions_defaults = EmissionsAvoidedDefaults().get_defaults()
+        # Emissions defaults
+        self.emissions_defaults = emissions_defaults
 
         # Load the instantiated economy model and set it as an attribute
         self.economy = economy
 
         # Parameters
-        self.physical_use_ratio = defaults.physical_use_ratio
-        self.discard_rate = defaults.discard_rate
-        self.conversion_rate_material_reserves = (
-            defaults.conversion_rate_material_reserves
-        )
-
-        # Policy Lever #TODO Angela - should you put it here or in run method? This is because recycling rate is a policy lever
-        self.recycling_rate = (
-            recycling_rate if recycling_rate is not None else defaults.recycling_rate
-        )
+        self.physical_use_ratio = matter_defaults["physical_use_ratio"]
+        self.discard_rate = matter_defaults["discard_rate"]
+        self.conversion_rate_material_reserves = matter_defaults["conversion_rate_material_reserves"]
+        self.recycling_rate = matter_defaults["recycling_rate"]
 
         # Saving the climate ensembles ?
         self.NUM_OF_ENSEMBLES = climate_ensembles
@@ -97,7 +83,6 @@ class MatterUse:
         )
 
         # Intializing the in-use stock array Unit: Gt per year
-        # TODO check this
         self.in_use_stock = copy.deepcopy(input_dataset.IN_USE_STOCK_INIT_ARRAY)
 
         # Intializing the discarded material array Unit: Gt per year
@@ -139,22 +124,47 @@ class MatterUse:
         self.depletion_ratio = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
+        #Initializing emissions avoided array
+        self.emmissions_avoided = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        )
 
-    # TODO Angela - if you are taking timestep as an argument, change the name to stepwise_run. You can create a run method that will just call the stepwise_run for the entire time horizon
-
-    def run(self, timestep, recycling_rate):
+    #  Angela - if you are taking timestep as an argument, change the name to stepwise_run. You can create a run method that will just call the stepwise_run for the entire time horizon
+    # TODO Palok - please review the new methods, is this what you meant here?
+    def stepwise_run(self, timestep, output, recycling_rate):
+        """
+        Run the matter-use calculations for a given timestep.
+        """
         if len(recycling_rate.shape) == 1:
             recycling_rate = recycling_rate.reshape(-1, 1)
-        self.get_material_consumption(timestep)
-        self.get_in_use_stock(timestep)
-        self.get_discarded_material(timestep)
-        self.get_recycled_material(timestep)
-        self.get_waste(timestep)
-        self.get_extracted_matter(timestep)
-        self.get_material_reserves(timestep)
-        self.get_converted_material_reserves(timestep)
-        self.get_material_resources(timestep)
-        self.get_depletion_ratio(timestep)
+        
+        material_consumption = (
+            self.material_intensity[:, timestep, :] * output[:, timestep, :] * 1000  # Output in trillions USD
+        ) / 1_000_000_000  # Convert to Gt
+        
+        in_use_stock = self.get_in_use_stock(material_consumption, timestep)
+        discarded_material = self.get_discarded_material(in_use_stock, timestep)
+        recycled_material = self.get_recycled_material(discarded_material, timestep)
+        waste = self.get_waste(discarded_material, recycled_material)
+        extracted_matter = self.get_extracted_matter(material_consumption, recycled_material)
+        converted_material_reserves = self.get_converted_material_reserves(timestep)
+        material_reserves = self.get_material_reserves(extracted_matter, converted_material_reserves, timestep)
+        material_resources = self.get_material_resources(converted_material_reserves, timestep)
+        depletion_ratio = self.get_depletion_ratio(extracted_matter, material_resources, timestep)
+        
+        # Emissions avoided by the amount of recycled material
+        emissions_avoided = self.get_emissions_avoided(timestep, recycled_material)
+
+        return depletion_ratio[:, timestep, :], emissions_avoided[:, timestep, :]
+    def run(self, output, recycling_rate):
+        """
+        Run the matter-use calculations for the entire time horizon.
+        """
+        results = []
+        for timestep in range(len(self.model_time_horizon)):
+            result = self.stepwise_run(timestep, output, recycling_rate)
+            results.append(result)
+        return results
 
     ############################################################################################################
 
@@ -163,82 +173,102 @@ class MatterUse:
     ############################################################################################################
 
     # NOTE: if the following functions are only specific to this class, and not used anywhere else, you can use the decorator @classmethod to make them private
-    def get_material_consumption(self, timestep):
-        # Calculate the domestic material consumption based on material intensity and net economic output
-        self.material_consumption[:, timestep, :] = (
-            self.material_intensity[:, timestep, :]
-            * self.net_output[:, timestep, :]
-            * 1000
-        ) / 1_000_000_000  # Convert to Gt
-
-    def get_in_use_stock(self, timestep):
+    # Palok I have never use decorators, so do you think are necessary? also I changed the methods and don't know if I should use timestep here ?
+    def get_in_use_stock(self, material_consumption, timestep):
         if timestep == 0:
-            self.in_use_stock[:, timestep, :] = self.in_use_stock[:, timestep, :]
+            return self.in_use_stock[:, timestep, :]
         else:
-            self.in_use_stock[:, timestep, :] = (
+            return (
                 self.in_use_stock[:, timestep - 1, :]
-                + self.material_consumption[:, timestep, :] * self.physical_use_ratio
+                + material_consumption * self.physical_use_ratio
                 - self.discarded_material[:, timestep, :]
             )
 
-    def get_discarded_material(self, timestep):
-        self.discarded_material[:, timestep, :] = (
-            self.discard_rate * self.in_use_stock[:, timestep - 1, :]
-        )
+    def get_discarded_material(self, in_use_stock, timestep):
+        return self.discard_rate * in_use_stock
 
-    def get_recycled_material(self, timestep):
-        self.recycled_material[:, timestep, :] = (
-            self.recycling_rate * self.discarded_material[:, timestep, :]
-        )
+    def get_recycled_material(self, discarded_material, timestep):
+        return self.recycling_rate * discarded_material
 
-    def get_waste(self, timestep):
-        self.waste[:, timestep, :] = (
-            self.discarded_material[:, timestep, :]
-            - self.recycled_material[:, timestep, :]
-        )
+    def get_waste(self, discarded_material, recycled_material):
+        return discarded_material - recycled_material
 
-    def get_extracted_matter(self, timestep):
-        self.extracted_matter[:, timestep, :] = (
-            self.material_consumption[:, timestep, :]
-            - self.recycled_material[:, timestep, :]
-        )
-
-    def get_material_reserves(self, timestep):
-        if timestep == 0:
-            self.material_reserves[:, timestep, :] = self.material_reserves[
-                :, timestep, :
-            ]
-        else:
-            self.material_reserves[:, timestep, :] = (
-                self.material_reserves[:, timestep - 1, :]
-                + self.converted_material_reserves[:, timestep, :]
-                - self.extracted_matter[:, timestep, :]
-            )
+    def get_extracted_matter(self, material_consumption, recycled_material):
+        return material_consumption - recycled_material
 
     def get_converted_material_reserves(self, timestep):
-        self.converted_material_reserves[:, timestep, :] = (
-            self.conversion_rate_material_reserves
-            * self.material_resources[:, timestep - 1, :]
-        )
+        return self.conversion_rate_material_reserves * self.material_resources[:, timestep - 1, :]
 
-    def get_material_resources(self, timestep):
+    def get_material_reserves(self, extracted_matter, converted_material_reserves, timestep):
         if timestep == 0:
-            self.material_resources[:, timestep, :] = self.material_resources[
-                :, timestep, :
-            ]
+            return self.material_reserves[:, timestep, :]
         else:
-            self.material_resources[:, timestep, :] = (
-                self.material_resources[:, timestep - 1, :]
-                - self.converted_material_reserves[:, timestep, :]
+            return (
+                self.material_reserves[:, timestep - 1, :]
+                + converted_material_reserves
+                - extracted_matter
             )
 
-    def get_depletion_ratio(self, timestep):
-        self.depletion_ratio[:, timestep, :] = (
-            self.extracted_matter[:, timestep, :]
-            / self.material_resources[:, timestep - 1, :]
-        )
+    def get_material_resources(self, converted_material_reserves, timestep):
+        if timestep == 0:
+            return self.material_resources[:, timestep, :]
+        else:
+            return self.material_resources[:, timestep - 1, :] - converted_material_reserves
 
-    # TODO check ALL THIS BELOW I just copy this from the other modules
+    def get_depletion_ratio(self, extracted_matter, material_resources, timestep):
+        return extracted_matter / material_resources
+    
+    ########################################################################################
+    #Emissions avoided through recycling of paper and plastics
+    ########################################################################################
+
+    def get_emissions_avoided(self, timestep, recycled_material):
+        # Calculate proportions of recycled materials in gigatons (Gt)
+        recycled_paper = recycled_material * self.emissions_defaults["PROPORTION_PAPER"]
+        recycled_plastic = recycled_material * self.emissions_defaults["PROPORTION_PLASTIC"]
+        # Calculate GHG emissions avoided
+        em_ghg_avoided = self.calculate_ghg_avoided(recycled_paper, recycled_plastic)
+        # Calculate energy savings
+        e_total_saved = self.calculate_energy_saved(recycled_paper, recycled_plastic)
+        #Calculate fuel saved and CO2 emissions avoided
+        em_co2_avoided = self.calculate_co2_avoided(e_total_saved)
+        #Total emissions avoided
+        em_total = ((em_ghg_avoided + em_co2_avoided) * 365) / 1e12  # Convert kg to Gt per year
+        return em_total  # Gt per year
+
+    def calculate_ghg_avoided(self, recycled_paper, recycled_plastic):
+        # Calculate GHG emissions avoided for paper 
+        em_ghg_vg_paper = self.emissions_defaults["EFACTOR_VG_PAPER"] * recycled_paper
+        em_ghg_rec_paper = self.emissions_defaults["EFACTOR_REC_PAPER"] * recycled_paper 
+        # Calculate GHG emissions avoided for plastic
+        em_ghg_vg_plastic = self.emissions_defaults["EFACTOR_VG_PLASTIC"] * recycled_plastic 
+        em_ghg_rec_plastic = self.emissions_defaults["EFACTOR_REC_PLASTIC"] * recycled_plastic
+        # Total GHG emissions avoided
+        em_ghg_avoided_paper = em_ghg_vg_paper - em_ghg_rec_paper
+        em_ghg_avoided_plastic = em_ghg_vg_plastic - em_ghg_rec_plastic
+
+        return em_ghg_avoided_paper + em_ghg_avoided_plastic
+
+    def calculate_energy_saved(self, recycled_paper, recycled_plastic):
+        # Calculate energy savings for paper
+        e_vg_paper = recycled_paper * self.emissions_defaults["ENERGY_FACTOR_VG_PAPER"]
+        e_rec_paper = recycled_paper * self.emissions_defaults["ENERGY_FACTOR_REC_PAPER"]
+        # Calculate energy savings for plastic
+        e_vg_plastic = recycled_plastic * self.emissions_defaults["ENERGY_FACTOR_VG_PLASTIC"]
+        e_rec_plastic = recycled_plastic * self.emissions_defaults["ENERGY_FACTOR_REC_PLASTIC"]
+        #Total energy saved
+        e_total_saved_paper = e_vg_paper - e_rec_paper
+        e_total_saved_plastic = e_vg_plastic - e_rec_plastic
+
+        return ((e_total_saved_paper + e_total_saved_plastic) /
+                 self.emissions_defaults["CONVERSION_FACTOR_GJ_TON"])
+
+    def calculate_co2_avoided(self, e_total_saved):
+        fuel_saved = (e_total_saved) / (self.emissions_defaults["GENERATOR_EFFICIENCY"] * 
+         self.emissions_defaults["LOWER_HEATING_VALUE"])
+        return fuel_saved * self.emissions_defaults["EMISSION_FACTOR_DIESEL"]
+
+
     def _interpolate_material_intensity(self):
         interp_data = np.zeros(
             (
