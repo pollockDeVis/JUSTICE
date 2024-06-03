@@ -74,7 +74,7 @@ class OutputToEmissions:
                 ),
             )
 
-    def run(self, scenario, timestep, output, emission_control_rate):
+    def run(self, scenario, timestep, output, emission_control_rate, emisions_avoided):
         """
         This method calculates the emissions for the economic output of a given scenario.
         carbon intensity shape (57, 1001)
@@ -82,14 +82,19 @@ class OutputToEmissions:
         """
 
         scenario = get_economic_scenario(scenario)
+        #Adjusted carbon intensiy TODO check the array dimensions of this, 
+        carbon_intensity_adjusted = self.carbon_intensity[:, timestep, :] - (emisions_avoided[:, timestep, :]
+            / self.gdp_array[:, timestep, :])
         # Calculate emissions
         self.emissions[:, timestep, :] = (
-            self.carbon_intensity[:, timestep, :, scenario]
+           carbon_intensity_adjusted[:, timestep, :, scenario] # @Palok why 4D ?
             * output
             * (
                 1 - emission_control_rate  # [:, np.newaxis]
             )  # Emisison Control Rate is a lever and might have to take timestep
         )
+
+        
 
         return self.emissions[:, timestep, :]
 
