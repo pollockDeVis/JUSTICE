@@ -362,6 +362,7 @@ class JUSTICE:
         timestep,
         savings_rate=None,
         endogenous_savings_rate=False,
+        **kwargs,
     ):
         """
         This method is used for EMODPS & Reinforcement Learning (RL) applications.
@@ -396,6 +397,24 @@ class JUSTICE:
             timestep=timestep,
             savings_rate=self.savings_rate[:, timestep],
         )
+
+        # Add the matter feedback loop here
+        if self.economy_submodule == EconomySubModules.MATTER:
+            # Get the recycling rate policy lever from kwargs
+            recycling_rate = kwargs["recycling_rate"]
+            # Run the matter model
+            depletion_ratio, emissions_avoided = self.matter.stepwise_run(
+                timestep=timestep,
+                output=gross_output,
+                recycling_rate=recycling_rate[
+                    :, timestep
+                ],  # NOTE: @Angela - assuming the recycling rate is of shape (regions, timesteps)
+            )
+
+            # Feedback loop for adjusted carbon intensity #NOTE: Angela - In this way, the model will stay independent of the matter model
+            self.emissions.feedback_loop_for_adjusted_carbon_intensity(
+                self.scenario, timestep, emissions_avoided
+            )
 
         self.data["emissions"][:, timestep, :] = self.emissions.run(
             timestep=timestep,

@@ -2,6 +2,7 @@
 This is the emissions module that converts the output into emissions.
 #'CO2 emissions in [GtCO2/year]'
 """
+
 from typing import Any
 import numpy as np
 from scipy.interpolate import interp1d
@@ -74,7 +75,7 @@ class OutputToEmissions:
                 ),
             )
 
-    def run(self, scenario, timestep, output, emission_control_rate, emisions_avoided):
+    def run(self, scenario, timestep, output, emission_control_rate):
         """
         This method calculates the emissions for the economic output of a given scenario.
         carbon intensity shape (57, 1001)
@@ -82,21 +83,33 @@ class OutputToEmissions:
         """
 
         scenario = get_economic_scenario(scenario)
-        #Adjusted carbon intensiy TODO check the array dimensions of this, 
-        carbon_intensity_adjusted = self.carbon_intensity[:, timestep, :] - (emisions_avoided[:, timestep, :]
-            / self.gdp_array[:, timestep, :])
         # Calculate emissions
         self.emissions[:, timestep, :] = (
-           carbon_intensity_adjusted[:, timestep, :, scenario] # @Palok why 4D ?
+            self.carbon_intensity[:, timestep, :, scenario]
             * output
             * (
                 1 - emission_control_rate  # [:, np.newaxis]
             )  # Emisison Control Rate is a lever and might have to take timestep
         )
 
-        
-
         return self.emissions[:, timestep, :]
+
+    def feedback_loop_for_adjusted_carbon_intensity(
+        self, scenario, timestep, emissions_avoided
+    ):
+        scenario = get_economic_scenario(scenario)
+
+        # Calculate the delta of carbon intensity - amount by which carbon intensity should be reduced
+        delta_carbon_intensity = emissions_avoided / self.gdp_array[:, timestep, :]
+
+        # Assert if delta_carbon_intensity is bigger than the carbon intensity
+        assert np.all(
+            delta_carbon_intensity <= self.carbon_intensity[:, timestep, :, scenario]
+        ), "Delta carbon intensity is bigger than the carbon intensity"
+
+        self.carbon_intensity[:, timestep, :, scenario] = (
+            self.carbon_intensity[:, timestep, :, scenario] - delta_carbon_intensity
+        )
 
     def emission_downscaler(self, aggregated_emissions):
         """
