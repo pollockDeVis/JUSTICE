@@ -21,7 +21,6 @@ class MatterUse:
         time_horizon,
         climate_ensembles,
         economy,
-        recycling_rate=None,
     ):
 
         # Load the defaults #TODO Angela - you can implement this
@@ -71,10 +70,6 @@ class MatterUse:
         """
         Initialize matter-use variables arrays
         """
-
-        # TODO This should go into your run() method and not initialization. Net is only calculated in the run
-        # You can use the shape of gross economy from economy module to initialize this
-        self.net_output = self.economy.net_output
 
         # TODO: put the units of each variable in default_parameters.py
         # Intializing the material intensity array Unit: kg/USD per year
@@ -149,7 +144,8 @@ class MatterUse:
 
         in_use_stock = self.get_in_use_stock(material_consumption, timestep)
         discarded_material = self.get_discarded_material(in_use_stock, timestep)
-        recycled_material = self.get_recycled_material(discarded_material, timestep)
+        recycled_material = self.get_recycled_material(discarded_material, recycling_rate
+        )
         waste = self.get_waste(discarded_material, recycled_material)
         extracted_matter = self.get_extracted_matter(
             material_consumption, recycled_material
@@ -174,12 +170,18 @@ class MatterUse:
         """
         Run the matter-use calculations for the entire time horizon.
         """
-        results = []
+        depletion_ratios = np.zeros(
+        (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        )
+        emissions_avoided = np.zeros(
+        (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        )
         for timestep in range(len(self.model_time_horizon)):
-            result = self.stepwise_run(timestep, output, recycling_rate)
-            results.append(result)
-        return results  # TODO Angela - you probably need to update this to return the same data as stepwise_run - depletion_ratio and emissions_avoided
-
+            depletion_ratio, emissions_avoided_timestep = self.stepwise_run(timestep, output, recycling_rate)
+            depletion_ratios[:, timestep, :] = depletion_ratio
+            emissions_avoided[:, timestep, :] = emissions_avoided_timestep
+        return depletion_ratios, emissions_avoided
+    
     ############################################################################################################
 
     # Matter-use variable calculations functions
@@ -198,11 +200,13 @@ class MatterUse:
                 - self.discarded_material[:, timestep, :]
             )
 
-    def get_discarded_material(self, in_use_stock, timestep):
+    def get_discarded_material(self, in_use_stock):
         return self.discard_rate * in_use_stock
 
-    def get_recycled_material(self, discarded_material, timestep):
-        return self.recycling_rate * discarded_material
+    def get_recycled_material(self, discarded_material, recycling_rate=None):
+        if recycling_rate is None:
+            recycling_rate = self.recycling_rate
+        return recycling_rate * discarded_material
 
     def get_waste(self, discarded_material, recycled_material):
         return discarded_material - recycled_material
@@ -306,6 +310,7 @@ class MatterUse:
             * self.emissions_defaults["LOWER_HEATING_VALUE"]
         )
         return fuel_saved * self.emissions_defaults["EMISSION_FACTOR_DIESEL"]
+    ##################################################################################
 
     def _interpolate_material_intensity(self):
         interp_data = np.zeros(
