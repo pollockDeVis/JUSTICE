@@ -79,6 +79,12 @@ class NeoclassicalEconomyModel:
         self.savings_rate_init_arr = (
             input_dataset.SAVING_RATE_INIT_ARRAY
         )  # Probably won't be used. Can be passed while setting up the Savings Rate Lever
+
+        # Load PPP2MER conversion factor. Conversion factor for Purchasing Power Parity (PPP) to Market Exchange Rate (MER)
+        # PPP is widely used to calculate international ineqquality (Milanovic, 2005)
+        # When using PPP rather than market exchange rate (MER),
+        # poor countries get a income boost and difference between RICH and POOR incomes is LESS than MER.
+
         self.ppp_to_mer = input_dataset.PPP_TO_MER_CONVERSION_FACTOR
         self.mer_to_ppp = 1 / self.ppp_to_mer  # Conversion of MER to PPP
         # mer_to_ppp is a 2D array. Need to convert it to (regions, 1)

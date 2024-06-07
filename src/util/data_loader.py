@@ -63,7 +63,7 @@ class DataLoader:
             regions_str = regions_df[0].apply(lambda x: x.decode("utf-8")).values
             self.REGION_LIST = regions_str
 
-        # Load PPP2MER conversion factor
+        # Load PPP2MER conversion factor. Conversion factor for Purchasing Power Parity (PPP) to Market Exchange Rate (MER)
         with h5py.File(os.path.join(data_file_path, "ppp2mer.hdf5"), "r") as f:
             self.PPP_TO_MER_CONVERSION_FACTOR = f["ppp2mer"][:]
 
