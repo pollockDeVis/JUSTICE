@@ -338,10 +338,10 @@ class MatterUse:
         Calculate the recycling cost based on income level and recycled material.
         """
         cost_ranges = {
-            'Low income': (0, 25),
-            'Lower middle income': (5, 30),
-            'Upper middle income': (5, 50),
-            'High income': (30, 80)
+            'Low income': (0 * 1e-3, 25 * 1e-3),
+            'Lower middle income': (5 * 1e-3, 30 * 1e-3),
+            'Upper middle income': (5 * 1e-3, 50 * 1e-3),
+            'High income': (30 * 1e-3, 80 * 1e-3)
         }
         costs = np.zeros_like(recycled_material)
         for i in range(recycled_material.shape[0]):  # Loop over regions
