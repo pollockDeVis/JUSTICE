@@ -105,8 +105,8 @@ class DataLoader:
             self.MATERIAL_INTENSITY_ARRAY = f["material_intensity_array"][:]
 
         # In use stock initial values
-        with h5py.File(os.path.join(data_file_path, "in_use_init.hdf5"), "r") as f:
-            self.IN_USE_STOCK_INIT_ARRAY = f["in_use_init"][:]
+        with h5py.File(os.path.join(data_file_path, "in_use_stock_init.hdf5"), "r") as f:
+            self.IN_USE_STOCK_INIT_ARRAY = f["in_use_stock_init"][:]
 
         # In use stock initial values
         with h5py.File(
