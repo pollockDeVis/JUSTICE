@@ -34,7 +34,7 @@ class JUSTICE:
     def __init__(
         self,
         start_year=2015,  # Model is only tested for start year 2015
-        end_year=2100,  # Model is only tested for end year 2300
+        end_year=2300,  # Model is only tested for end year 2300
         timestep=1,  # Model is only tested for timestep 1
         scenario=0,
         climate_ensembles=None,
