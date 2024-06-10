@@ -226,7 +226,7 @@ def run_optimization_adaptive(
             epsilons=epsilons,  # [0.01] * len(model.outcomes),  # * len(model.outcomes)
             reference=reference_scenario,
             convergence=convergence_metrics,
-            population_size=2,
+            # population_size=2,
         )
 
         # if filename is None:

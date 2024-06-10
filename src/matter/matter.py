@@ -52,9 +52,7 @@ class MatterUse:
         self.material_intensity_array = copy.deepcopy(
             input_dataset.MATERIAL_INTENSITY_ARRAY
         )
-        self.income_level = copy.deepcopy(
-            input_dataset.INCOME_LEVEL_ARRAY
-        )
+        self.income_level = copy.deepcopy(input_dataset.INCOME_LEVEL_ARRAY)
 
         self.timestep = time_horizon.timestep
         self.data_timestep = time_horizon.data_timestep
@@ -147,7 +145,8 @@ class MatterUse:
 
         in_use_stock = self.get_in_use_stock(material_consumption, timestep)
         discarded_material = self.get_discarded_material(in_use_stock, timestep)
-        recycled_material = self.get_recycled_material(discarded_material, recycling_rate
+        recycled_material = self.get_recycled_material(
+            discarded_material, recycling_rate
         )
         waste = self.get_waste(discarded_material, recycled_material)
         extracted_matter = self.get_extracted_matter(
@@ -169,28 +168,34 @@ class MatterUse:
         # Calculate recycling costs
         recycling_costs = self.recycling_cost(recycled_material)
 
-        return depletion_ratio[:, timestep, :], emissions_avoided[:, timestep, :], recycling_costs[:, timestep, :]
+        return (
+            depletion_ratio[:, timestep, :],
+            emissions_avoided[:, timestep, :],
+            recycling_costs[:, timestep, :],
+        )
 
     def run(self, output, recycling_rate):
         """
         Run the matter-use calculations for the entire time horizon.
         """
         depletion_ratios = np.zeros(
-        (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
         emissions_avoided = np.zeros(
-        (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
         recycling_costs = np.zeros(
-        (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
         for timestep in range(len(self.model_time_horizon)):
-            depletion_ratio, emissions_avoided_timestep, recycling_costs_timestep = self.stepwise_run(timestep, output, recycling_rate)
+            depletion_ratio, emissions_avoided_timestep, recycling_costs_timestep = (
+                self.stepwise_run(timestep, output, recycling_rate)
+            )
             depletion_ratios[:, timestep, :] = depletion_ratio
             emissions_avoided[:, timestep, :] = emissions_avoided_timestep
             recycling_costs[:, timestep, :] = recycling_costs_timestep
         return depletion_ratios, emissions_avoided, recycling_costs
-    
+
     ############################################################################################################
 
     # Matter-use variable calculations functions
@@ -319,6 +324,7 @@ class MatterUse:
             * self.emissions_defaults["LOWER_HEATING_VALUE"]
         )
         return fuel_saved * self.emissions_defaults["EMISSION_FACTOR_DIESEL"]
+
     ##################################################################################
     # Recycling cost based on income level calculation
     ##################################################################################
@@ -336,11 +342,12 @@ class MatterUse:
         """
         Calculate the recycling cost based on income level and recycled material.
         """
+        # TODO: Need to move this to default_parameters.py
         cost_ranges = {
-            'Low income': (0 * 1e-3, 25 * 1e-3),
-            'Lower middle income': (5 * 1e-3, 30 * 1e-3),
-            'Upper middle income': (5 * 1e-3, 50 * 1e-3),
-            'High income': (30 * 1e-3, 80 * 1e-3)
+            "Low income": (0 * 1e-3, 25 * 1e-3),
+            "Lower middle income": (5 * 1e-3, 30 * 1e-3),
+            "Upper middle income": (5 * 1e-3, 50 * 1e-3),
+            "High income": (30 * 1e-3, 80 * 1e-3),
         }
         costs = np.zeros_like(recycled_material)
         for i in range(recycled_material.shape[0]):  # Loop over regions
@@ -349,9 +356,11 @@ class MatterUse:
                     income_level = self.income_level[i]
                     min_cost, max_cost = cost_ranges[income_level]
                     average_cost = self.linear_decrease_cost(min_cost, max_cost, j)
-                    costs[i, j, k] = average_cost * recycled_material[i, j, k]  # Assuming recycled_material is in Gt
+                    costs[i, j, k] = (
+                        average_cost * recycled_material[i, j, k]
+                    )  # Assuming recycled_material is in Gt
         return costs
-    
+
     def _interpolate_material_intensity(self):
         interp_data = np.zeros(
             (
@@ -363,16 +372,20 @@ class MatterUse:
         for i in range(self.material_intensity_array.shape[0]):
             print(f"Interpolating for region {i}")
             print(f"Data time horizon: {self.data_time_horizon}")
-            print(f"Material intensity shape: {self.material_intensity_array[i, :].shape}")
+            print(
+                f"Material intensity shape: {self.material_intensity_array[i, :].shape}"
+            )
 
             if len(self.data_time_horizon) != self.material_intensity_array.shape[1]:
-                raise ValueError(f"Mismatch between data time horizon length ({len(self.data_time_horizon)}) and material intensity array length ({self.material_intensity_array.shape[1]}).")
-            
+                raise ValueError(
+                    f"Mismatch between data time horizon length ({len(self.data_time_horizon)}) and material intensity array length ({self.material_intensity_array.shape[1]})."
+                )
+
             f = interp1d(
                 self.data_time_horizon,
                 self.material_intensity_array[i, :],
                 kind="linear",
-                fill_value="extrapolate"
+                fill_value="extrapolate",
             )
             interp_data[i, :] = f(self.model_time_horizon)  # , j
 
