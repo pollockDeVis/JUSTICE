@@ -200,8 +200,6 @@ class JUSTICE:
 
         if self.economy_submodule == EconomySubModules.MATTER:
             print("Matter Model Activated")  # For testing, remove later
-            print(f"Data time horizon: {self.time_horizon.data_time_horizon}")
-            print(f"Material intensity array shape: {self.data_loader.MATERIAL_INTENSITY_ARRAY.shape}")
             # TODO: Angela - You can instantiate the matter model here after economy.
             # Then you can run the matter model in the run() or stepwise_run() method
             self.matter = MatterUse(
