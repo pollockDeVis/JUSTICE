@@ -34,7 +34,7 @@ class JUSTICE:
     def __init__(
         self,
         start_year=2015,  # Model is only tested for start year 2015
-        end_year=2300,  # Model is only tested for end year 2300
+        end_year=2100,  # Model is only tested for end year 2300
         timestep=1,  # Model is only tested for timestep 1
         scenario=0,
         climate_ensembles=None,
@@ -60,6 +60,9 @@ class JUSTICE:
         self.damage_function_type = damage_function_type
         self.abatement_type = abatement_type
         self.scenario = scenario
+        
+        # Set default economy submodule
+        self.economy_submodule = None
 
         # Check for Kwargs. This is implemented for EMA Workbench Support
         if "social_welfare_function_type" in kwargs:
@@ -197,6 +200,8 @@ class JUSTICE:
 
         if self.economy_submodule == EconomySubModules.MATTER:
             print("Matter Model Activated")  # For testing, remove later
+            print(f"Data time horizon: {self.time_horizon.data_time_horizon}")
+            print(f"Material intensity array shape: {self.data_loader.MATERIAL_INTENSITY_ARRAY.shape}")
             # TODO: Angela - You can instantiate the matter model here after economy.
             # Then you can run the matter model in the run() or stepwise_run() method
             self.matter = MatterUse(
@@ -403,7 +408,7 @@ class JUSTICE:
             # Get the recycling rate policy lever from kwargs
             recycling_rate = kwargs["recycling_rate"]
             # Run the matter model
-            depletion_ratio, emissions_avoided = self.matter.stepwise_run(
+            depletion_ratio, emissions_avoided, recycling_costs = self.matter.stepwise_run(
                 timestep=timestep,
                 output=gross_output,
                 recycling_rate=recycling_rate[

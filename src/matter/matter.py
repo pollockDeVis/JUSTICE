@@ -52,10 +52,9 @@ class MatterUse:
         self.material_intensity_array = copy.deepcopy(
             input_dataset.MATERIAL_INTENSITY_ARRAY
         )
-        self.income_level = copy.deepcopy(  #TODO sis, you have to add that to data input
+        self.income_level = copy.deepcopy(
             input_dataset.INCOME_LEVEL_ARRAY
         )
-
 
         self.timestep = time_horizon.timestep
         self.data_timestep = time_horizon.data_timestep
@@ -352,7 +351,7 @@ class MatterUse:
                     average_cost = self.linear_decrease_cost(min_cost, max_cost, j)
                     costs[i, j, k] = average_cost * recycled_material[i, j, k]  # Assuming recycled_material is in Gt
         return costs
-
+    
     def _interpolate_material_intensity(self):
         interp_data = np.zeros(
             (
@@ -362,10 +361,18 @@ class MatterUse:
             )
         )
         for i in range(self.material_intensity_array.shape[0]):
+            print(f"Interpolating for region {i}")
+            print(f"Data time horizon: {self.data_time_horizon}")
+            print(f"Material intensity shape: {self.material_intensity_array[i, :].shape}")
+
+            if len(self.data_time_horizon) != self.material_intensity_array.shape[1]:
+                raise ValueError(f"Mismatch between data time horizon length ({len(self.data_time_horizon)}) and material intensity array length ({self.material_intensity_array.shape[1]}).")
+            
             f = interp1d(
                 self.data_time_horizon,
                 self.material_intensity_array[i, :],
-                kind="linear",  # , j
+                kind="linear",
+                fill_value="extrapolate"
             )
             interp_data[i, :] = f(self.model_time_horizon)  # , j
 
