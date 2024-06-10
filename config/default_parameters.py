@@ -175,30 +175,47 @@ class EconomicSubModules:
         Returns the default economic sub-modules related parameters as per the specified type.
         """
         return self.defaults[type]
-    
+
+
 class EmissionsAvoidedDefaults:
     def __init__(self):
         self.defaults = {
             "PROPORTION_PAPER": 0.1537,
             "PROPORTION_PLASTIC": 0.1087,
-            "EFACTOR_VG_PAPER": 1304,  # kg CO2/ton 
-            "EFACTOR_REC_PAPER": -1300,  # kg CO2/ton 
-            "EFACTOR_VG_PLASTIC": 2400,  # kg CO2/ton 
-            "EFACTOR_REC_PLASTIC": 163,  # kg CO2/ton 
+            "EFACTOR_VG_PAPER": 1304,  # kg CO2/ton
+            "EFACTOR_REC_PAPER": -1300,  # kg CO2/ton
+            "EFACTOR_VG_PLASTIC": 2400,  # kg CO2/ton
+            "EFACTOR_REC_PLASTIC": 163,  # kg CO2/ton
             "GLOBAL_WARMING_POTENTIAL_CO2": 1,
             "GLOBAL_WARMING_POTENTIAL_CH4": 25,
-            "EMISSION_FACTOR_DIESEL": 2.66,  # kg CO2eq/Liter 
+            "EMISSION_FACTOR_DIESEL": 2.66,  # kg CO2eq/Liter
             "GENERATOR_EFFICIENCY": 0.33,
             "LOWER_HEATING_VALUE": 35.8,  # MJ/Liter
-            "ENERGY_FACTOR_VG_PAPER": 36.85,  # GJ/ton 
-            "ENERGY_FACTOR_REC_PAPER": 26.21,  # GJ/ton 
-            "ENERGY_FACTOR_VG_PLASTIC": 93.46,  # GJ/ton 
-            "ENERGY_FACTOR_REC_PLASTIC": 33.01,  # GJ/ton 
-            "CONVERSION_FACTOR_GJ_TON": 41.868
+            "ENERGY_FACTOR_VG_PAPER": 36.85,  # GJ/ton
+            "ENERGY_FACTOR_REC_PAPER": 26.21,  # GJ/ton
+            "ENERGY_FACTOR_VG_PLASTIC": 93.46,  # GJ/ton
+            "ENERGY_FACTOR_REC_PLASTIC": 33.01,  # GJ/ton
+            "CONVERSION_FACTOR_GJ_TON": 41.868,
         }
+
     def get_defaults(self):
-         """
+        """
         Returns the default emissions avoided related parameters as per the specified type.
         """
-         return self.defaults
-    
+        return self.defaults
+
+
+class RecyclingCostsIncomeLevels:
+    def __init__(self):
+        self.defaults = {
+            "LOW_INCOME": (0 * 1e-3, 25 * 1e-3),
+            "LOWER_MIDDLE_INCOME": (5 * 1e-3, 30 * 1e-3),
+            "UPPER_MIDDLE_INCOME": (5 * 1e-3, 50 * 1e-3),
+            "HIGH_INCOME": (30 * 1e-3, 80 * 1e-3),
+        }
+
+    def get_defaults(self):
+        """
+        Returns the default recycling costs related parameters as per the specified type.
+        """
+        return self.defaults
