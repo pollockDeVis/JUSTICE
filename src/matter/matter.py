@@ -166,12 +166,12 @@ class MatterUse:
         # Emissions avoided by the amount of recycled material
         emissions_avoided = self.get_emissions_avoided(timestep, recycled_material)
         # Calculate recycling costs
-        recycling_costs = self.recycling_cost(recycled_material)
+        #recycling_costs = self.recycling_cost(recycled_material)
 
         return (
             depletion_ratio[:, timestep, :],
             emissions_avoided[:, timestep, :],
-            recycling_costs[:, timestep, :],
+            #recycling_costs[:, timestep, :],
         )
 
     def run(self, output, recycling_rate):
@@ -184,17 +184,17 @@ class MatterUse:
         emissions_avoided = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
-        recycling_costs = np.zeros(
-            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
-        )
+        #recycling_costs = np.zeros(
+        #    (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        #)
         for timestep in range(len(self.model_time_horizon)):
             depletion_ratio, emissions_avoided_timestep, recycling_costs_timestep = (
                 self.stepwise_run(timestep, output, recycling_rate)
             )
             depletion_ratios[:, timestep, :] = depletion_ratio
             emissions_avoided[:, timestep, :] = emissions_avoided_timestep
-            recycling_costs[:, timestep, :] = recycling_costs_timestep
-        return depletion_ratios, emissions_avoided, recycling_costs
+            #recycling_costs[:, timestep, :] = recycling_costs_timestep
+        return depletion_ratios, emissions_avoided #recycling_costs
 
     ############################################################################################################
 
@@ -328,10 +328,9 @@ class MatterUse:
     ##################################################################################
     # Recycling cost based on income level calculation
     ##################################################################################
+    """
     def linear_decrease_cost(self, min_cost, max_cost, timestep):
-        """
-        Calculate the cost of recycling with a linear decrease over the time horizon.
-        """
+       
         start_year = self.model_time_horizon[0]
         end_year = self.model_time_horizon[-1]
         year = self.model_time_horizon[timestep]
@@ -339,9 +338,6 @@ class MatterUse:
         return max_cost + slope * (year - start_year)
 
     def recycling_cost(self, recycled_material):
-        """
-        Calculate the recycling cost based on income level and recycled material.
-        """
         # TODO: Need to move this to default_parameters.py
         cost_ranges = {
             "Low income": (0 * 1e-3, 25 * 1e-3),
@@ -359,7 +355,7 @@ class MatterUse:
                     costs[i, j, k] = (
                         average_cost * recycled_material[i, j, k]
                     )  # Assuming recycled_material is in Gt
-        return costs
+        return costs """
 
     def _interpolate_material_intensity(self):
         interp_data = np.zeros(

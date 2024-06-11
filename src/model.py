@@ -113,7 +113,7 @@ class JUSTICE:
         #
         ############################################################################################################################################################
 
-        # Set the savings rate and emissions control rate levers
+        # Set the savings rate and emissions control rate levers #TODO add recycling_rate
         # TODO: check if we need this
         self.fixed_savings_rate = np.zeros(
             (
@@ -275,6 +275,13 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
+            "emissions_avoided": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
             "regional_temperature": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
@@ -286,6 +293,13 @@ class JUSTICE:
                 (len(self.time_horizon.model_time_horizon), self.no_of_ensembles)
             ),
             "damage_fraction": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "depletion_ratio": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
@@ -413,6 +427,9 @@ class JUSTICE:
                     :, timestep
                 ],  # NOTE: @Angela - assuming the recycling rate is of shape (regions, timesteps)
             )
+            self.data['emissions_avoided'][:, timestep, :] = emissions_avoided
+            self.data['depletion_ratio'][:, timestep, :] = depletion_ratio
+            #self.data['recycling_costs'][:, timestep, :] = recycling_costs
 
             # Feedback loop for adjusted carbon intensity #NOTE: Angela - In this way, the model will stay independent of the matter model
             self.emissions.feedback_loop_for_adjusted_carbon_intensity(
