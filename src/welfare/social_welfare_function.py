@@ -75,17 +75,17 @@ class SocialWelfareFunction:
         """
         This method calculates the welfare.
         """
+
+        # Adjust consumption_per_capita with sufficiency threshold
         # New feature - sufficiency_threshold - subtracted from consumption_per_capita
         consumption_per_capita = consumption_per_capita - self.sufficiency_threshold
 
         # New feature: consumption_per_capita is checked to have negative values
-        # If there are negative values, they are replaced with 1e-6. -inf if it becomes 0 # 0.1025329474
+        # If there are negative values, they are replaced with 1e-6. -inf if it becomes 0
         # This is essential to calculate utility that's not a NaN (or complex number)
         consumption_per_capita = np.where(
             consumption_per_capita < 0, 1e-6, consumption_per_capita
         )
-
-        # Adjust consumption_per_capita with sufficiency threshold
 
         # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
         consumption_per_capita_inequality_aversion = np.power(  # Validated

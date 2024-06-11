@@ -1,34 +1,6 @@
 import numpy as np
 
 
-# Compute the GINI coefficient
-def calculate_gini_index(array):
-    """Calculate the Gini index of a numpy array."""
-    # Can be used to calculate both spatial and temporal inequality
-    # O indicates perfect equality and 1 maximal inequality
-    # based on bottom eq:
-    # http://www.statsdirect.com/help/default.htm#nonparametric_methods/gini.htm
-
-    # TODO: Can check spatial inequality by timestep or temporal inequality
-    # All values are treated equally, arrays must be 1d:
-    array = array.flatten()
-    if np.amin(array) < 0:
-        # Values cannot be negative:
-        array -= np.amin(array)
-    # Values cannot be 0:
-    # Check if array contains 0
-    elif np.amin(array) == 0:
-        array += 0.0000001
-    # Values must be sorted:
-    array = np.sort(array)
-    # Index per array element:
-    index = np.arange(1, array.shape[0] + 1)
-    # Number of array elements:
-    n = array.shape[0]
-    # Gini coefficient:
-    return (np.sum((2 * index - n - 1) * array)) / (n * np.sum(array))
-
-
 def years_above_temperature_threshold(temperature, threshold):
     """Calculate the number of years above a temperature threshold."""
     # Temperature array should be 2D. Check if it is 2D, else throw an error.
