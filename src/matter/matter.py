@@ -136,6 +136,11 @@ class MatterUse:
         """
         if len(recycling_rate.shape) == 1:
             recycling_rate = recycling_rate.reshape(-1, 1)
+        # Ensure material_intensity and output are 3D arrays
+        if len(self.material_intensity.shape) == 2:
+            self.material_intensity = self.material_intensity[:, :, np.newaxis]
+        if len(output.shape) == 2:
+            output = output[:, :, np.newaxis]
 
         material_consumption = (
             self.material_intensity[:, timestep, :]
@@ -201,6 +206,11 @@ class MatterUse:
     # NOTE: if the following functions are only specific to this class, and not used anywhere else, you can use the decorator @classmethod to make them private
     # Palok I have never use decorators, so do you think are necessary? also I changed the methods and don't know if I should use timestep here ?
     def get_in_use_stock(self, material_consumption, timestep):
+        if len(self.in_use_stock.shape) == 2:
+            self.in_use_stock = self.in_use_stock[:, :, np.newaxis]
+        if len(self.discarded_material.shape) == 2:
+            self.discarded_material = self.discarded_material[:, :, np.newaxis]
+
         if timestep == 0:
             return self.in_use_stock[:, timestep, :]
         else:
@@ -211,6 +221,8 @@ class MatterUse:
             )
 
     def get_discarded_material(self, in_use_stock):
+        if len(self.discarded_material.shape) == 2:
+            self.discarded_material = self.discarded_material[:, :, np.newaxis]
         return self.discard_rate * in_use_stock
 
     def get_recycled_material(self, discarded_material, recycling_rate=None):
@@ -233,6 +245,9 @@ class MatterUse:
     def get_material_reserves(
         self, extracted_matter, converted_material_reserves, timestep
     ):
+        if len(self.material_reserves.shape) == 2:
+            self.material_reserves = self.material_reserves[:, :, np.newaxis]
+
         if timestep == 0:
             return self.material_reserves[:, timestep, :]
         else:
@@ -243,6 +258,9 @@ class MatterUse:
             )
 
     def get_material_resources(self, converted_material_reserves, timestep):
+        if len(self.material_resources.shape) == 2:
+            self.material_resources = self.material_resources[:, :, np.newaxis]
+            
         if timestep == 0:
             return self.material_resources[:, timestep, :]
         else:

@@ -419,6 +419,10 @@ class JUSTICE:
         if self.economy_submodule == EconomySubModules.MATTER:
             # Get the recycling rate policy lever from kwargs
             recycling_rate = kwargs["recycling_rate"]
+            # Ensure gross_output is 3D array
+            if len(gross_output.shape) == 2:
+                gross_output = gross_output[:, :, np.newaxis]
+                
             # Run the matter model
             depletion_ratio, emissions_avoided = self.matter.stepwise_run(
                 timestep=timestep,
