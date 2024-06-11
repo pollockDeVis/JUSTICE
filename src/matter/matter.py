@@ -149,7 +149,7 @@ class MatterUse:
         ) / 1_000_000_000  # Convert to Gt
 
         in_use_stock = self.get_in_use_stock(material_consumption, timestep)
-        discarded_material = self.get_discarded_material(in_use_stock, timestep)
+        discarded_material = self.get_discarded_material(in_use_stock)
         recycled_material = self.get_recycled_material(
             discarded_material, recycling_rate
         )
