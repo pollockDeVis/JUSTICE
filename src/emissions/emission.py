@@ -98,9 +98,15 @@ class OutputToEmissions:
         self, scenario, timestep, emissions_avoided
     ):
         scenario = get_economic_scenario(scenario)
+        print(f"emissions_avoided shape: {emissions_avoided.shape}")
+        print(f"self.gdp_array shape: {self.gdp_array[:, timestep, :].shape}")
+        print(f"self.carbon_intensity shape: {self.carbon_intensity[:, timestep, :, scenario].shape}")
 
         # Calculate the delta of carbon intensity - amount by which carbon intensity should be reduced
         delta_carbon_intensity = emissions_avoided / self.gdp_array[:, timestep, :]
+        
+        # Debugging print statement for delta_carbon_intensity
+        print(f"delta_carbon_intensity shape: {delta_carbon_intensity.shape}")
 
         # Assert if delta_carbon_intensity is bigger than the carbon intensity
         assert np.all(
