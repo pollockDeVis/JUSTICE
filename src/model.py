@@ -420,7 +420,7 @@ class JUSTICE:
             # Get the recycling rate policy lever from kwargs
             recycling_rate = kwargs["recycling_rate"]
             # Run the matter model
-            depletion_ratio, emissions_avoided, recycling_costs = self.matter.stepwise_run(
+            depletion_ratio, emissions_avoided = self.matter.stepwise_run(
                 timestep=timestep,
                 output=gross_output,
                 recycling_rate=recycling_rate[

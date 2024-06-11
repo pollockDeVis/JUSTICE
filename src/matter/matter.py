@@ -168,12 +168,8 @@ class MatterUse:
         # Calculate recycling costs
         #recycling_costs = self.recycling_cost(recycled_material)
 
-        return (
-            depletion_ratio[:, timestep, :],
-            emissions_avoided[:, timestep, :],
-            #recycling_costs[:, timestep, :],
-        )
-
+        return depletion_ratio, emissions_avoided  # , recycling_costs
+    
     def run(self, output, recycling_rate):
         """
         Run the matter-use calculations for the entire time horizon.
@@ -188,7 +184,7 @@ class MatterUse:
         #    (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         #)
         for timestep in range(len(self.model_time_horizon)):
-            depletion_ratio, emissions_avoided_timestep, recycling_costs_timestep = (
+            depletion_ratio, emissions_avoided_timestep = (
                 self.stepwise_run(timestep, output, recycling_rate)
             )
             depletion_ratios[:, timestep, :] = depletion_ratio
@@ -366,11 +362,6 @@ class MatterUse:
             )
         )
         for i in range(self.material_intensity_array.shape[0]):
-            print(f"Interpolating for region {i}")
-            print(f"Data time horizon: {self.data_time_horizon}")
-            print(
-                f"Material intensity shape: {self.material_intensity_array[i, :].shape}"
-            )
 
             if len(self.data_time_horizon) != self.material_intensity_array.shape[1]:
                 raise ValueError(
