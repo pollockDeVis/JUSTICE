@@ -237,6 +237,8 @@ class MatterUse:
         return material_consumption - recycled_material
 
     def get_converted_material_reserves(self, timestep):
+        if len(self.material_resources.shape) == 2:
+            self.material_resources = self.material_resources[:, :, np.newaxis]
         return (
             self.conversion_rate_material_reserves
             * self.material_resources[:, timestep - 1, :]
