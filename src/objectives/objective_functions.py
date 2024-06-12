@@ -49,7 +49,7 @@ def total_abatement_cost(abatement_cost):
     return total_abatement_cost
 
 
-def calculate_gini_index_c1_2D(data):  # Vectorized in 2D
+def calculate_gini_index_c1(data):  # Vectorized in 2D
     """
     Gini Calculation based on Milanovic's Concept 1 Inequality
     which is unweighted (population) international inequality.
@@ -61,29 +61,46 @@ def calculate_gini_index_c1_2D(data):  # Vectorized in 2D
     returns gini_coefficient over time
     """
 
-    # Assert if data is not 2D
-    assert data.ndim == 2, "Data must be 2D"
+    if data.ndim == 2:
+        # Calculate the mean of the data
+        mean_data = np.mean(data, axis=0)
 
-    # Calculate the mean of the data
-    mean_data = np.mean(data, axis=0)
+        # Get the number of samples/regions
+        sample_size = data.shape[0]
 
-    # Get the number of samples/regions
-    sample_size = data.shape[0]
+        # Difference matrix with broadcasting
+        difference_matrix = data[:, np.newaxis, :] - data[np.newaxis, :, :]
 
-    # Difference matrix with broadcasting
-    difference_matrix = data[:, np.newaxis, :] - data[np.newaxis, :, :]
+        # Only consider positive differences
+        positive_differences_sum = np.sum(
+            difference_matrix * (difference_matrix > 0), axis=(0, 1)
+        )
 
-    # Only consider positive differences
-    positive_differences_sum = np.sum(
-        difference_matrix * (difference_matrix > 0), axis=(0, 1)
-    )
+        gini_coefficient = (
+            (1 / mean_data) * (1 / sample_size**2) * positive_differences_sum
+        )
 
-    gini_coefficient = (1 / mean_data) * (1 / sample_size**2) * positive_differences_sum
+    elif data.ndim == 1:  # TESTED
+        # Calculate the mean of the data
+        mean_data = np.mean(data)
+
+        # Get the number of samples/regions
+        sample_size = data.shape[0]
+
+        # Difference matrix with broadcasting
+        difference_matrix = data[:, np.newaxis] - data[np.newaxis, :]
+
+        # Only consider positive differences
+        positive_differences_sum = np.sum(difference_matrix * (difference_matrix > 0))
+
+        gini_coefficient = (
+            (1 / mean_data) * (1 / sample_size**2) * positive_differences_sum
+        )
 
     return gini_coefficient
 
 
-def calculate_gini_index_c1_3D(data):
+def calculate_gini_index_c1_3D(data):  # Vectorized in 3D
     """
     Gini Calculation based on Milanovic's Concept 1 Inequality
     which is unweighted (population) international inequality.

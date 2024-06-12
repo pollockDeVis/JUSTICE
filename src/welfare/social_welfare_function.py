@@ -8,10 +8,9 @@ Derived from RICE50 model which is based on Berger et al. (2020).
 from typing import Any
 import numpy as np
 import pandas as pd
-from src.util.enumerations import get_economic_scenario, WelfareFunction
+from src.util.enumerations import WelfareFunction
 from src.objectives.objective_functions import (
-    calculate_gini_index_c1_2D,
-    calculate_gini_index_c1_3D,
+    calculate_gini_index_c1,
 )
 
 
@@ -91,9 +90,9 @@ class SocialWelfareFunction:
 
         # Adjust consumption_per_capita with sufficiency threshold
         # New feature - sufficiency_threshold - subtracted from consumption_per_capita
-        consumption_per_capita = (
-            consumption_per_capita - self.sufficiency_threshold
-        )  # TODO: This is wrong - threshold should be transformed with utility function
+        # consumption_per_capita = (
+        #     consumption_per_capita - self.sufficiency_threshold
+        # )  # TODO: This is wrong - threshold should be transformed with utility function
 
         # New feature: consumption_per_capita is checked to have negative values
         # If there are negative values, they are replaced with 1e-6. -inf if it becomes 0
@@ -150,13 +149,20 @@ class SocialWelfareFunction:
             consumption_per_capita < 0, 1e-6, consumption_per_capita
         )
 
+        # Aggregate the states dimension
+        states_aggregated_consumption_per_capita = self.states_aggregator(
+            consumption_per_capita,
+            self.climate_ensembles,
+            self.risk_aversion,
+        )
+
         (
             disentangled_utility,
             disentangled_utility_regional_powered,
             disentangled_utility_powered,
         ) = self.spatial_aggregator(
-            consumption_per_capita,
-            self.population_ratio[:, timestep, :],
+            states_aggregated_consumption_per_capita,
+            self.population_ratio[:, timestep],
             self.elasticity_of_marginal_utility_of_consumption,
             self.inequality_aversion,
             self.egality_strictness,
@@ -209,6 +215,7 @@ class SocialWelfareFunction:
         2. Weigh the utility with respective weights & sum across the selected dimension
         3. Invert the utility to consumption for next dimension
         """
+
         # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
         inequality_aversion_transformed_utility = self.utility_function(
             data, inequality_aversion
@@ -219,23 +226,29 @@ class SocialWelfareFunction:
             population_ratio * inequality_aversion_transformed_utility
         )
 
-        # Calculate the regional disentangled utility powered - This should be used for gini computation (57, 286, 1001)
+        # Calculate the regional disentangled utility powered - This should be used for gini computation (57, 286,)
         declining_marginal_utility_transformed_utility = self.utility_function(
             data, elasticity_of_marginal_utility_of_consumption
+        )
+
+        # Calculate the gini index of the  declining_marginal_utility_transformed_utility
+        gini_of_marginally_transformed_utility = calculate_gini_index_c1(
+            declining_marginal_utility_transformed_utility
+        )
+
+        # Adjusted gini with egality strictness parameter
+        gini_of_marginally_transformed_utility = (
+            gini_of_marginally_transformed_utility * egality_strictness
         )
 
         # Aggregate Spatially
         disentangled_utility_summed = np.sum(population_weighted_utility, axis=0)
 
-        # Applying gini to disentangled utility summed
+        # Applying gini to spatially aggregated welfare
         # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
-        disentangled_utility_summed = disentangled_utility_summed
-        # NOTE: Commented out temporarily
-        # * (
-        #     1 - gini_disentangled_utility * self.egality_strictness
-        # )
-
-        # Calculate the disentangled utility powered
+        disentangled_utility_summed = disentangled_utility_summed * (
+            (1 - gini_of_marginally_transformed_utility)
+        )
 
         # Invert the utility to consumption
         inequality_aversion_inverted_utility = self.inverse_utility_function(
@@ -247,6 +260,19 @@ class SocialWelfareFunction:
                 elasticity_of_marginal_utility_of_consumption,
             )
         )
+        # Check if sufficiency threshold is present. If it is zero, Can't transform it
+        if sufficiency_threshold != 0:
+            # NOTE: In sufficientarian formulation, the welfare becomes positive. Still take absolute value and Minimize it.
+            # Transform the sufficiency threshold
+            sufficiency_threshold_transformed_utility = self.utility_function(
+                sufficiency_threshold, elasticity_of_marginal_utility_of_consumption
+            )
+
+            # Subtracting the transformed sufficiency threshold (or czero) from the aggregated welfare following Adler (2017)
+            declining_marginal_utility_transformed_spatially_aggregated_welfare = (
+                declining_marginal_utility_transformed_spatially_aggregated_welfare
+                - sufficiency_threshold_transformed_utility
+            )
 
         # returning disaggregated & aggregated version
         return (
@@ -311,7 +337,7 @@ class SocialWelfareFunction:
         weighted_utility = risk_aversion_transformed_utility * (1 / climate_ensembles)
 
         # Sum the weighted utility across the states. Axis is 2 because data shape is (regions, timesteps, states)
-        aggregated_utility = np.sum(weighted_utility, axis=2)
+        aggregated_utility = np.sum(weighted_utility, axis=-1)
 
         # Invert the utility
         risk_aversion_inverted_utility = self.inverse_utility_function(

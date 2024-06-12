@@ -291,28 +291,16 @@ class JUSTICE:
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
                 )
             ),
             "welfare_regional_temporal": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
                 )
             ),
-            "welfare_regional": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    self.no_of_ensembles,
-                )
-            ),
-            "welfare_temporal": np.zeros(
-                (
-                    len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
-                )
-            ),
+            "welfare_regional": np.zeros((len(self.data_loader.REGION_LIST),)),
+            "welfare_temporal": np.zeros((len(self.time_horizon.model_time_horizon),)),
             "welfare": np.zeros((self.no_of_ensembles,)),
         }
 
@@ -663,7 +651,7 @@ class JUSTICE:
         # TODO: Return step by step individual data/observations
         # TODO: FOr RL, we have to separate obeservation and rewards
 
-        self.data["disentangled_utility"][:, timestep, :] = (
+        self.data["disentangled_utility"][:, timestep] = (
             self.welfare_function.calculate_stepwise_welfare(
                 consumption_per_capita=self.data["consumption_per_capita"][
                     :, timestep, :
