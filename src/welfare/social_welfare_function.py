@@ -209,43 +209,30 @@ class SocialWelfareFunction:
         )
 
         # Calculate the gini index of the  declining_marginal_utility_transformed_utility
-        gini_of_marginally_transformed_utility = calculate_gini_index_c1(data)
+        gini = calculate_gini_index_c1(data)
 
-        # Adjusted gini with egality strictness parameter
-        gini_of_marginally_transformed_utility = (
-            gini_of_marginally_transformed_utility * egality_strictness
-        )
-
-        # Equality-Prioritarianism by Peterson. (1 - g(w1, w2, ..., wn)) * F(w1, w2, ..., wn), where g is the gini index and F is the prioritarian transformation
-        inequality_aversion_transformed_utility = (
-            1 - gini_of_marginally_transformed_utility
-        ) * inequality_aversion_transformed_utility
+        # Adjusted gini with egality strictness parameter #Transforming inequality_aversion_transformed_utility with gini here makes no difference
+        gini = gini * egality_strictness
 
         # Calculate the population weighted consumption per capita
         population_weighted_utility = (
             population_ratio * inequality_aversion_transformed_utility
         )
 
-        # Calculate the regional disentangled utility powered - This should be used for gini computation (57, 286,) #TODO: Redundant
-        # declining_marginal_utility_transformed_welfare = self.utility_function(
-        #     data,
-        #     elasticity_of_marginal_utility_of_consumption,
-        # )
-
         # Aggregate Spatially
-        disentangled_utility_summed = np.sum(population_weighted_utility, axis=0)
+        weighted_sum_of_utility = np.sum(population_weighted_utility, axis=0)
 
+        # Equality-Prioritarianism by Peterson. (1 - g(w1, w2, ..., wn)) * F(w1, w2, ..., wn), where g is the gini index
+        # and F is the prioritarian transformation
         # # Applying gini to spatially aggregated welfare
         # # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
-        # disentangled_utility_summed = disentangled_utility_summed * (
-        #     (1 - gini_of_marginally_transformed_utility)
-        # )
+        weighted_sum_of_utility = weighted_sum_of_utility / ((1 - gini))
 
         # Invert the utility to consumption
         inequality_aversion_inverted_utility = self.inverse_utility_function(
-            disentangled_utility_summed, inequality_aversion
+            weighted_sum_of_utility, inequality_aversion
         )
-        # Applying declining marginal utility to spatially aggregated welfare
+        # Applying declining marginal utility to spatially aggregated welfare # Adding gini improves the welfare here
         spatially_aggregated_welfare = self.utility_function(
             inequality_aversion_inverted_utility,
             elasticity_of_marginal_utility_of_consumption,
@@ -258,7 +245,6 @@ class SocialWelfareFunction:
             sufficiency_threshold_transformed_utility = self.utility_function(
                 sufficiency_threshold, elasticity_of_marginal_utility_of_consumption
             )
-
             # Subtracting the transformed sufficiency threshold (or czero) from the aggregated welfare following Adler (2017)
             spatially_aggregated_welfare = (
                 spatially_aggregated_welfare - sufficiency_threshold_transformed_utility
