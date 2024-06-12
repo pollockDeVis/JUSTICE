@@ -9,7 +9,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from src.util.enumerations import get_economic_scenario, WelfareFunction
-from src.objectives.objective_functions import calculate_gini_index
+from src.objectives.objective_functions import (
+    calculate_gini_index_c1_2D,
+    calculate_gini_index_c1_3D,
+)
 
 
 # TODO: Need to change the name of this class to a more general name
@@ -23,6 +26,7 @@ class SocialWelfareFunction:
         input_dataset,
         time_horizon,
         population,
+        risk_aversion,
         elasticity_of_marginal_utility_of_consumption,
         pure_rate_of_social_time_preference,
         inequality_aversion,
@@ -38,6 +42,8 @@ class SocialWelfareFunction:
         self.data_timestep = time_horizon.data_timestep
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
+
+        self.risk_aversion = risk_aversion
         self.elasticity_of_marginal_utility_of_consumption = (
             elasticity_of_marginal_utility_of_consumption
         )
@@ -63,6 +69,7 @@ class SocialWelfareFunction:
         discount_rate = np.tile(discount_rate, (len(self.region_list), 1))  # Validated
 
         # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1) # Validated Shape (57, 286, 1)
+        # TODO: Probably Redundant after dimensions are aggregated in the order described in the paper by Berger & Emmerling
         self.discount_rate = discount_rate[:, :, np.newaxis]
 
         # Calculate the total population for each timestep # Validated
@@ -78,61 +85,80 @@ class SocialWelfareFunction:
 
         # Adjust consumption_per_capita with sufficiency threshold
         # New feature - sufficiency_threshold - subtracted from consumption_per_capita
-        consumption_per_capita = consumption_per_capita - self.sufficiency_threshold
+        consumption_per_capita = (
+            consumption_per_capita - self.sufficiency_threshold
+        )  # TODO: This is wrong - threshold should be transformed with utility function
 
         # New feature: consumption_per_capita is checked to have negative values
         # If there are negative values, they are replaced with 1e-6. -inf if it becomes 0
         # This is essential to calculate utility that's not a NaN (or complex number)
+        # TODO: Probably will have to check this step after the utility function is applied
         consumption_per_capita = np.where(
             consumption_per_capita < 0, 1e-6, consumption_per_capita
         )
 
-        # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
-        consumption_per_capita_inequality_aversion = np.power(  # Validated
-            consumption_per_capita, 1 - self.inequality_aversion
-        )
-
-        # Calculate the population weighted consumption per capita
-        population_weighted_consumption_per_capita = (
-            self.population_ratio * consumption_per_capita_inequality_aversion
-        )
-
-        # Calculate the disentangled utility # Validated
-        disentangled_utility = (
-            population_weighted_consumption_per_capita  # # has nans 25th region
-        )
-
-        # Get the gini of disentalgled utility
-        gini_disentangled_utility = calculate_gini_index(disentangled_utility)
-
-        # Calculate the regional disentangled utility powered - For regional welfare calculation # has nans 25th region
-        disentangled_utility_regional_powered = np.power(
+        (
             disentangled_utility,
-            (
-                (1 - self.elasticity_of_marginal_utility_of_consumption)
-                / (1 - self.inequality_aversion)
-            ),
+            disentangled_utility_regional_powered,
+            disentangled_utility_powered,
+        ) = self.spatial_aggregator(
+            consumption_per_capita,
+            self.population_ratio,
+            self.elasticity_of_marginal_utility_of_consumption,
+            self.inequality_aversion,
         )
 
-        # Sum the disentangled utility
-        disentangled_utility_summed = np.sum(
-            population_weighted_consumption_per_capita, axis=0
-        )
+        # # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
+        # consumption_per_capita_inequality_aversion = np.power(  # Validated
+        #     consumption_per_capita, 1 - self.inequality_aversion
+        # )
 
-        # Applying gini to disentangled utility summed
-        # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
-        disentangled_utility_summed = disentangled_utility_summed * (
-            1 - gini_disentangled_utility * self.egality_strictness
-        )
+        # # Calculate the population weighted consumption per capita
+        # population_weighted_consumption_per_capita = (
+        #     self.population_ratio * consumption_per_capita_inequality_aversion
+        # )
 
-        # Calculate the disentangled utility powered # TODO- Change this
-        disentangled_utility_powered = np.power(
-            disentangled_utility_summed,
-            (
-                (1 - self.elasticity_of_marginal_utility_of_consumption)
-                / (1 - self.inequality_aversion)
-            ),
-        )
+        # # Calculate the disentangled utility # Validated
+        # disentangled_utility = (
+        #     population_weighted_consumption_per_capita  # # has nans 25th region
+        # )
+
+        # # Get the gini of disentalgled utility
+        # # NOTE: Commented out temporarily
+        # # gini_disentangled_utility = calculate_gini_index_c1_3D(
+        # #     disentangled_utility
+        # # )  # TEMPORARY #TODO - Change this
+
+        # # Calculate the regional disentangled utility powered - For regional welfare calculation # has nans 25th region
+        # disentangled_utility_regional_powered = np.power(
+        #     disentangled_utility,
+        #     (
+        #         (1 - self.elasticity_of_marginal_utility_of_consumption)
+        #         / (1 - self.inequality_aversion)
+        #     ),
+        # )
+
+        # # Sum the disentangled utility
+        # disentangled_utility_summed = np.sum(
+        #     population_weighted_consumption_per_capita, axis=0
+        # )
+
+        # # Applying gini to disentangled utility summed
+        # # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
+        # disentangled_utility_summed = disentangled_utility_summed
+        # # NOTE: Commented out temporarily
+        # # * (
+        # #     1 - gini_disentangled_utility * self.egality_strictness
+        # # )
+
+        # # Calculate the disentangled utility powered # TODO- Change this
+        # disentangled_utility_powered = np.power(
+        #     disentangled_utility_summed,
+        #     (
+        #         (1 - self.elasticity_of_marginal_utility_of_consumption)
+        #         / (1 - self.inequality_aversion)
+        #     ),
+        # )
 
         # Calculate the welfare disaggregated temporally # TODO- Change this
         welfare_temporal = (
@@ -180,6 +206,7 @@ class SocialWelfareFunction:
         consumption_per_capita = np.where(
             consumption_per_capita < 0, 1e-6, consumption_per_capita
         )
+
         # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
         consumption_per_capita_inequality_aversion = np.power(
             consumption_per_capita, 1 - self.inequality_aversion
@@ -240,6 +267,95 @@ class SocialWelfareFunction:
             welfare_regional_temporal,
             welfare_temporal,
         )
+
+    @classmethod
+    def isoelastic_utility_function(self, data, parameter):
+        """
+        This method calculates the isoelastic utility.
+        """
+        if parameter == 1:
+            utility = np.log(data)
+        else:
+            utility = np.power(data, 1 - parameter) / (1 - parameter)
+        return utility
+
+    # TODO: Remove this method
+    @classmethod
+    def spatial_aggregator(
+        self,
+        data,
+        population_ratio,
+        elasticity_of_marginal_utility_of_consumption,
+        inequality_aversion,
+    ):
+        """
+        This method calculates the spatial aggregator.
+        """
+        # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
+        consumption_per_capita_inequality_aversion = np.power(  # Validated
+            data, 1 - inequality_aversion
+        )
+
+        # Calculate the population weighted consumption per capita
+        population_weighted_consumption_per_capita = (
+            population_ratio * consumption_per_capita_inequality_aversion
+        )
+
+        # Calculate the disentangled utility # Validated
+        disentangled_utility = (
+            population_weighted_consumption_per_capita  # # has nans 25th region
+        )
+
+        # Calculate the regional disentangled utility powered - This should be used for gini computation
+        disentangled_utility_regional_powered = np.power(
+            disentangled_utility,
+            (
+                (1 - elasticity_of_marginal_utility_of_consumption)
+                / (1 - inequality_aversion)
+            ),
+        )
+
+        # Sum the disentangled utility
+        disentangled_utility_summed = np.sum(
+            population_weighted_consumption_per_capita, axis=0
+        )
+
+        # Applying gini to disentangled utility summed
+        # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
+        disentangled_utility_summed = disentangled_utility_summed
+        # NOTE: Commented out temporarily
+        # * (
+        #     1 - gini_disentangled_utility * self.egality_strictness
+        # )
+
+        # Calculate the disentangled utility powered # TODO- Change this
+        disentangled_utility_powered = np.power(
+            disentangled_utility_summed,
+            (
+                (1 - elasticity_of_marginal_utility_of_consumption)
+                / (1 - inequality_aversion)
+            ),
+        )
+        # returning disaggregated & aggregated version
+        return (
+            disentangled_utility,
+            disentangled_utility_regional_powered,
+            disentangled_utility_powered,
+        )
+
+    @classmethod
+    def temporal_aggregator(self, data, discount_rate):
+        """
+        This method calculates the temporal aggregator.
+        """
+        pass
+
+    @classmethod
+    def states_aggregator(self, data, risk_aversion):
+        """
+        This method calculates the states aggregator.
+        """
+        pass
 
     def __getattribute__(self, __name: str) -> Any:
         """

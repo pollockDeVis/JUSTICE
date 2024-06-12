@@ -140,6 +140,7 @@ class JUSTICE:
         self.inequality_aversion = welfare_defaults["inequality_aversion"]
         self.sufficiency_threshold = welfare_defaults["sufficiency_threshold"]
         self.egality_strictness = welfare_defaults["egality_strictness"]
+        self.risk_aversion = welfare_defaults["risk_aversion"]
 
         ############################################################################################################################################################
         #
@@ -191,6 +192,7 @@ class JUSTICE:
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
             population=self.economy.get_population(),  # TODO: This makes welfare function dependent on economy model
+            risk_aversion=self.risk_aversion,
             elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
             pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
             inequality_aversion=self.inequality_aversion,
