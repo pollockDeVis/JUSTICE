@@ -202,7 +202,8 @@ class SocialWelfareFunction:
         2. Weigh the utility with respective weights & sum across the selected dimension
         3. Invert the utility to consumption for next dimension
         """
-
+        # Adjust data with sufficiency threshold
+        # data = data - sufficiency_threshold
         # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
         inequality_aversion_transformed_utility = self.utility_function(
             data, inequality_aversion
@@ -232,19 +233,30 @@ class SocialWelfareFunction:
         inequality_aversion_inverted_utility = self.inverse_utility_function(
             weighted_sum_of_utility, inequality_aversion
         )
+        print(inequality_aversion_inverted_utility.shape)
+        print(
+            "Inequality Aversion Inverted Utility: ",
+            inequality_aversion_inverted_utility,
+        )
+
         # Applying declining marginal utility to spatially aggregated welfare # Adding gini improves the welfare here
         spatially_aggregated_welfare = self.utility_function(
             inequality_aversion_inverted_utility,
             elasticity_of_marginal_utility_of_consumption,
         )
-
-        # Check if sufficiency threshold is present. If it is zero, Can't transform it
+        print("Spatially Aggregated Welfare: ", spatially_aggregated_welfare)
+        # Check if sufficiency threshold is present. If it is zero, Can't transform it #TODO
         if sufficiency_threshold != 0:
             # NOTE: In sufficientarian formulation, the welfare becomes positive. Still take absolute value and Minimize it.
             # Transform the sufficiency threshold
             sufficiency_threshold_transformed_utility = self.utility_function(
                 sufficiency_threshold, elasticity_of_marginal_utility_of_consumption
             )
+            # print(
+            #     "Sufficiency Threshold Transformed Utility: ",
+            #     sufficiency_threshold_transformed_utility,
+            #     sufficiency_threshold,
+            # )
             # Subtracting the transformed sufficiency threshold (or czero) from the aggregated welfare following Adler (2017)
             spatially_aggregated_welfare = (
                 spatially_aggregated_welfare - sufficiency_threshold_transformed_utility
@@ -265,6 +277,9 @@ class SocialWelfareFunction:
         # TODO: Change that -1 later
         # Calculate the welfare disaggregated temporally
         temporally_disaggregated_welfare = (data - 1) * discount_rate[0, :]  # [0, :, :]
+
+        # Temp
+        temporally_disaggregated_welfare = temporally_disaggregated_welfare * (-1)
 
         # Welfare disaggregated temporally and regionally - For regional welfare calculation
         # welfare_regional_temporal = (data_disaggregated - 1) * discount_rate
