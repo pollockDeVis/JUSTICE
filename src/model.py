@@ -287,21 +287,20 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
-            "disentangled_utility": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                )
+            "spatially_aggregated_welfare": np.zeros(
+                (len(self.time_horizon.model_time_horizon),)
             ),
-            "welfare_regional_temporal": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                )
+            # "welfare_regional_temporal": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #     )
+            # ),
+            # "welfare_regional": np.zeros((len(self.data_loader.REGION_LIST),)),
+            "temporally_disaggregated_welfare": np.zeros(
+                (len(self.time_horizon.model_time_horizon),)
             ),
-            "welfare_regional": np.zeros((len(self.data_loader.REGION_LIST),)),
-            "welfare_temporal": np.zeros((len(self.time_horizon.model_time_horizon),)),
-            "welfare": np.zeros((self.no_of_ensembles,)),
+            "welfare": np.zeros((1,)),
         }
 
     ############################################################################################################################################################
@@ -649,9 +648,9 @@ class JUSTICE:
         ), "The given timestep is out of range."
 
         # TODO: Return step by step individual data/observations
-        # TODO: FOr RL, we have to separate obeservation and rewards
+        # TODO: For RL, we have to separate obeservation and rewards
 
-        self.data["disentangled_utility"][:, timestep] = (
+        self.data["spatially_aggregated_welfare"][timestep] = (
             self.welfare_function.calculate_stepwise_welfare(
                 consumption_per_capita=self.data["consumption_per_capita"][
                     :, timestep, :
@@ -663,10 +662,8 @@ class JUSTICE:
         # Last timestep. Welfare_utilitarian_regional and welfare_utilitarian are calculated only for the last timestep
         if timestep == (len(self.time_horizon.model_time_horizon) - 1):
             (
-                self.data["disentangled_utility"],
-                self.data["welfare_regional_temporal"],
-                self.data["welfare_temporal"],
-                self.data["welfare_regional"],
+                self.data["spatially_aggregated_welfare"],
+                self.data["temporally_disaggregated_welfare"],
                 self.data["welfare"],
             ) = self.welfare_function.calculate_welfare(
                 consumption_per_capita=self.data["consumption_per_capita"]
@@ -686,10 +683,8 @@ class JUSTICE:
         """
 
         (
-            self.data["disentangled_utility"],
-            self.data["welfare_regional_temporal"],
-            self.data["welfare_temporal"],
-            self.data["welfare_regional"],
+            self.data["spatially_aggregated_welfare"],
+            self.data["temporally_disaggregated_welfare"],
             self.data["welfare"],
         ) = self.welfare_function.calculate_welfare(
             consumption_per_capita=self.data["consumption_per_capita"]

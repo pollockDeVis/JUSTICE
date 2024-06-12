@@ -60,6 +60,8 @@ def calculate_gini_index_c1(data):  # Vectorized in 2D
     Vectorized implementation of Gini Index calculation for 2D data
     returns gini_coefficient over time
     """
+    # Make the data positive by taking an absolute value
+    data = np.abs(data)
 
     if data.ndim == 2:
         # Calculate the mean of the data

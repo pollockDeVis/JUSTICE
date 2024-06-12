@@ -110,11 +110,7 @@ class SocialWelfareFunction:
         )
 
         # Aggregate the Spatial Dimension
-        (
-            disentangled_utility,
-            disentangled_utility_regional_powered,
-            disentangled_utility_powered,
-        ) = self.spatial_aggregator(
+        spatially_aggregated_welfare = self.spatial_aggregator(
             states_aggregated_consumption_per_capita,
             self.population_ratio,
             self.elasticity_of_marginal_utility_of_consumption,
@@ -124,19 +120,14 @@ class SocialWelfareFunction:
         )
 
         # Aggregate the Temporal Dimension
-        welfare_regional_temporal, welfare_temporal, welfare_regional, welfare = (
-            self.temporal_aggregator(
-                disentangled_utility_powered,
-                disentangled_utility_regional_powered,
-                self.discount_rate,
-            )
+        temporally_disaggregated_welfare, welfare = self.temporal_aggregator(
+            data=spatially_aggregated_welfare,
+            discount_rate=self.discount_rate,
         )
 
         return (
-            disentangled_utility,
-            welfare_regional_temporal,
-            welfare_temporal,
-            welfare_regional,
+            spatially_aggregated_welfare,
+            temporally_disaggregated_welfare,
             welfare,
         )
 
@@ -156,11 +147,7 @@ class SocialWelfareFunction:
             self.risk_aversion,
         )
 
-        (
-            disentangled_utility,
-            disentangled_utility_regional_powered,
-            disentangled_utility_powered,
-        ) = self.spatial_aggregator(
+        spatially_aggregated_welfare = self.spatial_aggregator(
             states_aggregated_consumption_per_capita,
             self.population_ratio[:, timestep],
             self.elasticity_of_marginal_utility_of_consumption,
@@ -171,7 +158,7 @@ class SocialWelfareFunction:
 
         # No Temporal aggregation in Stepwise calculation
 
-        return disentangled_utility
+        return spatially_aggregated_welfare
 
     @classmethod
     def utility_function(self, data, parameter):
@@ -221,45 +208,49 @@ class SocialWelfareFunction:
             data, inequality_aversion
         )
 
-        # Calculate the population weighted consumption per capita
-        population_weighted_utility = (
-            population_ratio * inequality_aversion_transformed_utility
-        )
-
-        # Calculate the regional disentangled utility powered - This should be used for gini computation (57, 286,)
-        declining_marginal_utility_transformed_utility = self.utility_function(
-            data, elasticity_of_marginal_utility_of_consumption
-        )
-
         # Calculate the gini index of the  declining_marginal_utility_transformed_utility
-        gini_of_marginally_transformed_utility = calculate_gini_index_c1(
-            declining_marginal_utility_transformed_utility
-        )
+        gini_of_marginally_transformed_utility = calculate_gini_index_c1(data)
 
         # Adjusted gini with egality strictness parameter
         gini_of_marginally_transformed_utility = (
             gini_of_marginally_transformed_utility * egality_strictness
         )
 
+        # Equality-Prioritarianism by Peterson. (1 - g(w1, w2, ..., wn)) * F(w1, w2, ..., wn), where g is the gini index and F is the prioritarian transformation
+        inequality_aversion_transformed_utility = (
+            1 - gini_of_marginally_transformed_utility
+        ) * inequality_aversion_transformed_utility
+
+        # Calculate the population weighted consumption per capita
+        population_weighted_utility = (
+            population_ratio * inequality_aversion_transformed_utility
+        )
+
+        # Calculate the regional disentangled utility powered - This should be used for gini computation (57, 286,) #TODO: Redundant
+        # declining_marginal_utility_transformed_welfare = self.utility_function(
+        #     data,
+        #     elasticity_of_marginal_utility_of_consumption,
+        # )
+
         # Aggregate Spatially
         disentangled_utility_summed = np.sum(population_weighted_utility, axis=0)
 
-        # Applying gini to spatially aggregated welfare
-        # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
-        disentangled_utility_summed = disentangled_utility_summed * (
-            (1 - gini_of_marginally_transformed_utility)
-        )
+        # # Applying gini to spatially aggregated welfare
+        # # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
+        # disentangled_utility_summed = disentangled_utility_summed * (
+        #     (1 - gini_of_marginally_transformed_utility)
+        # )
 
         # Invert the utility to consumption
         inequality_aversion_inverted_utility = self.inverse_utility_function(
             disentangled_utility_summed, inequality_aversion
         )
-        declining_marginal_utility_transformed_spatially_aggregated_welfare = (
-            self.utility_function(
-                inequality_aversion_inverted_utility,
-                elasticity_of_marginal_utility_of_consumption,
-            )
+        # Applying declining marginal utility to spatially aggregated welfare
+        spatially_aggregated_welfare = self.utility_function(
+            inequality_aversion_inverted_utility,
+            elasticity_of_marginal_utility_of_consumption,
         )
+
         # Check if sufficiency threshold is present. If it is zero, Can't transform it
         if sufficiency_threshold != 0:
             # NOTE: In sufficientarian formulation, the welfare becomes positive. Still take absolute value and Minimize it.
@@ -269,23 +260,17 @@ class SocialWelfareFunction:
             )
 
             # Subtracting the transformed sufficiency threshold (or czero) from the aggregated welfare following Adler (2017)
-            declining_marginal_utility_transformed_spatially_aggregated_welfare = (
-                declining_marginal_utility_transformed_spatially_aggregated_welfare
-                - sufficiency_threshold_transformed_utility
+            spatially_aggregated_welfare = (
+                spatially_aggregated_welfare - sufficiency_threshold_transformed_utility
             )
 
         # returning disaggregated & aggregated version
-        return (
-            population_weighted_utility,
-            declining_marginal_utility_transformed_utility,
-            declining_marginal_utility_transformed_spatially_aggregated_welfare,
-        )
+        return spatially_aggregated_welfare
 
     @classmethod
     def temporal_aggregator(
         self,
         data,
-        data_disaggregated,
         discount_rate,
     ):
         """
@@ -293,27 +278,27 @@ class SocialWelfareFunction:
         """
         # TODO: Change that -1 later
         # Calculate the welfare disaggregated temporally
-        welfare_temporal = (data - 1) * discount_rate[0, :]  # [0, :, :]
+        temporally_disaggregated_welfare = (data - 1) * discount_rate[0, :]  # [0, :, :]
 
         # Welfare disaggregated temporally and regionally - For regional welfare calculation
-        welfare_regional_temporal = (data_disaggregated - 1) * discount_rate
+        # welfare_regional_temporal = (data_disaggregated - 1) * discount_rate
 
         # Welfare aggregated regionally
-        welfare_regional = np.sum(
-            welfare_regional_temporal,
-            axis=1,
-        )
+        # welfare_regional = np.sum(
+        #     welfare_regional_temporal,
+        #     axis=1,
+        # )
 
         # Calculate the welfare
         welfare = np.sum(
-            welfare_temporal,
+            temporally_disaggregated_welfare,
             axis=0,
         )
 
         return (
-            welfare_regional_temporal,
-            welfare_temporal,
-            welfare_regional,
+            # welfare_regional_temporal,
+            temporally_disaggregated_welfare,
+            # welfare_regional,
             welfare,
         )
 
