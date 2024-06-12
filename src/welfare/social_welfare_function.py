@@ -114,7 +114,6 @@ class SocialWelfareFunction:
             self.temporal_aggregator(
                 disentangled_utility_powered,
                 disentangled_utility_regional_powered,
-                self.elasticity_of_marginal_utility_of_consumption,
                 self.discount_rate,
             )
         )
@@ -172,7 +171,7 @@ class SocialWelfareFunction:
         if parameter == 1:
             utility = np.exp(data)
         else:
-            utility = np.power(data * (1 - parameter), 1 / (1 - parameter))
+            utility = np.power((data * (1 - parameter)), 1 / (1 - parameter))
         return utility
 
     # TODO: Remove this method
@@ -196,8 +195,8 @@ class SocialWelfareFunction:
         3. Invert the utility to consumption for next dimension
         """
         # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
-        inequality_aversion_transformed_utility = np.power(  # Validated
-            data, 1 - inequality_aversion
+        inequality_aversion_transformed_utility = self.utility_function(
+            data, inequality_aversion
         )
 
         # Calculate the population weighted consumption per capita
@@ -210,14 +209,6 @@ class SocialWelfareFunction:
             data, elasticity_of_marginal_utility_of_consumption
         )
 
-        # np.power(
-        #     population_weighted_utility,
-        #     (
-        #         (1 - elasticity_of_marginal_utility_of_consumption)
-        #         / (1 - inequality_aversion)
-        #     ),
-        # )
-
         # Aggregate Spatially
         disentangled_utility_summed = np.sum(population_weighted_utility, axis=0)
 
@@ -229,19 +220,24 @@ class SocialWelfareFunction:
         #     1 - gini_disentangled_utility * self.egality_strictness
         # )
 
-        # Calculate the disentangled utility powered # TODO- Change this
-        disentangled_utility_powered = np.power(
-            disentangled_utility_summed,
-            (
-                (1 - elasticity_of_marginal_utility_of_consumption)
-                / (1 - inequality_aversion)
-            ),
+        # Calculate the disentangled utility powered
+
+        # Invert the utility to consumption
+        inequality_aversion_inverted_utility = self.inverse_utility_function(
+            disentangled_utility_summed, inequality_aversion
         )
+        declining_marginal_utility_transformed_spatially_aggregated_welfare = (
+            self.utility_function(
+                inequality_aversion_inverted_utility,
+                elasticity_of_marginal_utility_of_consumption,
+            )
+        )
+
         # returning disaggregated & aggregated version
         return (
             population_weighted_utility,
             declining_marginal_utility_transformed_utility,
-            disentangled_utility_powered,
+            declining_marginal_utility_transformed_spatially_aggregated_welfare,
         )
 
     @classmethod
@@ -249,22 +245,27 @@ class SocialWelfareFunction:
         self,
         data,
         data_disaggregated,
-        elasticity_of_marginal_utility_of_consumption,
         discount_rate,
     ):
         """
         This method calculates the temporal aggregator.
         """
         # Calculate the welfare disaggregated temporally # TODO- Change this
-        welfare_temporal = (
-            ((data) / (1 - elasticity_of_marginal_utility_of_consumption)) - 1
-        ) * discount_rate[0, :, :]
+        # TODO: Temporary
+        # welfare_temporal = (
+        #     ((data) / (1 - elasticity_of_marginal_utility_of_consumption)) - 1
+        # ) * discount_rate[0, :, :]
 
+        welfare_temporal = (((data)) - 1) * discount_rate[0, :, :]
+
+        # TODO: Temporary
         # Welfare disaggregated temporally and regionally - For regional welfare calculation
-        welfare_regional_temporal = (
-            (data_disaggregated / (1 - elasticity_of_marginal_utility_of_consumption))
-            - 1
-        ) * discount_rate
+        # welfare_regional_temporal = (
+        #     (data_disaggregated / (1 - elasticity_of_marginal_utility_of_consumption))
+        #     - 1
+        # ) * discount_rate
+
+        welfare_regional_temporal = ((data_disaggregated) - 1) * discount_rate
 
         # Welfare aggregated regionally
         welfare_regional = np.sum(
