@@ -60,7 +60,7 @@ class JUSTICE:
         self.damage_function_type = damage_function_type
         self.abatement_type = abatement_type
         self.scenario = scenario
-        
+
         # Set default economy submodule
         self.economy_submodule = None
 
@@ -207,6 +207,7 @@ class JUSTICE:
                 time_horizon=self.time_horizon,
                 climate_ensembles=self.no_of_ensembles,
                 economy=self.economy,
+                scenario=self.scenario,
             )
 
         self.emissions = OutputToEmissions(
@@ -428,9 +429,9 @@ class JUSTICE:
                     :, timestep
                 ],  # NOTE: @Angela - assuming the recycling rate is of shape (regions, timesteps)
             )
-            self.data['emissions_avoided'][:, timestep, :] = emissions_avoided
-            self.data['depletion_ratio'][:, timestep, :] = depletion_ratio
-            #self.data['recycling_costs'][:, timestep, :] = recycling_costs
+            self.data["emissions_avoided"][:, timestep, :] = emissions_avoided
+            self.data["depletion_ratio"][:, timestep, :] = depletion_ratio
+            # self.data['recycling_costs'][:, timestep, :] = recycling_costs
 
             # Feedback loop for adjusted carbon intensity #NOTE: Angela - In this way, the model will stay independent of the matter model
             self.emissions.feedback_loop_for_adjusted_carbon_intensity(

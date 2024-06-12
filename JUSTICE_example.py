@@ -285,7 +285,7 @@ def setup_RBF_for_emission_control(
 
 
 if __name__ == "__main__":
-    # datasets = JUSTICE_run(scenarios=0)
-    datasets = JUSTICE_stepwise_run(scenarios=2)
+    datasets = JUSTICE_run(scenarios=0)
+    # datasets = JUSTICE_stepwise_run(scenarios=2)
     # Print the keys of the datasets
     print(datasets.keys())

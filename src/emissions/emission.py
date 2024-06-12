@@ -48,6 +48,7 @@ class OutputToEmissions:
         if self.timestep != self.data_timestep:
             # Interpolate Carbon Intensity Dictionary
             self._interpolate_carbon_intensity()
+            self._interpolate_gdp()
 
         # Initializing the emissions array
         self.emissions = np.zeros(
@@ -99,12 +100,28 @@ class OutputToEmissions:
     ):
         scenario = get_economic_scenario(scenario)
         print(f"emissions_avoided shape: {emissions_avoided.shape}")
-        print(f"self.gdp_array shape: {self.gdp_array[:, timestep, :].shape}")
-        print(f"self.carbon_intensity shape: {self.carbon_intensity[:, timestep, :, scenario].shape}")
+        # print(
+        #     f"self.gdp_array shape: {((self.gdp_array[:, timestep, scenario]).reshape(-1, 1)).shape}"
+        # )
+
+        # print(f"self.gdp_array shape: {self.gdp_array[:, timestep, :].shape}")
+        # print(
+        #     f"self.carbon_intensity shape: {self.carbon_intensity[:, timestep, :, scenario].shape}"
+        # )
 
         # Calculate the delta of carbon intensity - amount by which carbon intensity should be reduced
-        delta_carbon_intensity = emissions_avoided / self.gdp_array[:, timestep, :]
-        
+        # Shape of emissions_avoided is (57, 1001) and shape of gdp_array is (57, 1)
+
+        # delta_carbon_intensity = np.divide(
+        #     emissions_avoided,
+        #     ((self.gdp_array[:, timestep, scenario])[:, np.newaxis]),
+        #
+
+        # gdp_reshaped = self.gdp_array[:, timestep, scenario]
+        delta_carbon_intensity = emissions_avoided / (
+            self.gdp_array[:, timestep, scenario].reshape(-1, 1)
+        )
+
         # Debugging print statement for delta_carbon_intensity
         print(f"delta_carbon_intensity shape: {delta_carbon_intensity.shape}")
 
@@ -171,6 +188,24 @@ class OutputToEmissions:
                 interp_data[i, :, j] = f(self.model_time_horizon)
 
         self.carbon_intensity_array = interp_data
+
+    def _interpolate_gdp(self):
+        interp_data = np.zeros(
+            (
+                self.gdp_array.shape[0],
+                len(self.model_time_horizon),
+                self.gdp_array.shape[2],
+            )
+        )
+
+        for i in range(self.gdp_array.shape[0]):
+            for j in range(self.gdp_array.shape[2]):
+                f = interp1d(
+                    self.data_time_horizon, self.gdp_array[i, :, j], kind="linear"
+                )
+                interp_data[i, :, j] = f(self.model_time_horizon)
+
+        self.gdp_array = interp_data
 
     def get_emissions(self):
         """
