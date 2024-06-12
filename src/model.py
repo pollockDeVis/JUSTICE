@@ -662,13 +662,13 @@ class JUSTICE:
         # TODO: Return step by step individual data/observations
         # TODO: FOr RL, we have to separate obeservation and rewards
 
-        (
-            self.data["disentangled_utility"][:, timestep, :],
-            self.data["welfare_regional_temporal"][:, timestep, :],
-            self.data["welfare_temporal"][timestep, :],
-        ) = self.welfare_function.calculate_stepwise_welfare(
-            consumption_per_capita=self.data["consumption_per_capita"][:, timestep, :],
-            timestep=timestep,
+        self.data["disentangled_utility"][:, timestep, :] = (
+            self.welfare_function.calculate_stepwise_welfare(
+                consumption_per_capita=self.data["consumption_per_capita"][
+                    :, timestep, :
+                ],
+                timestep=timestep,
+            )
         )
 
         # Last timestep. Welfare_utilitarian_regional and welfare_utilitarian are calculated only for the last timestep
