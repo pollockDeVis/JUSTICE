@@ -25,6 +25,7 @@ class SocialWelfareFunction:
         self,
         input_dataset,
         time_horizon,
+        climate_ensembles,
         population,
         risk_aversion,
         elasticity_of_marginal_utility_of_consumption,
@@ -42,7 +43,7 @@ class SocialWelfareFunction:
         self.data_timestep = time_horizon.data_timestep
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
-
+        self.climate_ensembles = climate_ensembles
         self.risk_aversion = risk_aversion
         self.elasticity_of_marginal_utility_of_consumption = (
             elasticity_of_marginal_utility_of_consumption
@@ -66,12 +67,17 @@ class SocialWelfareFunction:
         )
 
         # Regionalize the discount rate
-        discount_rate = np.tile(discount_rate, (len(self.region_list), 1))  # Validated
+        self.discount_rate = np.tile(discount_rate, (len(self.region_list), 1))
+        # TODO: Temporarily commented out
+        # discount_rate = np.tile(discount_rate, (len(self.region_list), 1))  # Validated
 
         # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1) # Validated Shape (57, 286, 1)
         # TODO: Probably Redundant after dimensions are aggregated in the order described in the paper by Berger & Emmerling
-        self.discount_rate = discount_rate[:, :, np.newaxis]
+        # TODO: Temp comment out
+        # self.discount_rate = discount_rate[:, :, np.newaxis]
 
+        # Population is exogenously. So we don't need the 1001 copies across the ensemble members. Hence we select the first ensemble member
+        population = population[:, :, 0]
         # Calculate the total population for each timestep # Validated
         total_population = np.sum(population, axis=0)
 
@@ -97,12 +103,20 @@ class SocialWelfareFunction:
             consumption_per_capita < 0, 1e-6, consumption_per_capita
         )
 
+        # Aggregate the states dimension
+        states_aggregated_consumption_per_capita = self.states_aggregator(
+            consumption_per_capita,
+            self.climate_ensembles,
+            self.risk_aversion,
+        )
+
+        # Aggregate the Spatial Dimension
         (
             disentangled_utility,
             disentangled_utility_regional_powered,
             disentangled_utility_powered,
         ) = self.spatial_aggregator(
-            consumption_per_capita,
+            states_aggregated_consumption_per_capita,
             self.population_ratio,
             self.elasticity_of_marginal_utility_of_consumption,
             self.inequality_aversion,
@@ -110,6 +124,7 @@ class SocialWelfareFunction:
             self.sufficiency_threshold,
         )
 
+        # Aggregate the Temporal Dimension
         welfare_regional_temporal, welfare_temporal, welfare_regional, welfare = (
             self.temporal_aggregator(
                 disentangled_utility_powered,
@@ -250,22 +265,12 @@ class SocialWelfareFunction:
         """
         This method calculates the temporal aggregator.
         """
-        # Calculate the welfare disaggregated temporally # TODO- Change this
-        # TODO: Temporary
-        # welfare_temporal = (
-        #     ((data) / (1 - elasticity_of_marginal_utility_of_consumption)) - 1
-        # ) * discount_rate[0, :, :]
+        # TODO: Change that -1 later
+        # Calculate the welfare disaggregated temporally
+        welfare_temporal = (data - 1) * discount_rate[0, :]  # [0, :, :]
 
-        welfare_temporal = (((data)) - 1) * discount_rate[0, :, :]
-
-        # TODO: Temporary
         # Welfare disaggregated temporally and regionally - For regional welfare calculation
-        # welfare_regional_temporal = (
-        #     (data_disaggregated / (1 - elasticity_of_marginal_utility_of_consumption))
-        #     - 1
-        # ) * discount_rate
-
-        welfare_regional_temporal = ((data_disaggregated) - 1) * discount_rate
+        welfare_regional_temporal = (data_disaggregated - 1) * discount_rate
 
         # Welfare aggregated regionally
         welfare_regional = np.sum(
@@ -287,11 +292,33 @@ class SocialWelfareFunction:
         )
 
     @classmethod
-    def states_aggregator(self, data, risk_aversion):
+    def states_aggregator(self, data, climate_ensembles, risk_aversion):
         """
         This method calculates the states aggregator.
+        According to Berger & Emmerling (2017), the social welfare function across a dimension is equal to
+        the equity equivalent of consumption at the particular dimension
+        The aggregated welfare can be calculated in the following steps:
+        1. Transform consumption to utility
+        2. Weigh the utility with respective weights & sum across the selected dimension
+        3. Invert the utility to consumption for next dimension
         """
-        pass
+
+        # Transform the data according to the risk aversion
+        risk_aversion_transformed_utility = self.utility_function(data, risk_aversion)
+
+        # Weight the utility with the respective weight - probability of each states in this case.
+        # Probability of each state is 1/climate_ensembles
+        weighted_utility = risk_aversion_transformed_utility * (1 / climate_ensembles)
+
+        # Sum the weighted utility across the states. Axis is 2 because data shape is (regions, timesteps, states)
+        aggregated_utility = np.sum(weighted_utility, axis=2)
+
+        # Invert the utility
+        risk_aversion_inverted_utility = self.inverse_utility_function(
+            aggregated_utility, risk_aversion
+        )
+
+        return risk_aversion_inverted_utility
 
     def __getattribute__(self, __name: str) -> Any:
         """

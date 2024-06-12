@@ -191,6 +191,7 @@ class JUSTICE:
         self.welfare_function = SocialWelfareFunction(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
+            climate_ensembles=self.no_of_ensembles,
             population=self.economy.get_population(),  # TODO: This makes welfare function dependent on economy model
             risk_aversion=self.risk_aversion,
             elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
