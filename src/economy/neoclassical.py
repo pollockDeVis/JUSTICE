@@ -405,6 +405,26 @@ class NeoclassicalEconomyModel:
 
         return consumption_per_capita_per_timestep
 
+    def get_damage_cost_per_capita_per_timestep(self, timestep):
+
+        damages_per_timestep = self.damage[:, timestep, :]
+        damages_per_capita_per_timestep = (
+            1e3 * damages_per_timestep / self.population_array[:, timestep, np.newaxis]
+        )
+
+        return damages_per_capita_per_timestep
+
+    def get_abatement_cost_per_capita_per_timestep(self, timestep):
+
+        abatement_per_timestep = self.abatement[:, timestep, :]
+        abatement_per_capita_per_timestep = (
+            1e3
+            * abatement_per_timestep
+            / self.population_array[:, timestep, np.newaxis]
+        )
+
+        return abatement_per_capita_per_timestep
+
     def get_net_output(self):
         return self.net_output
 
@@ -446,6 +466,28 @@ class NeoclassicalEconomyModel:
         )
 
         return consumption_per_capita
+
+    def get_damage_cost_per_capita(self):
+        """
+        This method calculates the damages per capita.
+        Unit: Thousands 2005 USD PPP per year
+        """
+        damages_per_capita = (  # Validated
+            1e3 * self.damage / self.population_array[:, :, np.newaxis]
+        )
+
+        return damages_per_capita
+
+    def get_abatement_cost_per_capita(self):
+        """
+        This method calculates the abatement cost per capita.
+        Unit: Thousands 2005 USD PPP per year
+        """
+        abatement_cost_per_capita = (  # Validated
+            1e3 * self.abatement / self.population_array[:, :, np.newaxis]
+        )
+
+        return abatement_cost_per_capita
 
     def _interpolate_gdp(self):
         interp_data = np.zeros(
