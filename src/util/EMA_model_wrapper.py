@@ -137,13 +137,14 @@ def model_wrapper_emodps(**kwargs):
     datasets = model.evaluate()
 
     # Calculate the mean of ["welfare"] over the 1000 ensembles
-    welfare = np.abs(np.mean(datasets["welfare"]))
+    welfare = np.abs(datasets["welfare"])
 
     # Get the years above temperature threshold
     years_above_threshold = years_above_temperature_threshold(
         datasets["global_temperature"], 2.0
     )
 
+    # Change these #TODO
     # Get the total damage cost
     total_damage = total_damage_cost(datasets["economic_damage"])
 

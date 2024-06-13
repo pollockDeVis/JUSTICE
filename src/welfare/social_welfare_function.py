@@ -58,13 +58,13 @@ class SocialWelfareFunction:
         # Calculate the population ratio for each timestep # Validated
         self.population_ratio = population / total_population
 
-    def calculate_welfare(self, consumption_per_capita):
+    def calculate_welfare(self, consumption_per_capita, **kwargs):
         """
         This method calculates the welfare.
         """
         # Check if consumption_per_capita has negative values
         consumption_per_capita = np.where(
-            consumption_per_capita < 0, 1e-6, consumption_per_capita
+            consumption_per_capita <= 0, 1e-6, consumption_per_capita
         )
 
         # Aggregate the states dimension
@@ -82,6 +82,7 @@ class SocialWelfareFunction:
             self.inequality_aversion,
             self.egality_strictness,
             self.sufficiency_threshold,
+            **kwargs,
         )
 
         # Aggregate the Temporal Dimension
@@ -159,6 +160,7 @@ class SocialWelfareFunction:
         inequality_aversion,
         egality_strictness,
         sufficiency_threshold,
+        **kwargs,
     ):
         """
         This method calculates the spatial aggregator.
@@ -169,20 +171,19 @@ class SocialWelfareFunction:
         2. Weigh the utility with respective weights & sum across the selected dimension
         3. Invert the utility to consumption for next dimension
         """
-
-        # Adjust data with sufficiency threshold # Validated
-        data = data - sufficiency_threshold
+        # Check kwargs for welfare_loss flag
+        if (
+            "welfare_loss" in kwargs
+        ):  # Sufficentarian threshold not to be applied on non-consumption related metric (doesn't make sense)
+            welfare_loss = kwargs["welfare_loss"]
+        else:
+            # Adjust data with sufficiency threshold # Validated
+            data = data - sufficiency_threshold
 
         # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
         inequality_aversion_transformed_utility = self.utility_function(
             data, inequality_aversion
         )
-
-        # Calculate the gini index of the  declining_marginal_utility_transformed_utility
-        gini = calculate_gini_index_c1(data)
-
-        # Adjusted gini with egality strictness parameter #Transforming inequality_aversion_transformed_utility with gini here makes no difference
-        gini = gini * egality_strictness
 
         # Calculate the population weighted consumption per capita
         population_weighted_utility = (
@@ -192,11 +193,17 @@ class SocialWelfareFunction:
         # Aggregate Spatially
         weighted_sum_of_utility = np.sum(population_weighted_utility, axis=0)
 
-        # Equality-Prioritarianism by Peterson. (1 - g(w1, w2, ..., wn)) * F(w1, w2, ..., wn), where g is the gini index
-        # and F is the prioritarian transformation
-        # # Applying gini to spatially aggregated welfare
-        # [Enflo] egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
-        weighted_sum_of_utility = weighted_sum_of_utility * ((1 - gini))
+        # Calculate the gini index of the data
+        if egality_strictness != 0:
+            gini = calculate_gini_index_c1(data)
+
+            # Adjusted gini with egality strictness parameter #Transforming inequality_aversion_transformed_utility with gini here makes no difference
+            gini = gini * egality_strictness
+            # Equality-Prioritarianism by Peterson. (1 - g(w1, w2, ..., wn)) * F(w1, w2, ..., wn), where g is the gini index
+            # and F is the prioritarian transformation
+            # # Applying gini to spatially aggregated welfare
+            # [Enflo] egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
+            weighted_sum_of_utility = weighted_sum_of_utility * ((1 - gini))
 
         # Invert the utility to consumption
         inequality_aversion_inverted_utility = self.inverse_utility_function(

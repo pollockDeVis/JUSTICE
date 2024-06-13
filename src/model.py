@@ -242,6 +242,20 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
+            "damage_cost_per_capita": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "abatement_cost_per_capita": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
             "emissions": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
@@ -473,6 +487,12 @@ class JUSTICE:
                 self.savings_rate[:, timestep], timestep
             )
         )
+        self.data["damage_cost_per_capita"][:, timestep, :] = (
+            self.economy.get_damage_cost_per_capita_per_timestep(timestep)
+        )
+        self.data["abatement_cost_per_capita"][:, timestep, :] = (
+            self.economy.get_abatement_cost_per_capita_per_timestep(timestep)
+        )
 
     ############################################################################################################################################################
     #
@@ -622,6 +642,10 @@ class JUSTICE:
 
         self.data["economic_damage"] = self.economy.get_damages()
         self.data["abatement_cost"] = self.economy.get_abatement()
+        self.data["damage_cost_per_capita"] = self.economy.get_damage_cost_per_capita()
+        self.data["abatement_cost_per_capita"] = (
+            self.economy.get_abatement_cost_per_capita()
+        )
 
     ############################################################################################################################################################
     #
