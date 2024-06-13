@@ -67,13 +67,6 @@ class SocialWelfareFunction:
 
         # Regionalize the discount rate
         self.discount_rate = np.tile(discount_rate, (len(self.region_list), 1))
-        # TODO: Temporarily commented out
-        # discount_rate = np.tile(discount_rate, (len(self.region_list), 1))  # Validated
-
-        # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1) # Validated Shape (57, 286, 1)
-        # TODO: Probably Redundant after dimensions are aggregated in the order described in the paper by Berger & Emmerling
-        # TODO: Temp comment out
-        # self.discount_rate = discount_rate[:, :, np.newaxis]
 
         # Population is exogenously. So we don't need the 1001 copies across the ensemble members. Hence we select the first ensemble member
         population = population[:, :, 0]
@@ -232,23 +225,6 @@ class SocialWelfareFunction:
             elasticity_of_marginal_utility_of_consumption,
         )
 
-        # Check if sufficiency threshold is present. If it is zero, Can't transform it #TODO
-        # if sufficiency_threshold != 0:
-        #     # NOTE: In sufficientarian formulation, the welfare becomes positive. Still take absolute value and Minimize it.
-        #     # Transform the sufficiency threshold
-        #     sufficiency_threshold_transformed_utility = self.utility_function(
-        #         sufficiency_threshold, elasticity_of_marginal_utility_of_consumption
-        #     )
-        # print(
-        #     "Sufficiency Threshold Transformed Utility: ",
-        #     sufficiency_threshold_transformed_utility,
-        #     sufficiency_threshold,
-        # )
-        # Subtracting the transformed sufficiency threshold (or czero) from the aggregated welfare following Adler (2017)
-        # spatially_aggregated_welfare = (
-        #     spatially_aggregated_welfare - sufficiency_threshold_transformed_utility
-        # )
-
         # returning disaggregated & aggregated version
         return spatially_aggregated_welfare
 
@@ -264,18 +240,6 @@ class SocialWelfareFunction:
         # TODO: Change that -1 later
         # Calculate the welfare disaggregated temporally
         temporally_disaggregated_welfare = (data - 1) * discount_rate[0, :]  # [0, :, :]
-
-        # Temp
-        # temporally_disaggregated_welfare = temporally_disaggregated_welfare #* (-1) #chage this temp
-
-        # Welfare disaggregated temporally and regionally - For regional welfare calculation
-        # welfare_regional_temporal = (data_disaggregated - 1) * discount_rate
-
-        # Welfare aggregated regionally
-        # welfare_regional = np.sum(
-        #     welfare_regional_temporal,
-        #     axis=1,
-        # )
 
         # Calculate the welfare
         welfare = np.sum(
