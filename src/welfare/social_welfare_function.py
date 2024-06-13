@@ -7,8 +7,6 @@ Derived from RICE50 model which is based on Berger et al. (2020).
 
 from typing import Any
 import numpy as np
-import pandas as pd
-from src.util.enumerations import WelfareFunction
 from src.objectives.objective_functions import (
     calculate_gini_index_c1,
 )
@@ -52,23 +50,7 @@ class SocialWelfareFunction:
         self.sufficiency_threshold = sufficiency_threshold
         self.egality_strictness = egality_strictness
 
-        # Time horizon
-        timestep_list = np.arange(
-            0, len(time_horizon.model_time_horizon), time_horizon.timestep
-        )
-
-        # Calculate the discount rate # Validated
-        discount_rate = 1 / (
-            np.power(
-                (1 + self.pure_rate_of_social_time_preference),
-                (time_horizon.timestep * (timestep_list)),
-            )
-        )
-
-        # Regionalize the discount rate
-        self.discount_rate = np.tile(discount_rate, (len(self.region_list), 1))
-
-        # Population is exogenously. So we don't need the 1001 copies across the ensemble members. Hence we select the first ensemble member
+        # Population is exogenous. So we don't need the 1001 copies across the ensemble members. Hence we select the first ensemble member
         population = population[:, :, 0]
         # Calculate the total population for each timestep # Validated
         total_population = np.sum(population, axis=0)
@@ -105,7 +87,9 @@ class SocialWelfareFunction:
         # Aggregate the Temporal Dimension
         temporally_disaggregated_welfare, welfare = self.temporal_aggregator(
             data=spatially_aggregated_welfare,
-            discount_rate=self.discount_rate,
+            pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
+            model_time_horizon=self.model_time_horizon,
+            timestep=self.timestep,
         )
 
         return (
@@ -228,18 +212,27 @@ class SocialWelfareFunction:
         # returning disaggregated & aggregated version
         return spatially_aggregated_welfare
 
-    @classmethod
+    # @classmethod
     def temporal_aggregator(
         self,
         data,
-        discount_rate,
+        pure_rate_of_social_time_preference,
+        model_time_horizon,
+        timestep,
     ):
         """
         This method calculates the temporal aggregator.
         """
+        # Get the discount rate array
+        discount_rate = self.calculate_discount_rate(
+            pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+            model_time_horizon=model_time_horizon,
+            timestep=timestep,
+        )
+
         # TODO: Change that -1 later
         # Calculate the welfare disaggregated temporally
-        temporally_disaggregated_welfare = (data - 1) * discount_rate[0, :]  # [0, :, :]
+        temporally_disaggregated_welfare = (data - 1) * discount_rate
 
         # Calculate the welfare
         welfare = np.sum(
@@ -282,6 +275,43 @@ class SocialWelfareFunction:
         )
 
         return risk_aversion_inverted_utility
+
+    def calculate_discount_rate(
+        self, pure_rate_of_social_time_preference, model_time_horizon, timestep
+    ):
+        """
+        This method calculates the discount rate.
+        """
+
+        # Time horizon
+        timestep_list = np.arange(len(np.array(model_time_horizon)))
+        # np.arange(0, len(model_time_horizon), timestep)
+
+        # Calculate the discount rate
+        discount_rate = 1 / (
+            np.power(
+                (1 + pure_rate_of_social_time_preference),
+                (timestep * (timestep_list)),
+            )
+        )
+        return discount_rate
+
+    def calculate_discount_rate_v2(  # Tested. Generates more optimistic welfare values than the previous method
+        self, pure_rate_of_social_time_preference, model_time_horizon
+    ):
+        """
+        This method calculates the discount rate with a different mathematical formula
+        discount_rate = e^(-pure_rate_of_social_time_preference * timestep_list)
+
+        """
+
+        # Time horizon
+        timestep_list = np.arange(len(np.array(model_time_horizon)))
+
+        # Vectorize the computation to get the discounted values
+        discount_rate = np.exp(-pure_rate_of_social_time_preference * timestep_list)
+
+        return discount_rate
 
     def __getattribute__(self, __name: str) -> Any:
         """
