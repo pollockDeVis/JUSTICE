@@ -117,7 +117,7 @@ class SocialWelfareDefaults:
                 "risk_aversion": 0,  # Risk aversion parameter.
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
                 "pure_rate_of_social_time_preference": 0.0,
-                "inequality_aversion": 2.0,
+                "inequality_aversion": 0.5,  # 2.0, #NOTE: Keeping it 0.5 to make it distinct from prioritarian
                 "sufficiency_threshold": 0.0,
                 "egality_strictness": 1.0,  # Range: [0,1]
             },

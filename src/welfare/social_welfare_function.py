@@ -218,8 +218,8 @@ class SocialWelfareFunction:
         # Equality-Prioritarianism by Peterson. (1 - g(w1, w2, ..., wn)) * F(w1, w2, ..., wn), where g is the gini index
         # and F is the prioritarian transformation
         # # Applying gini to spatially aggregated welfare
-        # # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
-        weighted_sum_of_utility = weighted_sum_of_utility / ((1 - gini))
+        # [Enflo] egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
+        weighted_sum_of_utility = weighted_sum_of_utility * ((1 - gini))
 
         # Invert the utility to consumption
         inequality_aversion_inverted_utility = self.inverse_utility_function(
