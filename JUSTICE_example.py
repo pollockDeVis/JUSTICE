@@ -304,7 +304,8 @@ def setup_RBF_for_emission_control(
 
 if __name__ == "__main__":
     datasets = JUSTICE_run(
-        scenarios=2, social_welfare_function=WelfareFunction.UTILITARIAN
+        scenarios=2,
+        social_welfare_function=WelfareFunction.PRIORITARIAN,
     )
     # datasets = JUSTICE_stepwise_run(
     #     scenarios=2,
