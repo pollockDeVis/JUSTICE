@@ -206,7 +206,6 @@ class JUSTICE:
                 input_dataset=self.data_loader,
                 time_horizon=self.time_horizon,
                 climate_ensembles=self.no_of_ensembles,
-                economy=self.economy,
                 scenario=self.scenario,
             )
 
@@ -301,6 +300,41 @@ class JUSTICE:
                 )
             ),
             "depletion_ratio": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "recycled_material": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "discarded_material": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "material_consumption": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "extracted_matter": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "waste": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
@@ -422,7 +456,7 @@ class JUSTICE:
             recycling_rate = kwargs["recycling_rate"]
 
             # Run the matter model
-            depletion_ratio, emissions_avoided = self.matter.stepwise_run(
+            depletion_ratio, emissions_avoided, recycled_material, material_consumption, discarded_material, extracted_matter, waste = self.matter.stepwise_run(
                 timestep=timestep,
                 output=gross_output,
                 recycling_rate=recycling_rate[
@@ -431,6 +465,13 @@ class JUSTICE:
             )
             self.data["emissions_avoided"][:, timestep, :] = emissions_avoided
             self.data["depletion_ratio"][:, timestep, :] = depletion_ratio
+            self.data['recycled_material'][:,timestep,:] = recycled_material
+            self.data['discarded_material'][:,timestep,:] = discarded_material
+            self.data['material_consumption'][:,timestep,:] = material_consumption
+            self.data['extracted_matter'][:,timestep,:] = extracted_matter
+            self.data['waste'][:,timestep,:] = waste
+           
+        
             # self.data['recycling_costs'][:, timestep, :] = recycling_costs
 
             # Feedback loop for adjusted carbon intensity #NOTE: Angela - In this way, the model will stay independent of the matter model
