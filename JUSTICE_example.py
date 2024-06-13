@@ -77,12 +77,13 @@ def JUSTICE_run(scenarios=2, climate_ensembles=None, social_welfare_function=Non
 
     # Get the results
     datasets = model.evaluate()
+
     # Temp #TODO: Remove this
     _, _, damages = model.welfare_function.calculate_welfare(
         datasets["damage_cost_per_capita"], welfare_loss=True
     )
-    print("Wloss Damage: ", damages)
 
+    print("Wloss Damage: ", damages)
     _, _, abatement = model.welfare_function.calculate_welfare(
         datasets["abatement_cost_per_capita"], welfare_loss=True
     )
@@ -315,7 +316,7 @@ def setup_RBF_for_emission_control(
 if __name__ == "__main__":
     datasets = JUSTICE_run(
         scenarios=2,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
+        social_welfare_function=WelfareFunction.PRIORITARIAN,
     )
     # datasets = JUSTICE_stepwise_run(
     #     scenarios=2,

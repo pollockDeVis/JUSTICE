@@ -91,6 +91,7 @@ def run_optimization_adaptive(
     n_inputs=n_inputs,
     nfe=nfe,
     swf=0,
+    seed=None,
     filename=None,
     folder=None,
     economy_type=Economy.NEOCLASSICAL,
@@ -173,14 +174,14 @@ def run_optimization_adaptive(
             kind=ScalarOutcome.MINIMIZE,
         ),
         ScalarOutcome(
-            "total_damage_cost",
-            variable_name="total_damage",
-            kind=ScalarOutcome.MINIMIZE,
+            "welfare_loss_damage",
+            variable_name="welfare_loss_damage",
+            kind=ScalarOutcome.MAXIMIZE,
         ),
         ScalarOutcome(
-            "total_abatement_cost",
-            variable_name="total_abatement",
-            kind=ScalarOutcome.MINIMIZE,
+            "welfare_loss_abatement",
+            variable_name="welfare_loss_abatement",
+            kind=ScalarOutcome.MAXIMIZE,
         ),
     ]
 
@@ -190,9 +191,9 @@ def run_optimization_adaptive(
     )
 
     # Add social_welfare_function.value[1] to the filename
-    filename = f"{social_welfare_function.value[1]}_{nfe}.tar.gz"
+    filename = f"{social_welfare_function.value[1]}_{nfe}_{seed}.tar.gz"
     date = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    directory_name = f"./data/output_{date}"
+    directory_name = f"./data/{social_welfare_function.value[1]}_{date}"
     # Create a directory inside ./data/ with name output_{date} to save the results
     os.mkdir(directory_name)
     # Set the directory path to a variable
@@ -207,15 +208,15 @@ def run_optimization_adaptive(
         EpsilonProgress(),
     ]
 
-    with MPIEvaluator(model) as evaluator:  # Use this for HPC
-        # with SequentialEvaluator(model) as evaluator:  # Use this for local machine
+    # with MPIEvaluator(model) as evaluator:  # Use this for HPC
+    with SequentialEvaluator(model) as evaluator:  # Use this for local machine
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
             epsilons=epsilons,
             reference=reference_scenario,
             convergence=convergence_metrics,
-            # population_size=2,  # NOTE set population parameters for local machine. It is faster for testing
+            population_size=2,  # NOTE set population parameters for local machine. It is faster for testing
         )
 
 
@@ -504,8 +505,12 @@ if __name__ == "__main__":
     #     random.seed(seed)
     #     np.random.seed(seed)
 
-    ema_logging.log_to_stderr(ema_logging.DEBUG)
-
+    ema_logging.log_to_stderr(ema_logging.INFO)
+    seed = seeds[4]
+    random.seed(seed)
+    np.random.seed(seed)
     # perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None)
-    run_optimization_adaptive(n_rbfs=4, n_inputs=2, nfe=5, filename=None, folder=None)
+    run_optimization_adaptive(
+        n_rbfs=4, n_inputs=2, nfe=5, filename=None, folder=None, seed=seed
+    )
     # run_optimization_static(nfe=5, filename=None, folder=None)

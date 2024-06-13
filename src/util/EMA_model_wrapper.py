@@ -11,8 +11,6 @@ from src.util.enumerations import *
 from solvers.emodps.rbf import RBF
 from src.objectives.objective_functions import (
     years_above_temperature_threshold,
-    total_damage_cost,
-    total_abatement_cost,
 )
 
 from src.util.emission_control_constraint import EmissionControlConstraint
@@ -144,14 +142,17 @@ def model_wrapper_emodps(**kwargs):
         datasets["global_temperature"], 2.0
     )
 
-    # Change these #TODO
-    # Get the total damage cost
-    total_damage = total_damage_cost(datasets["economic_damage"])
+    # Transform the damage cost per capita to welfare loss value
+    _, _, welfare_loss_damage = model.welfare_function.calculate_welfare(
+        datasets["damage_cost_per_capita"], welfare_loss=True
+    )
 
-    # Get the total abatement cost
-    total_abatement = total_abatement_cost(datasets["abatement_cost"])
+    # Transform the abatement cost to welfare loss value
+    _, _, welfare_loss_abatement = model.welfare_function.calculate_welfare(
+        datasets["abatement_cost_per_capita"], welfare_loss=True
+    )
 
-    return welfare, years_above_threshold, total_damage, total_abatement
+    return welfare, years_above_threshold, welfare_loss_damage, welfare_loss_abatement
 
 
 def model_wrapper(**kwargs):

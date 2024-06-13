@@ -25,5 +25,14 @@ nfe=10
 swf=(0 1 2 3) 
 myswf=${swf[$SLURM_ARRAY_TASK_ID]}
 
+# Seed values
+seeds=(9845531 1644652 3569126 6075612 521475)
+if ((SLURM_ARRAY_TASK_ID < ${#seeds[@]})); then
+    seed=${seeds[$SLURM_ARRAY_TASK_ID]}
+else
+    echo "Error: SLURM_ARRAY_TASK_ID ($SLURM_ARRAY_TASK_ID) exceeds the number of seeds (${#seeds[@]})."
+    exit 1
+fi
+
 # Call python script with nfe_value argument
-mpiexec -n 1 python3 hpc_run.py $nfe $myswf
+mpiexec -n 1 python3 hpc_run.py $nfe $myswf $seed
