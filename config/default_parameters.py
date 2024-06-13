@@ -107,7 +107,7 @@ class SocialWelfareDefaults:
                 "pure_rate_of_social_time_preference": 0.015,
                 "inequality_aversion": 0.0,
                 "sufficiency_threshold": (
-                    (1.25 * 365.25) / 1e3
+                    (5 * 365.25) / 1e3  # 1.25 * 365.25/1000
                 ),  # World bank stipulated the poverty line of US$1.25 for 2005 USD PPP.
                 # Consumption in JUSTICE is yearly (in thousands $2005 PPP), hence we simply
                 # multiply this poverty line rate with average days in a year and hence  in JUSTICE will be 1.25 * 365.25/1000
