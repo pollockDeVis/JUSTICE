@@ -7,9 +7,9 @@ Derived from RICE50 model which is based on Berger et al. (2020).
 
 from typing import Any
 import numpy as np
-import pandas as pd
-from src.util.enumerations import get_economic_scenario, WelfareFunction
-from src.objectives.objective_functions import calculate_gini_index
+from src.objectives.objective_functions import (
+    calculate_gini_index_c1,
+)
 
 
 # TODO: Need to change the name of this class to a more general name
@@ -22,7 +22,9 @@ class SocialWelfareFunction:
         self,
         input_dataset,
         time_horizon,
+        climate_ensembles,
         population,
+        risk_aversion,
         elasticity_of_marginal_utility_of_consumption,
         pure_rate_of_social_time_preference,
         inequality_aversion,
@@ -38,6 +40,8 @@ class SocialWelfareFunction:
         self.data_timestep = time_horizon.data_timestep
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
+        self.climate_ensembles = climate_ensembles
+        self.risk_aversion = risk_aversion
         self.elasticity_of_marginal_utility_of_consumption = (
             elasticity_of_marginal_utility_of_consumption
         )
@@ -46,25 +50,8 @@ class SocialWelfareFunction:
         self.sufficiency_threshold = sufficiency_threshold
         self.egality_strictness = egality_strictness
 
-        # Time horizon
-        timestep_list = np.arange(
-            0, len(time_horizon.model_time_horizon), time_horizon.timestep
-        )
-
-        # Calculate the discount rate # Validated
-        discount_rate = 1 / (
-            np.power(
-                (1 + self.pure_rate_of_social_time_preference),
-                (time_horizon.timestep * (timestep_list)),
-            )
-        )
-
-        # Regionalize the discount rate
-        discount_rate = np.tile(discount_rate, (len(self.region_list), 1))  # Validated
-
-        # Reshape discount_rate adding np.newaxis Changing shape from (timesteps,) to (timesteps, 1) # Validated Shape (57, 286, 1)
-        self.discount_rate = discount_rate[:, :, np.newaxis]
-
+        # Population is exogenous. So we don't need the 1001 copies across the ensemble members. Hence we select the first ensemble member
+        population = population[:, :, 0]
         # Calculate the total population for each timestep # Validated
         total_population = np.sum(population, axis=0)
 
@@ -75,100 +62,39 @@ class SocialWelfareFunction:
         """
         This method calculates the welfare.
         """
-        # New feature - sufficiency_threshold - subtracted from consumption_per_capita
-        consumption_per_capita = consumption_per_capita - self.sufficiency_threshold
-
-        # New feature: consumption_per_capita is checked to have negative values
-        # If there are negative values, they are replaced with 1e-6. -inf if it becomes 0 # 0.1025329474
-        # This is essential to calculate utility that's not a NaN (or complex number)
+        # Check if consumption_per_capita has negative values
         consumption_per_capita = np.where(
             consumption_per_capita < 0, 1e-6, consumption_per_capita
         )
 
-        # Adjust consumption_per_capita with sufficiency threshold
-
-        # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
-        consumption_per_capita_inequality_aversion = np.power(  # Validated
-            consumption_per_capita, 1 - self.inequality_aversion
+        # Aggregate the states dimension
+        states_aggregated_consumption_per_capita = self.states_aggregator(
+            consumption_per_capita,
+            self.climate_ensembles,
+            self.risk_aversion,
         )
 
-        # Calculate the population weighted consumption per capita
-        population_weighted_consumption_per_capita = (
-            self.population_ratio * consumption_per_capita_inequality_aversion
+        # Aggregate the Spatial Dimension
+        spatially_aggregated_welfare = self.spatial_aggregator(
+            states_aggregated_consumption_per_capita,
+            self.population_ratio,
+            self.elasticity_of_marginal_utility_of_consumption,
+            self.inequality_aversion,
+            self.egality_strictness,
+            self.sufficiency_threshold,
         )
 
-        # Calculate the disentangled utility # Validated
-        disentangled_utility = (
-            population_weighted_consumption_per_capita  # # has nans 25th region
-        )
-
-        # Get the gini of disentalgled utility
-        gini_disentangled_utility = calculate_gini_index(disentangled_utility)
-
-        # Calculate the regional disentangled utility powered - For regional welfare calculation # has nans 25th region
-        disentangled_utility_regional_powered = np.power(
-            disentangled_utility,
-            (
-                (1 - self.elasticity_of_marginal_utility_of_consumption)
-                / (1 - self.inequality_aversion)
-            ),
-        )
-
-        # Sum the disentangled utility
-        disentangled_utility_summed = np.sum(
-            population_weighted_consumption_per_capita, axis=0
-        )
-
-        # Applying gini to disentangled utility summed
-        # egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
-        disentangled_utility_summed = disentangled_utility_summed * (
-            1 - gini_disentangled_utility * self.egality_strictness
-        )
-
-        # Calculate the disentangled utility powered # TODO- Change this
-        disentangled_utility_powered = np.power(
-            disentangled_utility_summed,
-            (
-                (1 - self.elasticity_of_marginal_utility_of_consumption)
-                / (1 - self.inequality_aversion)
-            ),
-        )
-
-        # Calculate the welfare disaggregated temporally # TODO- Change this
-        welfare_temporal = (
-            (
-                (disentangled_utility_powered)
-                / (1 - self.elasticity_of_marginal_utility_of_consumption)
-            )
-            - 1
-        ) * self.discount_rate[0, :, :]
-
-        # Welfare disaggregated temporally and regionally - For regional welfare calculation
-        welfare_regional_temporal = (
-            (
-                disentangled_utility_regional_powered
-                / (1 - self.elasticity_of_marginal_utility_of_consumption)
-            )
-            - 1
-        ) * self.discount_rate
-
-        # Welfare aggregated regionally
-        welfare_regional = np.sum(
-            welfare_regional_temporal,
-            axis=1,
-        )
-
-        # Calculate the welfare
-        welfare = np.sum(
-            welfare_temporal,
-            axis=0,
+        # Aggregate the Temporal Dimension
+        temporally_disaggregated_welfare, welfare = self.temporal_aggregator(
+            data=spatially_aggregated_welfare,
+            pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
+            model_time_horizon=self.model_time_horizon,
+            timestep=self.timestep,
         )
 
         return (
-            disentangled_utility,
-            welfare_regional_temporal,
-            welfare_temporal,
-            welfare_regional,
+            spatially_aggregated_welfare,
+            temporally_disaggregated_welfare,
             welfare,
         )
 
@@ -180,66 +106,212 @@ class SocialWelfareFunction:
         consumption_per_capita = np.where(
             consumption_per_capita < 0, 1e-6, consumption_per_capita
         )
-        # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
-        consumption_per_capita_inequality_aversion = np.power(
-            consumption_per_capita, 1 - self.inequality_aversion
+
+        # Aggregate the states dimension
+        states_aggregated_consumption_per_capita = self.states_aggregator(
+            consumption_per_capita,
+            self.climate_ensembles,
+            self.risk_aversion,
         )
+
+        spatially_aggregated_welfare = self.spatial_aggregator(
+            states_aggregated_consumption_per_capita,
+            self.population_ratio[:, timestep],
+            self.elasticity_of_marginal_utility_of_consumption,
+            self.inequality_aversion,
+            self.egality_strictness,
+            self.sufficiency_threshold,
+        )
+
+        # No Temporal aggregation in Stepwise calculation
+
+        return spatially_aggregated_welfare
+
+    @classmethod
+    def utility_function(self, data, parameter):
+        """
+        This method calculates the isoelastic utility.
+        """
+        if parameter == 1:
+            utility = np.log(data)
+        else:
+            utility = np.power(data, 1 - parameter) / (1 - parameter)
+        return utility
+
+    @classmethod
+    def inverse_utility_function(self, data, parameter):
+        """
+        This method calculates the inverse utility.
+        """
+        if parameter == 1:
+            utility = np.exp(data)
+        else:
+            utility = np.power((data * (1 - parameter)), 1 / (1 - parameter))
+        return utility
+
+    # TODO: Remove this method
+    @classmethod
+    def spatial_aggregator(
+        self,
+        data,
+        population_ratio,
+        elasticity_of_marginal_utility_of_consumption,
+        inequality_aversion,
+        egality_strictness,
+        sufficiency_threshold,
+    ):
+        """
+        This method calculates the spatial aggregator.
+        According to Berger & Emmerling (2017), the social welfare function across a dimension is equal to
+        the equity equivalent of consumption at the particular dimension
+        The aggregated welfare can be calculated in the following steps:
+        1. Transform consumption to utility
+        2. Weigh the utility with respective weights & sum across the selected dimension
+        3. Invert the utility to consumption for next dimension
+        """
+
+        # Adjust data with sufficiency threshold # Validated
+        data = data - sufficiency_threshold
+
+        # Calculate the consumption per capita raised to the power of 1 - inequality_aversion
+        inequality_aversion_transformed_utility = self.utility_function(
+            data, inequality_aversion
+        )
+
+        # Calculate the gini index of the  declining_marginal_utility_transformed_utility
+        gini = calculate_gini_index_c1(data)
+
+        # Adjusted gini with egality strictness parameter #Transforming inequality_aversion_transformed_utility with gini here makes no difference
+        gini = gini * egality_strictness
 
         # Calculate the population weighted consumption per capita
-        population_weighted_consumption_per_capita = (
-            self.population_ratio[:, timestep, :]
-            * consumption_per_capita_inequality_aversion
+        population_weighted_utility = (
+            population_ratio * inequality_aversion_transformed_utility
         )
 
-        # Calculate the disentangled utility
-        disentangled_utility = population_weighted_consumption_per_capita
+        # Aggregate Spatially
+        weighted_sum_of_utility = np.sum(population_weighted_utility, axis=0)
 
-        # Sum the disentangled utility
-        disentangled_utility_summed = np.sum(
-            population_weighted_consumption_per_capita, axis=0
+        # Equality-Prioritarianism by Peterson. (1 - g(w1, w2, ..., wn)) * F(w1, w2, ..., wn), where g is the gini index
+        # and F is the prioritarian transformation
+        # # Applying gini to spatially aggregated welfare
+        # [Enflo] egalitarian measure should incorporate a measure of equality, multiplied or added to a measure of individual welfare
+        weighted_sum_of_utility = weighted_sum_of_utility * ((1 - gini))
+
+        # Invert the utility to consumption
+        inequality_aversion_inverted_utility = self.inverse_utility_function(
+            weighted_sum_of_utility, inequality_aversion
         )
 
-        # Calculate the disentangled utility powered
-        disentangled_utility_powered = np.power(
-            disentangled_utility_summed,
-            (
-                (1 - self.elasticity_of_marginal_utility_of_consumption)
-                / (1 - self.inequality_aversion)
-            ),
+        # Applying declining marginal utility to spatially aggregated welfare # Adding gini improves the welfare here
+        spatially_aggregated_welfare = self.utility_function(
+            inequality_aversion_inverted_utility,
+            elasticity_of_marginal_utility_of_consumption,
         )
 
-        # Calculate disentangled utility regional powered - For regional welfare calculation
-        disentangled_utility_regional_powered = np.power(
-            disentangled_utility,
-            (
-                (1 - self.elasticity_of_marginal_utility_of_consumption)
-                / (1 - self.inequality_aversion)
-            ),
+        # returning disaggregated & aggregated version
+        return spatially_aggregated_welfare
+
+    # @classmethod
+    def temporal_aggregator(
+        self,
+        data,
+        pure_rate_of_social_time_preference,
+        model_time_horizon,
+        timestep,
+    ):
+        """
+        This method calculates the temporal aggregator.
+        """
+        # Get the discount rate array
+        discount_rate = self.calculate_discount_rate(
+            pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
+            model_time_horizon=model_time_horizon,
+            timestep=timestep,
         )
 
-        # Welfare disaggregated temporally and regionally - For regional welfare calculation
-        welfare_regional_temporal = (
-            (
-                disentangled_utility_regional_powered
-                / (1 - self.elasticity_of_marginal_utility_of_consumption)
-            )
-            - 1
-        ) * self.discount_rate[:, timestep, :]
+        # TODO: Change that -1 later
+        # Calculate the welfare disaggregated temporally
+        temporally_disaggregated_welfare = (data - 1) * discount_rate
 
-        # Welfare aggregated regionally, disaggregated temporally
-        welfare_temporal = (
-            (
-                disentangled_utility_powered
-                / (1 - self.elasticity_of_marginal_utility_of_consumption)
-            )
-            - 1
-        ) * self.discount_rate[0, timestep, :]
+        # Calculate the welfare
+        welfare = np.sum(
+            temporally_disaggregated_welfare,
+            axis=0,
+        )
 
         return (
-            disentangled_utility,
-            welfare_regional_temporal,
-            welfare_temporal,
+            # welfare_regional_temporal,
+            temporally_disaggregated_welfare,
+            # welfare_regional,
+            welfare,
         )
+
+    @classmethod
+    def states_aggregator(self, data, climate_ensembles, risk_aversion):
+        """
+        This method calculates the states aggregator.
+        According to Berger & Emmerling (2017), the social welfare function across a dimension is equal to
+        the equity equivalent of consumption at the particular dimension
+        The aggregated welfare can be calculated in the following steps:
+        1. Transform consumption to utility
+        2. Weigh the utility with respective weights & sum across the selected dimension
+        3. Invert the utility to consumption for next dimension
+        """
+
+        # Transform the data according to the risk aversion
+        risk_aversion_transformed_utility = self.utility_function(data, risk_aversion)
+
+        # Weight the utility with the respective weight - probability of each states in this case.
+        # Probability of each state is 1/climate_ensembles
+        weighted_utility = risk_aversion_transformed_utility * (1 / climate_ensembles)
+
+        # Sum the weighted utility across the states. Axis is 2 because data shape is (regions, timesteps, states)
+        aggregated_utility = np.sum(weighted_utility, axis=-1)
+
+        # Invert the utility
+        risk_aversion_inverted_utility = self.inverse_utility_function(
+            aggregated_utility, risk_aversion
+        )
+
+        return risk_aversion_inverted_utility
+
+    def calculate_discount_rate(
+        self, pure_rate_of_social_time_preference, model_time_horizon, timestep
+    ):
+        """
+        This method calculates the discount rate.
+        """
+
+        # Time horizon
+        timestep_list = np.arange(len(np.array(model_time_horizon)))
+        # np.arange(0, len(model_time_horizon), timestep)
+
+        # Calculate the discount rate
+        discount_rate = 1 / (
+            np.power(
+                (1 + pure_rate_of_social_time_preference),
+                (timestep * (timestep_list)),
+            )
+        )
+        return discount_rate
+
+    def calculate_discount_rate_v2(  # Tested. Generates more optimistic welfare values than the previous method
+        self, pure_rate_of_social_time_preference, model_time_horizon
+    ):
+        """
+        This method calculates the discount rate with a different mathematical formula
+        discount_rate = e^(-pure_rate_of_social_time_preference * timestep_list)
+
+        """
+
+        # Time horizon
+        timestep_list = np.arange(len(np.array(model_time_horizon)))
+
+        # Vectorize the computation to get the discounted values
+        discount_rate = np.exp(-pure_rate_of_social_time_preference * timestep_list)
+
+        return discount_rate
 
     def __getattribute__(self, __name: str) -> Any:
         """

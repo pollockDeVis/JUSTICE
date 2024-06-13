@@ -82,6 +82,7 @@ class SocialWelfareDefaults:
         self.defaults = {
             "UTILITARIAN": {
                 # Normative Parameters
+                "risk_aversion": 0,  # Risk aversion parameter.
                 # Specifies the elasticity of the marginal utility of consumption. #elasmu in the code or eta in the paper (Stern range: 1-2)
                 # Dietz, S., & Stern, N. (2008). Why economic analysis supports strong action on climate change: a response to the Stern Review's critics. Review of Environmental Economics and Policy.
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
@@ -93,6 +94,7 @@ class SocialWelfareDefaults:
                 "egality_strictness": 0.0,  # Range: [0,1]
             },
             "PRIORITARIAN": {
+                "risk_aversion": 0,  # Risk aversion parameter.
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
                 "pure_rate_of_social_time_preference": 0.0,
                 "inequality_aversion": 2.0,
@@ -100,6 +102,7 @@ class SocialWelfareDefaults:
                 "egality_strictness": 0.0,  # Range: [0,1]
             },
             "SUFFICIENTARIAN": {  # Sufficientarian can be either Utilitarian above threshold or Prioritarian below threshold
+                "risk_aversion": 0,  # Risk aversion parameter.
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
                 "pure_rate_of_social_time_preference": 0.015,
                 "inequality_aversion": 0.0,
@@ -111,9 +114,10 @@ class SocialWelfareDefaults:
                 "egality_strictness": 0.0,  # Range: [0,1]
             },
             "EGALITARIAN": {
+                "risk_aversion": 0,  # Risk aversion parameter.
                 "elasticity_of_marginal_utility_of_consumption": 1.45,
                 "pure_rate_of_social_time_preference": 0.0,
-                "inequality_aversion": 2.0,
+                "inequality_aversion": 0.5,  # 2.0, #NOTE: Keeping it 0.5 to make it distinct from prioritarian
                 "sufficiency_threshold": 0.0,
                 "egality_strictness": 1.0,  # Range: [0,1]
             },

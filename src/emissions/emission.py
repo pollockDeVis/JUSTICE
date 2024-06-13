@@ -2,6 +2,7 @@
 This is the emissions module that converts the output into emissions.
 #'CO2 emissions in [GtCO2/year]'
 """
+
 from typing import Any
 import numpy as np
 from scipy.interpolate import interp1d
@@ -14,6 +15,7 @@ class OutputToEmissions:
     This class converts the output into emissions.
     """
 
+    # TODO: Initialize with scenario so that we don't have to load all the scenarios
     def __init__(self, input_dataset, time_horizon, climate_ensembles):
         """
         This method initializes the OutputToEmissions class.

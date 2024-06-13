@@ -50,7 +50,7 @@ def get_linear_emission_control():
     return emissions_control_rate
 
 
-def JUSTICE_run(scenarios=0, climate_ensembles=None):
+def JUSTICE_run(scenarios=2, climate_ensembles=None, social_welfare_function=None):
     """
     Run the JUSTICE model for a given scenario
 
@@ -63,7 +63,7 @@ def JUSTICE_run(scenarios=0, climate_ensembles=None):
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
+        social_welfare_function=social_welfare_function,  # WelfareFunction.UTILITARIAN,
         climate_ensembles=climate_ensembles,
     )
 
@@ -303,12 +303,15 @@ def setup_RBF_for_emission_control(
 
 
 if __name__ == "__main__":
-    # datasets = JUSTICE_run(scenarios=0)
-    datasets = JUSTICE_stepwise_run(
+    datasets = JUSTICE_run(
         scenarios=2,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
-        rbf_policy_index=500,
-        path_to_rbf_weights="data/optimized_rbf_weights/UTIL_100k/100049.csv",
+        social_welfare_function=WelfareFunction.PRIORITARIAN,
     )
+    # datasets = JUSTICE_stepwise_run(
+    #     scenarios=2,
+    #     social_welfare_function=WelfareFunction.UTILITARIAN,
+    #     rbf_policy_index=500,
+    #     path_to_rbf_weights="data/optimized_rbf_weights/UTIL_100k/100049.csv",
+    # )
     # Print the keys of the datasets
-    print(datasets.keys())
+    print(datasets["welfare"])
