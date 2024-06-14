@@ -49,13 +49,14 @@ class MatterUse:
         self.income_level = input_dataset.INCOME_LEVEL_ARRAY
 
         #Time horizon
+        #Time horizon
         self.timestep = time_horizon.timestep
         self.data_timestep = time_horizon.data_timestep
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
 
         # Selecting only the required scenario
-        self.material_intensity_array = self.material_intensity_array[
+        self.material_intensity = self.material_intensity_array[
             :, :, self.scenario
         ]
 
@@ -102,7 +103,6 @@ class MatterUse:
         self.depletion_ratio = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
-        # Initializing emissions avoided array
         self.emissions_avoided = np.zeros(
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
