@@ -193,7 +193,7 @@ def run_optimization_adaptive(
     # Add social_welfare_function.value[1] to the filename
     filename = f"{social_welfare_function.value[1]}_{nfe}_{seed}.tar.gz"
     date = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    directory_name = f"./data/{social_welfare_function.value[1]}_{date}"
+    directory_name = f"./data/{social_welfare_function.value[1]}_{date}_{seed}"
     # Create a directory inside ./data/ with name output_{date} to save the results
     os.mkdir(directory_name)
     # Set the directory path to a variable

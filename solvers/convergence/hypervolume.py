@@ -72,10 +72,10 @@ def load_archives(
 
 def calculate_hypervolume_from_archives(
     list_of_objectives=[
-        "welfare_utilitarian",
+        "welfare",
         "years_above_temperature_threshold",
-        "total_damage_cost",
-        "total_abatement_cost",
+        "welfare_loss_damage",
+        "welfare_loss_abatement",
     ],
     input_data_path="data/optimized_rbf_weights/200k",
     file_name="PRIORITARIAN_200000.tar.gz",
@@ -108,6 +108,7 @@ def calculate_hypervolume_from_archives(
     print("nfes: \n", nfes)
     scores = []
     overall_starttime = datetime.datetime.now()
+    # TODO: Move multiprocessing to main
     with multiprocessing.Pool() as pool:
         # Enumerate through the keys of the archives
         nfe_archives = [
@@ -148,10 +149,10 @@ if __name__ == "__main__":
     for filename in filenames:
         scores = calculate_hypervolume_from_archives(
             list_of_objectives=[
-                "welfare_utilitarian",
+                "welfare",
                 "years_above_temperature_threshold",
-                "total_damage_cost",
-                "total_abatement_cost",
+                "welfare_loss_damage",
+                "welfare_loss_abatement",
             ],
             input_data_path="data/optimized_rbf_weights",
             file_name=filename,
