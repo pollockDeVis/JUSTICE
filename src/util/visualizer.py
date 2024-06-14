@@ -860,6 +860,8 @@ def plot_ssp_rcp_subplots(
 
                 axs[scenario_idx].set_title(scenario)
 
+                # Set font size for tick labels
+                axs[scenario_idx].tick_params(axis="both", which="major", labelsize=title_font_size)
                 # axs[scenario_idx].set_xlabel('Year')
                 axs[scenario_idx].set_ylabel("")
                 # Styling each subplot

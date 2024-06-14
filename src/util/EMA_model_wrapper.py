@@ -146,11 +146,12 @@ def model_wrapper_emodps(**kwargs):
     _, _, welfare_loss_damage = model.welfare_function.calculate_welfare(
         datasets["damage_cost_per_capita"], welfare_loss=True
     )
-
+    welfare_loss_damage = np.abs(welfare_loss_damage)
     # Transform the abatement cost to welfare loss value
     _, _, welfare_loss_abatement = model.welfare_function.calculate_welfare(
         datasets["abatement_cost_per_capita"], welfare_loss=True
     )
+    welfare_loss_abatement = np.abs(welfare_loss_abatement)
 
     return welfare, years_above_threshold, welfare_loss_damage, welfare_loss_abatement
 
