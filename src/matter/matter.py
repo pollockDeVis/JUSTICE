@@ -56,7 +56,7 @@ class MatterUse:
         self.model_time_horizon = time_horizon.model_time_horizon
 
         # Selecting only the required scenario
-        self.material_intensity = self.material_intensity_array[
+        self.material_intensity_array = self.material_intensity_array[
             :, :, self.scenario
         ]
 
