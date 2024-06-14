@@ -180,7 +180,7 @@ class EconomicSubModules:
 class EmissionsAvoidedDefaults:
     def __init__(self):
         self.defaults = {
-            "PROPORTION_PAPER": 0.1537,
+            "PROPORTION_PAPER": 0.21,
             "PROPORTION_PLASTIC": 0.1087,
             "EFACTOR_VG_PAPER": 1304,  # kg CO2/ton
             "EFACTOR_REC_PAPER": -1300,  # kg CO2/ton
