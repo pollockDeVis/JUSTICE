@@ -487,15 +487,15 @@ class JUSTICE:
                 ],  # NOTE: @Angela - assuming the recycling rate is of shape (regions, timesteps)
             )
             self.data["emissions_avoided"][:, timestep, :] = emissions_avoided
-            self.data["depletion_ratio"][:, timestep, :] = depletion_ratio
-            self.data["recycled_material"][:, timestep, :] = recycled_material
-            self.data["material_consumption"][:, timestep, :] = material_consumption
-            self.data["discarded_material"][:, timestep, :] = discarded_material
-            self.data["extracted_matter"][:, timestep, :] = extracted_matter
-            self.data["waste"][:, timestep, :] = waste
-            self.data["material_reserves"][:, timestep, :] = material_reserves
-            self.data['material_resources'][:,timestep,:]= material_resources
-            self.data['recycling_cost'][:, timestep, :] = total_costs
+            # self.data["depletion_ratio"][:, timestep, :] = depletion_ratio
+            # self.data["recycled_material"][:, timestep, :] = recycled_material
+            # self.data["material_consumption"][:, timestep, :] = material_consumption
+            # self.data["discarded_material"][:, timestep, :] = discarded_material
+            # self.data["extracted_matter"][:, timestep, :] = extracted_matter
+            # self.data["waste"][:, timestep, :] = waste
+            # self.data["material_reserves"][:, timestep, :] = material_reserves
+            # self.data['material_resources'][:,timestep,:]= material_resources
+            # self.data['recycling_cost'][:, timestep, :] = total_costs
 
             # Feedback loop for adjusted carbon intensity #NOTE: Angela - In this way, the model will stay independent of the matter model
             self.emissions.feedback_loop_for_adjusted_carbon_intensity(
