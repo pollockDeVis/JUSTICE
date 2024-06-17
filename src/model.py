@@ -495,11 +495,15 @@ class JUSTICE:
             # self.data["waste"][:, timestep, :] = waste
             # self.data["material_reserves"][:, timestep, :] = material_reserves
             # self.data['material_resources'][:,timestep,:]= material_resources
-            # self.data['recycling_cost'][:, timestep, :] = total_costs
+            self.data['recycling_cost'][:, timestep, :] = total_costs
 
             # Feedback loop for adjusted carbon intensity #NOTE: Angela - In this way, the model will stay independent of the matter model
             self.emissions.feedback_loop_for_adjusted_carbon_intensity(
                 self.scenario, timestep, emissions_avoided
+            )
+            #NOTE @Palok can you review this 
+            self.economy._apply_recycling_cost_to_output(timestep, 
+                recycling_cost=total_costs
             )
 
         self.data["emissions"][:, timestep, :] = self.emissions.run(
