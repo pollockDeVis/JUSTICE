@@ -745,7 +745,7 @@ def plot_choropleth(
                 + "_"
                 + output_titles[plotting_idx]
                 + "_"
-                + Scenario.get_ssp_rcp_strings()[idx]
+                + Scenario[scenarios].value[-1]
             )
             if saving:
                 # Save the plot as a png file

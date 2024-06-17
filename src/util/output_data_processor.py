@@ -203,21 +203,22 @@ def reevaluate_optimal_policy(
                 )
 
                 output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
-                for key in scenario_datasets.keys():
-                    # Save the processed data as a pickle file
-                    with open(
-                        path_to_output + output_file_name + "_" + key + ".pkl", "wb"
-                    ) as f:
-                        pickle.dump(scenario_datasets[key], f)
+                with open(path_to_output + output_file_name + ".pkl", "wb") as f:
+                    pickle.dump(scenario_datasets, f)
+
+                    # for key in scenario_datasets.keys():
+                    #     # Save the processed data as a pickle file
+                    #     with open(
+                    #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
+                    #     ) as f:
+                    #         pickle.dump(scenario_datasets[key], f)
 
                     # # Now save in hdf5 format
                     # with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
                     #     for key in scenario_datasets.keys():
                     #         f.create_dataset(key, data=scenario_datasets[key])
 
-                    print(
-                        f"File saved as {output_file_name} at location {path_to_output}"
-                    )
+                print(f"File saved as {output_file_name} at location {path_to_output}")
 
         elif objective_of_interest is not None and list_of_objectives == []:
             # Choose column in df by index
@@ -241,15 +242,18 @@ def reevaluate_optimal_policy(
             )
             output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
 
-            for key in scenario_datasets.keys():
-                # Save the processed data as a pickle file
-                with open(
-                    path_to_output + output_file_name + "_" + key + ".pkl", "wb"
-                ) as f:
-                    pickle.dump(scenario_datasets[key], f)
-                    # Print file saved as filename at location path
+            with open(path_to_output + output_file_name + ".pkl", "wb") as f:
+                pickle.dump(scenario_datasets, f)
 
-                print(f"File saved as {output_file_name} at location {path_to_output}")
+            # for key in scenario_datasets.keys():
+            #     # Save the processed data as a pickle file
+            #     with open(
+            #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
+            #     ) as f:
+            #         pickle.dump(scenario_datasets[key], f)
+            #         # Print file saved as filename at location path
+
+            print(f"File saved as {output_file_name} at location {path_to_output}")
 
 
 def read_hdf5_file(file_path):
@@ -299,6 +303,8 @@ def run_model_with_optimal_policy(
             max_difference=max_difference,
             min_difference=min_difference,
         )
+
+        print("Keys of the scenario data: ", scenario_data.keys())
     return scenario_data
 
 
@@ -533,7 +539,7 @@ if __name__ == "__main__":
         #     "welfare_loss_damage",
         #     "welfare_loss_abatement",
         # ],
-        scenario_list=["SSP245"],
+        scenario_list=list(Scenario.__members__.keys()),  # ["SSP245"],
     )
 
     ############################################
