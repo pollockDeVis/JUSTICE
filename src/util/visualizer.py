@@ -181,6 +181,10 @@ def visualize_tradeoffs(
     limits = parcoords.get_limits(data)
     axes = parcoords.ParallelAxes(limits, rot=axis_rotation, fontsize=fontsize)
 
+    # TODO: Flip the axis here. Create a new argument for this
+    # axes.invert_axis(data.columns[2])
+    # axes.invert_axis(data.columns[3])
+
     # Getting the matplotlib axes object from Parcoords for annotation
     matplotlib_ax = axes.axes[0]
 
@@ -861,7 +865,9 @@ def plot_ssp_rcp_subplots(
                 axs[scenario_idx].set_title(scenario)
 
                 # Set font size for tick labels
-                axs[scenario_idx].tick_params(axis="both", which="major", labelsize=title_font_size)
+                axs[scenario_idx].tick_params(
+                    axis="both", which="major", labelsize=title_font_size
+                )
                 # axs[scenario_idx].set_xlabel('Year')
                 axs[scenario_idx].set_ylabel("")
                 # Styling each subplot
