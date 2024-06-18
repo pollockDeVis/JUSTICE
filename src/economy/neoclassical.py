@@ -314,6 +314,12 @@ class NeoclassicalEconomyModel:
         # Setting net output to gross output before any damage or abatement
         self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
 
+    def _apply_recycling_cost_to_output(self, timestep, recycling_cost):
+        """
+        This method applies recycling costs to the output.
+        """
+        self.net_output[:, timestep, :] = self.net_output[:,timestep] - recycling_cost
+
     def _apply_damage_to_output(self, timestep, damage_fraction):
         """
         This method applies damage to the output.

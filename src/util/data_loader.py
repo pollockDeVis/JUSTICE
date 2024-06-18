@@ -31,6 +31,9 @@ class DataLoader:
         # Create the data file path
         data_file_path = os.path.join(root_directory, "data/input")
 
+        # Create data file path for recycling data 
+        recycling_file_path = os.path.join(root_directory, "data/input/recycling")
+
         ###############################################################################
         # Load the Economic data in hdf5 format
         ###############################################################################
@@ -125,3 +128,9 @@ class DataLoader:
             os.path.join(data_file_path, "income_level_array.hdf5"), "r"
         ) as f:
             self.INCOME_LEVEL_ARRAY = f["income_level_array"][:]
+
+        # In use stock initial values
+        with h5py.File(
+            os.path.join(recycling_file_path, "recycling_rate_linear_proyection.hdf5"), "r"
+        ) as f:
+            self.RECYCLING_RATE_LINEAR_PROYECTION = f["recycling_rate_linear_proyection"][:]

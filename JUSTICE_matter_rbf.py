@@ -1,5 +1,4 @@
 import pandas as pd
-import h5py
 from emodps.rbf import RBF
 import numpy as np
 
@@ -14,12 +13,9 @@ time_horizon = TimeHorizon(
         start_year=2015, end_year=2300, data_timestep=5, timestep=1
     )
 
-# Define Recycling rate input
-with h5py.File(
-    "data/input/recycling/recycling_rate_linear_proyection.hdf5",
-      'r'
-    ) as f:
-    recycling_rate_linear_projections = f['recycling_rate_linear_proyection'][:]
+#Load recycling data
+data_loader = DataLoader()
+recycling_rate = data_loader.RECYCLING_RATE_LINEAR_PROYECTION
 
 #Running the model with the optimized emissions control rate
 def JUSTICE_stepwise_run(
@@ -110,7 +106,7 @@ def JUSTICE_stepwise_run(
             emission_control_rate=constrained_emission_control_rate[:, timestep, :],
             timestep=timestep,
             endogenous_savings_rate=endogenous_savings_rate,
-            recycling_rate=recycling_rate_linear_projections
+            recycling_rate=recycling_rate
         )
         datasets = model.stepwise_evaluate(timestep=timestep)
         temperature = datasets["global_temperature"][timestep, :]
