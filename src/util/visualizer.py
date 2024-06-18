@@ -1113,22 +1113,80 @@ def plot_hypervolume(
 
 
 if __name__ == "__main__":
-    plot_timeseries(
+
+    # fig, data = plot_choropleth(
+    #     variable_name="constrained_emission_control_rate",
+    #     path_to_data="data/reevaluation/",
+    #     path_to_output="./data/plots/regional",
+    #     projection="natural earth",
+    #     # scope='usa',
+    #     year_to_visualize=2100,
+    #     input_data=[
+    #         "UTIL_100024_s1644652_idx75.pkl",
+    #         "PRIOR_101400_s1644652_idx236.pkl",
+    #         "SUFF_100090_s9845531_idx86.pkl",
+    #         "EGAL_100417_s1644652_idx31.pkl",
+    #     ],
+    #     output_titles=[
+    #         "Utilitarian",
+    #         "Prioritarian",
+    #         "Sufficientarian",
+    #         "Egalitarian",
+    #     ],
+    #     title="Mitigation Burden Distribution in ",
+    #     data_label="Emission Control Rate",
+    #     colourmap="matter",
+    #     legend_label="% Mitigation\n",
+    #     # scenario_list= ['SSP245'],
+    #     scenario_list=[
+    #         "SSP119",
+    #         "SSP126",
+    #         "SSP245",
+    #         "SSP370",
+    #         "SSP434",
+    #         "SSP460",
+    #         "SSP534",
+    #         "SSP585",
+    #     ],  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585'],
+    #     data_normalization=True,
+    #     saving=True,
+    # )
+
+    ############################################################################################################
+    fig = plot_timeseries(
         path_to_data="data/reevaluation",
-        path_to_output="./data/plots",
+        path_to_output="./data/plots/regional",
         x_label="Years",
         y_label="Temperature Rise (°C)",
         variable_name="global_temperature",
         input_data=[
-            "UTIL_100049.pkl",
-            "EGAL_101948.pkl",
-            "PRIOR_101765.pkl",
-            "SUFF_102924.pkl",
+            "UTIL_100024_s1644652_idx75.pkl",
+            "PRIOR_101400_s1644652_idx236.pkl",
+            "SUFF_100090_s9845531_idx86.pkl",
+            "EGAL_100417_s1644652_idx31.pkl",
         ],
-        output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+        output_titles=[
+            "Utilitarian",
+            "Prioritarian",
+            "Sufficientarian",
+            "Egalitarian",
+        ],
         main_title="Global Temperature Rise - ",
+        show_title=False,
+        saving=True,
         yaxis_lower_limit=0,
-        yaxis_upper_limit=10,
+        yaxis_upper_limit=12,
         alpha=0.1,
         linewidth=2.5,
+        start_year=2015,
+        end_year=2300,
+        visualization_start_year=2025,
+        visualization_end_year=2300,
+        scenario_list=[
+            "SSP119",
+            "SSP245",
+            "SSP370",
+            "SSP434",
+            "SSP585",
+        ],  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585'], # #
     )
