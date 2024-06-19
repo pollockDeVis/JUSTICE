@@ -134,3 +134,9 @@ class DataLoader:
             os.path.join(recycling_file_path, "recycling_rate_linear_proyection.hdf5"), "r"
         ) as f:
             self.RECYCLING_RATE_LINEAR_PROYECTION = f["recycling_rate_linear_proyection"][:]
+
+        # In use stock initial values
+        with h5py.File(
+            os.path.join(recycling_file_path, "recycling_rate_2050_target.hdf5"), "r"
+        ) as f:
+            self.RECYCLING_RATE_2050_TARGET = f["recycling_rate_2050_target"][:]
