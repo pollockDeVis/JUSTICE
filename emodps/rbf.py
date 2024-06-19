@@ -1,5 +1,5 @@
 """
-RBF Class
+RBF Class-
 Adapted from: https://github.com/JazminZatarain/MUSEH2O/blob/main/rbf/rbf_functions.py
 
 This is the RBF class. It uses the modified squared exponential kernel, which was found to be the best performing kernel in the following paper.
