@@ -16,10 +16,14 @@ def calculate_hypervolume(maxima, generation):
     return _hypervolume.hv.hypervolume(generation, maxima)
 
 
-def transform_data(data, scaler):
+def transform_data(data, scaler, direction_of_optimization=[]):
 
     # scale data
     transformed_data = scaler.transform(data)
+    # Handle Directions
+    for i, direction in enumerate(direction_of_optimization):
+        if direction == "max":
+            transformed_data[:, i] = 1 - transformed_data[:, i]
     return transformed_data
 
 
@@ -77,6 +81,7 @@ def calculate_hypervolume_from_archives(
         "welfare_loss_damage",
         "welfare_loss_abatement",
     ],
+    direction_of_optimization=[],  # ["min", "min", "min", "min"],
     input_data_path="data/optimized_rbf_weights/200k",
     file_name="PRIORITARIAN_200000.tar.gz",
     output_data_path="data/convergence_metrics",
@@ -139,10 +144,10 @@ def calculate_hypervolume_from_archives(
 
 if __name__ == "__main__":
     filenames = [
-        "UTILITARIAN_100000.tar.gz",
-        "PRIORITARIAN_100000.tar.gz",
-        "EGALITARIAN_100000.tar.gz",
-        "SUFFICIENTARIAN_100000.tar.gz",
+        "UTILITARIAN_100000_1644652.tar.gz",
+        # "PRIORITARIAN_100000.tar.gz",
+        # "EGALITARIAN_100000.tar.gz",
+        # "SUFFICIENTARIAN_100000.tar.gz",
     ]
 
     # Enumerate through the filenames
@@ -154,6 +159,7 @@ if __name__ == "__main__":
                 "welfare_loss_damage",
                 "welfare_loss_abatement",
             ],
+            direction_of_optimization=["min", "min", "max", "max"],
             input_data_path="data/optimized_rbf_weights",
             file_name=filename,
             output_data_path="data/convergence_metrics",
