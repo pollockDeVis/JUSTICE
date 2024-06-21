@@ -120,7 +120,7 @@ class NeoclassicalEconomyModel:
 
         # Initializing the gross output array Unit: Trill 2005 USD PPP / year
         self.gross_output = np.zeros(
-            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+            (len(self.region_list), len(self.model_time_horizon), self.NfeUM_OF_ENSEMBLES)
         )
 
         # Initializing the net output array Unit: Trill 2005 USD PPP / year
@@ -342,7 +342,7 @@ class NeoclassicalEconomyModel:
         self.net_output[:, timestep, :] -= self.abatement[:, timestep, :]
 
     def feedback_loop_for_economic_output(
-        self, timestep, savings_rate, damage_fraction, abatement
+        self, timestep, savings_rate, damage_fraction, abatement, recycling_cost=None
     ):
         """
         This method calculates the capital and investment.
@@ -354,7 +354,11 @@ class NeoclassicalEconomyModel:
 
         # Apply abatement to the output
         self._apply_abatement_to_output(timestep, abatement)
-
+        
+        #Apply recycling cost to the output if provided
+        if recycling_cost is not None:
+            self._apply_recycling_cost_to_output(timestep, recycling_cost)
+            
         # Calculate the investment
         self._calculate_investment(timestep, savings_rate)
 

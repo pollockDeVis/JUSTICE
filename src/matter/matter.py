@@ -37,7 +37,7 @@ class MatterUse:
         ]
         self.recycling_rate = matter_defaults["recycling_rate"]
 
-        # Saving the climate ensembles adn scenario
+        # Saving the climate ensembles adn scenariowa
         self.NUM_OF_ENSEMBLES = climate_ensembles
         self.scenario = get_economic_scenario(scenario)
 
@@ -138,7 +138,7 @@ class MatterUse:
             converted_material_reserves = self.conversion_rate_material_reserves * material_resources
             self.material_reserves[:,timestep,:] = self.material_reserves_init
             material_reserves = self.material_reserves[:, timestep, :]
-            depletion_ratio = extracted_matter/ (material_reserves + 1e-10) #avoid division to zero
+            depletion_ratio = np.clip(extracted_matter / (material_reserves + 1e-10), 0, 1)  # Clip between 0 and 1 #avoid division to zero
             emissions_avoided = self.get_emissions_avoided(recycled_material)
             recycling_cost = self.calculate_recycling_cost()[:, timestep, :]
             self.recycling_cost[:, timestep, :] = recycling_cost * recycled_material
@@ -163,7 +163,7 @@ class MatterUse:
             )
             material_resources = self.material_resources[:,timestep,:]
             material_reserves = self.material_reserves[:,timestep - 1,:]
-            depletion_ratio = extracted_matter/ (material_reserves + 1e-10)
+            depletion_ratio = np.clip(extracted_matter / (material_reserves + 1e-10), 0, 1) 
             self.material_reserves[:,timestep,:] =(
                 material_reserves + converted_material_reserves - extracted_matter
             )

@@ -4,15 +4,18 @@ from src.util.enumerations import *
 from src.util.model_time import TimeHorizon
 from src.model import JUSTICE
 from policy_loader import PolicyLoader
+import os
 
 def JUSTICE_stepwise_run(
-    path_to_output="data/output/",
-    saving=True,
-    output_file_name='bau_run',
+    path_to_output=None,
+    saving=False,
 ):
     """
     Run the JUSTICE model for all the scenarios
     """
+    # Ensure the output directory exists
+    os.makedirs(path_to_output, exist_ok=True)
+
     # Load the data
     policy_loader = PolicyLoader()
     
@@ -36,10 +39,11 @@ def JUSTICE_stepwise_run(
             matter=EconomySubModules.MATTER,
         )
 
-        # Initialize datasets to store the results
-        datasets = {}
+
         # Get the emission control rate for the current scenario
         emission_control_rate_for_scenario = constrained_emission_control_rate[scenarios]
+
+        scenario_results = {}
 
         for timestep in range(len(time_horizon.model_time_horizon)):
             # Extract the emission control rate for the current timestep
@@ -52,19 +56,22 @@ def JUSTICE_stepwise_run(
                 recycling_rate=recycling_rate
             )
 
-            #Evaluate the model
+            # Evaluate the model
             datasets = model.stepwise_evaluate(timestep=timestep)
 
+        scenario_results = datasets
+
+        # Save the scenario results to a separate file
+        if saving:
+            scenario_output_path = os.path.join(path_to_output, f"{scenarios}.npz")
+            np.savez_compressed(scenario_output_path, **scenario_results)
+            print(f"Saved scenario {scenarios} to {scenario_output_path}")
+
         print(f"Completed scenario {idx}: {scenarios}")
-
-    # Save the datasets
-    if saving:
-        if output_file_name is not None:
-            np.save(path_to_output + output_file_name, datasets)
-
-    return datasets
+    
+    return scenario_results
 
 if __name__ == "__main__":
-    datasets = JUSTICE_stepwise_run()
+    datasets = JUSTICE_stepwise_run(path_to_output="data/output/bau",saving=True)
     # Print the keys of the datasets
     print(datasets.keys())

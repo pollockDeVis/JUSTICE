@@ -306,34 +306,34 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
-            "recycled_material": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
-                )
-            ),
-            "material_consumption": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
-                )
-            ),
-            "discarded_material": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
-                )
-            ),
-            "extracted_matter": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
-                )
-            ),
+            # "recycled_material": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            # "material_consumption": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            # "discarded_material": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            # "extracted_matter": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
             "waste": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
@@ -341,20 +341,20 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
-            "material_reserves": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
-                )
-            ),
-            "material_resources": np.zeros(
-                (
-                    len(self.data_loader.REGION_LIST),
-                    len(self.time_horizon.model_time_horizon),
-                    self.no_of_ensembles,
-                )
-            ),
+            # "material_reserves": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            # "material_resources": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
             "recycling_cost": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
@@ -471,6 +471,9 @@ class JUSTICE:
             savings_rate=self.savings_rate[:, timestep],
         )
 
+        # Initialize recycling cost as None to ensure that the variable is always defined before it is used
+        recycling_cost = None
+
         # Add the matter feedback loop here
         if self.economy_submodule == EconomySubModules.MATTER:
             # Get the recycling rate policy lever from kwargs
@@ -487,12 +490,12 @@ class JUSTICE:
                 ],  # NOTE: @Angela - assuming the recycling rate is of shape (regions, timesteps)
             )
             self.data["emissions_avoided"][:, timestep, :] = emissions_avoided
-            # self.data["depletion_ratio"][:, timestep, :] = depletion_ratio
+            self.data["depletion_ratio"][:, timestep, :] = depletion_ratio
             # self.data["recycled_material"][:, timestep, :] = recycled_material
             # self.data["material_consumption"][:, timestep, :] = material_consumption
             # self.data["discarded_material"][:, timestep, :] = discarded_material
             # self.data["extracted_matter"][:, timestep, :] = extracted_matter
-            # self.data["waste"][:, timestep, :] = waste
+            self.data["waste"][:, timestep, :] = waste
             # self.data["material_reserves"][:, timestep, :] = material_reserves
             # self.data['material_resources'][:,timestep,:]= material_resources
             self.data['recycling_cost'][:, timestep, :] = total_costs
@@ -502,9 +505,7 @@ class JUSTICE:
                 self.scenario, timestep, emissions_avoided
             )
             #NOTE @Palok can you review this 
-            self.economy._apply_recycling_cost_to_output(timestep, 
-                recycling_cost=total_costs
-            )
+            recycling_cost=total_costs
 
         self.data["emissions"][:, timestep, :] = self.emissions.run(
             timestep=timestep,
@@ -563,6 +564,7 @@ class JUSTICE:
                 savings_rate=self.savings_rate[:, timestep],
                 damage_fraction=damage_fraction,
                 abatement=abatement_cost,
+                recycling_cost=recycling_cost  # Pass recycling cost here
             )
 
             # Store the net economic output for the timestep
@@ -597,6 +599,7 @@ class JUSTICE:
                 savings_rate=self.savings_rate[:, timestep],
                 damage_fraction=damage_fraction,
                 abatement=abatement_cost,
+                recycling_cost=recycling_cost  # Pass recycling cost here
             )
 
         # Save the data
