@@ -20,7 +20,7 @@ def JUSTICE_stepwise_run(
     policy_loader = PolicyLoader()
     
     #Select the policy 
-    recycling_rate = policy_loader.RECYCLING_RATE_LINEAR_PROYECTION
+    recycling_rate = policy_loader.RECYCLING_RATE_2050_TARGET
     constrained_emission_control_rate = policy_loader.constrained_emission_control_rate
 
     # Instantiate the TimeHorizon class
@@ -72,6 +72,6 @@ def JUSTICE_stepwise_run(
     return scenario_results
 
 if __name__ == "__main__":
-    datasets = JUSTICE_stepwise_run(path_to_output="data/output/bau",saving=True)
+    datasets = JUSTICE_stepwise_run(path_to_output="data/output/ce",saving=True)
     # Print the keys of the datasets
     print(datasets.keys())

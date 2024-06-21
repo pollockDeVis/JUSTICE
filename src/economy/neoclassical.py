@@ -120,7 +120,7 @@ class NeoclassicalEconomyModel:
 
         # Initializing the gross output array Unit: Trill 2005 USD PPP / year
         self.gross_output = np.zeros(
-            (len(self.region_list), len(self.model_time_horizon), self.NfeUM_OF_ENSEMBLES)
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
         # Initializing the net output array Unit: Trill 2005 USD PPP / year
