@@ -163,6 +163,18 @@ class MatterUse:
             )
             material_resources = self.material_resources[:,timestep,:]
             material_reserves = self.material_reserves[:,timestep - 1,:]
+
+            # Smooth the adjustment of material reserves to avoid sudden drops to zero
+            min_reserves_threshold = 1e-3
+            material_reserves = np.where(material_reserves < min_reserves_threshold, min_reserves_threshold, material_reserves)
+        
+            # Apply a smoothing factor to the reserves adjustment
+            smoothing_factor = 0.9
+            new_material_reserves = (material_reserves * smoothing_factor + 
+                (converted_material_reserves - extracted_matter) * (1 - smoothing_factor)
+            )
+            material_reserves = np.clip(new_material_reserves, min_reserves_threshold, None)
+                
             depletion_ratio = np.clip(extracted_matter / (material_reserves + 1e-10), 0, 1) 
             self.material_reserves[:,timestep,:] =(
                 material_reserves + converted_material_reserves - extracted_matter

@@ -72,6 +72,6 @@ def JUSTICE_stepwise_run(
     return scenario_results
 
 if __name__ == "__main__":
-    datasets = JUSTICE_stepwise_run(path_to_output="data/output/ce",saving=True)
+    datasets = JUSTICE_stepwise_run(path_to_output="data/output/ce_depletion",saving=True)
     # Print the keys of the datasets
     print(datasets.keys())
