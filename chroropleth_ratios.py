@@ -65,6 +65,12 @@ def create_region_country_dataframe(region_list, region_iso_mapping):
     region_country_df = pd.DataFrame(region_country_list, columns=['Region', 'CountryCode'])
     return region_country_df
 
+def sanitize_title(title):
+    """
+    Sanitize the title to create a valid file name.
+    """
+    return title.replace(" ", "_").replace("/", "_")
+
 def plot_choropleth(region_country_df, variable_name, title, output_dir, country_data):
     """
     Plot a choropleth map for a specific variable.
@@ -96,7 +102,8 @@ def plot_choropleth(region_country_df, variable_name, title, output_dir, country
         os.makedirs(output_dir)
     
     try:
-        fig.write_image(os.path.join(output_dir, f'{variable_name}_choropleth.png'))
+        sanitized_title = sanitize_title(variable_name)
+        fig.write_image(os.path.join(output_dir, f'{sanitized_title}_choropleth.png'))
     except ValueError as e:
         print("Image export failed, please install 'kaleido' package to enable this feature.")
         print(e)
@@ -126,7 +133,8 @@ def process_choropleth_ratios(input_dir, output_dir, region_list, region_mapping
     
     for title in titles:
         for scenario in scenarios:
-           # print(f"Processing scenario {scenario} for ratio {title}.")
+            #print(f"Processing scenario {scenario} for ratio {title}.")
+            
             if 'Emissions Avoided / Emissions' in title:
                 emissions = data['emissions'][scenario][:, year_index, :]
                 emissions_avoided = data['emissions_avoided'][scenario][:, year_index, :]
@@ -145,10 +153,77 @@ def process_choropleth_ratios(input_dir, output_dir, region_list, region_mapping
             
             plot_choropleth(region_country_df, title, f'{title} - {scenario}', output_dir, country_data)
 
+def normalize_data(data):
+    """
+    Normalize the data to a range of [0, 1].
+    """
+    min_val = np.min(data)
+    max_val = np.max(data)
+    return (data - min_val) / (max_val - min_val)
+
+def process_choropleth_ratios_normalized(input_dir, output_dir, region_list, region_mapping_path):
+    """
+    Process all .npz files for the selected case (BAU or CE) and generate normalized choropleth maps for ratios across scenarios and regions.
+    """
+    variables_of_interest = [
+        'emissions', 'emissions_avoided', 'recycling_cost', 'net_economic_output'
+    ]
+    titles = [
+        'Emissions Avoided / Emissions in 2100', 'Recycling Cost / Net Economic Output in 2100'
+    ]
+    
+    scenarios = [
+     'SSP119', 'SSP245', 'SSP370', 'SSP460', 'SSP585'
+    ]
+    year_index = 2100 - 2015  # Calculate the index for the year 2100
+
+    region_iso_mapping = load_region_iso_mapping(region_mapping_path)
+
+    data = collect_variable_data(input_dir, variables_of_interest)
+    
+    for title in titles:
+        all_ratios = []
+        for scenario in scenarios:
+            print(f"Processing scenario {scenario} for ratio {title}.")
+            
+            if 'Emissions Avoided / Emissions' in title:
+                emissions = data['emissions'][scenario][:, year_index, :]
+                emissions_avoided = data['emissions_avoided'][scenario][:, year_index, :]
+                ratio = np.mean(emissions_avoided / emissions, axis=1)
+            elif 'Recycling Cost / Net Economic Output' in title:
+                recycling_cost = data['recycling_cost'][scenario][:, year_index, :]
+                net_economic_output = data['net_economic_output'][scenario][:, year_index, :]
+                ratio = np.mean(recycling_cost / net_economic_output, axis=1)
+            
+            all_ratios.append(ratio)
+        
+        # Normalize all ratios together
+        all_ratios = np.concatenate(all_ratios)
+        normalized_ratios = normalize_data(all_ratios)
+        
+        start = 0
+        for scenario in scenarios:
+            print(f"Plotting scenario {scenario} for normalized ratio {title}.")
+            
+            # Extract the normalized ratio for the current scenario
+            end = start + len(region_list)
+            ratio = normalized_ratios[start:end]
+            start = end
+            
+            df = pd.DataFrame(ratio, index=region_list)
+            mean_df = df.mean(axis=1)
+            
+            country_data = create_country_data(region_iso_mapping, mean_df)
+            
+            region_country_df = create_region_country_dataframe(region_list, region_iso_mapping)
+            
+            plot_choropleth(region_country_df, title, f'Normalized {title} - {scenario}', output_dir, country_data)
+
 # Example usage:
 data_loader = DataLoader()
 region_list = data_loader.REGION_LIST
 region_mapping_path = 'data/input/rice50_regions_dict.json'
 input_dir = 'data/output/ce_depletion'  # Choose either 'data/output/ce_depletion' or 'data/output/bau_depletion'
 output_dir = 'figures/choropleths/ce'  # Adjust directory as needed
-process_choropleth_ratios(input_dir, output_dir, region_list, region_mapping_path)
+#process_choropleth_ratios(input_dir, output_dir, region_list, region_mapping_path)
+process_choropleth_ratios_normalized(input_dir, output_dir, region_list, region_mapping_path)

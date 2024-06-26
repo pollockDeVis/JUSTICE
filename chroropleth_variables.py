@@ -117,7 +117,7 @@ def process_choropleth_variables(input_dir, output_dir, region_list, region_mapp
     #  'recycling_cost',    
        #'emissions_avoided',    
     #  'waste',
-    # 'depletion_ratio',
+     'depletion_ratio',
     # 'damage_fraction',
     #  'welfare_regional_temporal',
     #  'disentangled_utility',
@@ -130,7 +130,7 @@ def process_choropleth_variables(input_dir, output_dir, region_list, region_mapp
     #  'Recycling Cost Change (%) 2100',    
        #'Emissions Avoided Change (%) 2100',
     #  'Waste Change (%) 2100',
-    #  'Depletion Ratio CE 2100',
+      'Depletion Ratio CE 2100',
     #  'Damage Fraction CE 2100'
     #  'Welfare Change (%) 2100',
     #  'Disentangled Utility Change (%) 2100',
