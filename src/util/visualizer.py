@@ -614,6 +614,8 @@ def plot_choropleth(
     feature_scale=(0, 1),
     choropleth_data_length=3,
     data_normalization=True,
+    show_colorbar=True,
+    show_title=True,
 ):
 
     # Assert if input_data list and output_titles list is None
@@ -727,18 +729,24 @@ def plot_choropleth(
                 color_continuous_scale=colourmap,
             )
 
-            # Update the layout
-            fig.update_layout(
-                title={
-                    "text": choropleth_title,
-                    "xanchor": "center",
-                    "yanchor": "top",
-                    "x": 0.5,
-                    "y": 0.95,
-                },
-                coloraxis_colorbar=dict(title=legend_label),
-                # coloraxis_colorbar_x=-0.1,
-            )
+            if show_colorbar == False:
+                fig.update_layout(coloraxis_showscale=False)
+
+            if show_title:
+                # Update the layout
+                fig.update_layout(
+                    title={
+                        "text": choropleth_title,
+                        "xanchor": "center",
+                        "yanchor": "top",
+                        "x": 0.5,
+                        "y": 0.95,
+                    },
+                    coloraxis_colorbar=dict(title=legend_label),
+                    # coloraxis_colorbar_x=-0.1,
+                )
+            else:
+                fig.update_layout(title_text="")
 
             output_file_name = (
                 variable_name
@@ -926,6 +934,7 @@ def plot_stacked_area_chart(
     fontsize=15,
     yaxis_lower_limit=0,
     yaxis_upper_limit=25,
+    show_legend=True,
 ):
 
     # Assert if input_data list, scenario_list and output_titles list is None
@@ -1025,6 +1034,10 @@ def plot_stacked_area_chart(
                 legend_traceorder="reversed",
                 # legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
             )
+            # Check if display legend is True
+            if show_legend == False:
+                fig.update_layout(showlegend=False)
+
             if saving:
                 # Save the figure
                 if not os.path.exists(path_to_output):
@@ -1114,13 +1127,53 @@ def plot_hypervolume(
 
 if __name__ == "__main__":
 
-    # fig, data = plot_choropleth(
-    #     variable_name="constrained_emission_control_rate",
-    #     path_to_data="data/reevaluation/",
+    fig, data = plot_choropleth(
+        variable_name="constrained_emission_control_rate",
+        path_to_data="data/reevaluation/",
+        path_to_output="./data/plots/regional",
+        projection="natural earth",
+        # scope='usa',
+        year_to_visualize=2100,
+        input_data=[
+            # "UTIL_100024_s1644652_idx75.pkl",
+            # "PRIOR_101400_s1644652_idx236.pkl",
+            # "SUFF_100090_s9845531_idx86.pkl",
+            "EGAL_100417_s1644652_idx31.pkl",
+        ],
+        output_titles=[
+            # "Utilitarian",
+            # "Prioritarian",
+            # "Sufficientarian",
+            "Egalitarian",
+        ],
+        title="Mitigation Burden Distribution in ",
+        data_label="Emission Control Rate",
+        colourmap="matter",
+        legend_label="% Mitigation\n",
+        # scenario_list= ['SSP245'],
+        scenario_list=[
+            # "SSP119",
+            # "SSP126",
+            "SSP245",
+            # "SSP370",
+            # "SSP434",
+            # "SSP460",
+            # "SSP534",
+            # "SSP585",
+        ],  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585'],
+        data_normalization=True,
+        saving=True,
+        show_colorbar=False,
+        show_title=False,
+    )
+
+    ############################################################################################################
+    # fig = plot_timeseries(
+    #     path_to_data="data/reevaluation",
     #     path_to_output="./data/plots/regional",
-    #     projection="natural earth",
-    #     # scope='usa',
-    #     year_to_visualize=2100,
+    #     x_label="Years",
+    #     y_label="Temperature Rise (°C)",
+    #     variable_name="global_temperature",
     #     input_data=[
     #         "UTIL_100024_s1644652_idx75.pkl",
     #         "PRIOR_101400_s1644652_idx236.pkl",
@@ -1133,60 +1186,22 @@ if __name__ == "__main__":
     #         "Sufficientarian",
     #         "Egalitarian",
     #     ],
-    #     title="Mitigation Burden Distribution in ",
-    #     data_label="Emission Control Rate",
-    #     colourmap="matter",
-    #     legend_label="% Mitigation\n",
-    #     # scenario_list= ['SSP245'],
+    #     main_title="Global Temperature Rise - ",
+    #     show_title=False,
+    #     saving=True,
+    #     yaxis_lower_limit=0,
+    #     yaxis_upper_limit=12,
+    #     alpha=0.1,
+    #     linewidth=2.5,
+    #     start_year=2015,
+    #     end_year=2300,
+    #     visualization_start_year=2025,
+    #     visualization_end_year=2300,
     #     scenario_list=[
     #         "SSP119",
-    #         "SSP126",
     #         "SSP245",
     #         "SSP370",
     #         "SSP434",
-    #         "SSP460",
-    #         "SSP534",
     #         "SSP585",
-    #     ],  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585'],
-    #     data_normalization=True,
-    #     saving=True,
+    #     ],  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585'], # #
     # )
-
-    ############################################################################################################
-    fig = plot_timeseries(
-        path_to_data="data/reevaluation",
-        path_to_output="./data/plots/regional",
-        x_label="Years",
-        y_label="Temperature Rise (°C)",
-        variable_name="global_temperature",
-        input_data=[
-            "UTIL_100024_s1644652_idx75.pkl",
-            "PRIOR_101400_s1644652_idx236.pkl",
-            "SUFF_100090_s9845531_idx86.pkl",
-            "EGAL_100417_s1644652_idx31.pkl",
-        ],
-        output_titles=[
-            "Utilitarian",
-            "Prioritarian",
-            "Sufficientarian",
-            "Egalitarian",
-        ],
-        main_title="Global Temperature Rise - ",
-        show_title=False,
-        saving=True,
-        yaxis_lower_limit=0,
-        yaxis_upper_limit=12,
-        alpha=0.1,
-        linewidth=2.5,
-        start_year=2015,
-        end_year=2300,
-        visualization_start_year=2025,
-        visualization_end_year=2300,
-        scenario_list=[
-            "SSP119",
-            "SSP245",
-            "SSP370",
-            "SSP434",
-            "SSP585",
-        ],  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585'], # #
-    )
