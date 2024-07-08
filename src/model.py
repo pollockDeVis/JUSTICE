@@ -35,6 +35,8 @@ class JUSTICE:
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=WelfareFunction.UTILITARIAN,
+        enable_damage_function=True,
+        enable_abatement=True,
         **kwargs,
     ):
         """
@@ -53,6 +55,8 @@ class JUSTICE:
         self.damage_function_type = damage_function_type
         self.abatement_type = abatement_type
         self.scenario = scenario
+        self.enable_damage_function = enable_damage_function
+        self.enable_abatement = enable_abatement
 
         # Check for Kwargs. This is implemented for EMA Workbench Support
         if "social_welfare_function_type" in kwargs:
@@ -147,25 +151,49 @@ class JUSTICE:
         #   Instantiating the Model Blocks
         #
         ############################################################################################################################################################
-        # TODO: Incomplete Implementation
-        if self.damage_function_type == DamageFunction.KALKUHL:
-            self.damage_function = DamageKalkuhl(
-                input_dataset=self.data_loader,
-                time_horizon=self.time_horizon,
-                climate_ensembles=self.no_of_ensembles,
-            )
+        if enable_damage_function:
+            if damage_function_type == DamageFunction.KALKUHL:
+                self.damage_function = DamageKalkuhl(
+                    input_dataset=self.data_loader,
+                    time_horizon=self.time_horizon,
+                    climate_ensembles=self.no_of_ensembles,
+                )
+            else:
+                # Assert and raise an error if the damage function is not implemented
+                assert False, "The damage function is not provided!"
         else:
-            # Assert and raise an error if the damage function is not implemented
-            assert False, "The damage function is not provided!"
+            self.damage_function = None
 
-        # TODO: Incomplete Implementation
-        if self.abatement_type == Abatement.ENERDATA:
-            self.abatement = AbatementEnerdata(
-                input_dataset=self.data_loader, time_horizon=self.time_horizon
-            )
+        # # TODO: Incomplete Implementation
+        # if self.damage_function_type == DamageFunction.KALKUHL:
+        #     self.damage_function = DamageKalkuhl(
+        #         input_dataset=self.data_loader,
+        #         time_horizon=self.time_horizon,
+        #         climate_ensembles=self.no_of_ensembles,
+        #     )
+        # else:
+        #     # Assert and raise an error if the damage function is not implemented
+        #     assert False, "The damage function is not provided!"
+
+        if enable_abatement:
+            if abatement_type == Abatement.ENERDATA:
+                self.abatement = AbatementEnerdata(
+                    input_dataset=self.data_loader, time_horizon=self.time_horizon
+                )
+            else:
+                # Assert and raise an error if the abatement model is not implemented
+                assert False, "The abatement model is not provided!"
         else:
-            # Assert and raise an error if the abatement model is not implemented
-            assert False, "The abatement model is not provided!"
+            self.abatement = None
+
+        # # TODO: Incomplete Implementation
+        # if self.abatement_type == Abatement.ENERDATA:
+        #     self.abatement = AbatementEnerdata(
+        #         input_dataset=self.data_loader, time_horizon=self.time_horizon
+        #     )
+        # else:
+        #     # Assert and raise an error if the abatement model is not implemented
+        #     assert False, "The abatement model is not provided!"
 
         # TODO: Incomplete Implementation
         if self.economy_type == Economy.NEOCLASSICAL:
@@ -409,20 +437,45 @@ class JUSTICE:
                 )
             )
 
-            damage_fraction = self.damage_function.calculate_damage(
-                temperature=self.data["regional_temperature"][:, timestep, :],
-                timestep=timestep,
-            )
+            if self.enable_damage_function:
+
+                damage_fraction = self.damage_function.calculate_damage(
+                    temperature=self.data["regional_temperature"][:, timestep, :],
+                    timestep=timestep,
+                )
+
+            else:
+                damage_fraction = np.zeros(
+                    (
+                        len(self.data_loader.REGION_LIST),
+                        self.no_of_ensembles,
+                    )
+                )
 
             # Storing the damage fraction for the timestep
             self.data["damage_fraction"][:, timestep, :] = damage_fraction
 
-            # Abatement cost is only dependent on the emission control rate
-            abatement_cost = self.abatement.calculate_abatement(
-                scenario=self.scenario,
-                timestep=timestep,
-                emission_control_rate=emission_control_rate,
-            )
+            if self.enable_abatement:
+                # Abatement cost is only dependent on the emission control rate
+                abatement_cost = self.abatement.calculate_abatement(
+                    scenario=self.scenario,
+                    timestep=timestep,
+                    emission_control_rate=emission_control_rate,
+                )
+            else:
+                abatement_cost = np.zeros(
+                    (
+                        len(self.data_loader.REGION_LIST),
+                        self.no_of_ensembles,
+                    )
+                )
+
+            # # Abatement cost is only dependent on the emission control rate
+            # abatement_cost = self.abatement.calculate_abatement(
+            #     scenario=self.scenario,
+            #     timestep=timestep,
+            #     emission_control_rate=emission_control_rate,
+            # )
 
             # This applies damages and abatement costs and triggers the Investment & Capital Calculation
             # NOTE This is necessary to calculate the capital and investment for the next timestep
@@ -443,20 +496,48 @@ class JUSTICE:
         ):  # Last timestep
             # No need to calculate temperature for the last timestep because current emissions produce temperature in the next timestep
             # Calculate damage for the last timestep
-            damage_fraction = self.damage_function.calculate_damage(
-                temperature=self.data["regional_temperature"][:, timestep, :],
-                timestep=timestep,
-            )
+
+            if self.enable_damage_function:
+                damage_fraction = self.damage_function.calculate_damage(
+                    temperature=self.data["regional_temperature"][:, timestep, :],
+                    timestep=timestep,
+                )
+            else:
+                damage_fraction = np.zeros(
+                    (
+                        len(self.data_loader.REGION_LIST),
+                        self.no_of_ensembles,
+                    )
+                )
+            # damage_fraction = self.damage_function.calculate_damage(
+            #     temperature=self.data["regional_temperature"][:, timestep, :],
+            #     timestep=timestep,
+            # )
 
             # Storing the damage fraction for the timestep
             self.data["damage_fraction"][:, timestep, :] = damage_fraction
 
-            # Calculate the abatement cost
-            abatement_cost = self.abatement.calculate_abatement(
-                scenario=self.scenario,
-                timestep=timestep,
-                emission_control_rate=emission_control_rate,
-            )
+            if self.enable_abatement:
+                # Calculate the abatement cost
+                abatement_cost = self.abatement.calculate_abatement(
+                    scenario=self.scenario,
+                    timestep=timestep,
+                    emission_control_rate=emission_control_rate,
+                )
+            else:
+                abatement_cost = np.zeros(
+                    (
+                        len(self.data_loader.REGION_LIST),
+                        self.no_of_ensembles,
+                    )
+                )
+
+            # # Calculate the abatement cost
+            # abatement_cost = self.abatement.calculate_abatement(
+            #     scenario=self.scenario,
+            #     timestep=timestep,
+            #     emission_control_rate=emission_control_rate,
+            # )
 
             # This applies damages and abatement costs and triggers the Investment & Capital Calculation
             # NOTE This is necessary to calculate the capital and investment for the next timestep
@@ -565,14 +646,32 @@ class JUSTICE:
                     )
                 )
 
-                # Damages is calculated based on current temperature
-                damage_fraction = self.damage_function.calculate_damage(
-                    temperature=self.data["regional_temperature"][:, timestep, :],
-                    timestep=timestep,
-                )
+                if self.enable_damage_function:
+                    # Damages is calculated based on current temperature
+                    damage_fraction = self.damage_function.calculate_damage(
+                        temperature=self.data["regional_temperature"][:, timestep, :],
+                        timestep=timestep,
+                    )
+
+                else:
+                    damage_fraction = np.zeros(
+                        (
+                            len(self.data_loader.REGION_LIST),
+                            self.no_of_ensembles,
+                        )
+                    )
 
                 # Storing the damage fraction for the timestep
                 self.data["damage_fraction"][:, timestep, :] = damage_fraction
+
+                # Damages is calculated based on current temperature
+                # damage_fraction = self.damage_function.calculate_damage(
+                #     temperature=self.data["regional_temperature"][:, timestep, :],
+                #     timestep=timestep,
+                # )
+
+                # # Storing the damage fraction for the timestep
+                # self.data["damage_fraction"][:, timestep, :] = damage_fraction
 
                 # TODO: Incomplete Implementation
                 # carbon_price = self.abatement.calculate_carbon_price(
@@ -580,12 +679,28 @@ class JUSTICE:
                 #     emission_control_rate=self.emissions_control_rate[:, timestep],
                 # )
 
+                if self.enable_abatement:
+                    # Abatement cost is only dependent on the emission control rate
+                    abatement_cost = self.abatement.calculate_abatement(
+                        scenario=self.scenario,
+                        timestep=timestep,
+                        emission_control_rate=self.emission_control_rate[
+                            :, timestep, :
+                        ],
+                    )
+                else:
+                    abatement_cost = np.zeros(
+                        (
+                            len(self.data_loader.REGION_LIST),
+                            self.no_of_ensembles,
+                        )
+                    )
                 # Abatement cost is only dependent on the emission control rate
-                abatement_cost = self.abatement.calculate_abatement(
-                    scenario=self.scenario,
-                    timestep=timestep,
-                    emission_control_rate=self.emission_control_rate[:, timestep, :],
-                )
+                # abatement_cost = self.abatement.calculate_abatement(
+                #     scenario=self.scenario,
+                #     timestep=timestep,
+                #     emission_control_rate=self.emission_control_rate[:, timestep, :],
+                # )
 
                 # This applies damages and abatement costs and triggers the Investment & Capital Calculation
                 # NOTE This is necessary to calculate the capital and investment for the next timestep
@@ -606,20 +721,39 @@ class JUSTICE:
             ):  # Last timestep
                 # No need to calculate temperature for the last timestep because current emissions produce temperature in the next timestep
                 # Calculate damage for the last timestep
-                damage_fraction = self.damage_function.calculate_damage(
-                    temperature=self.data["regional_temperature"][:, timestep, :],
-                    timestep=timestep,
-                )
+
+                if self.enable_damage_function:
+                    damage_fraction = self.damage_function.calculate_damage(
+                        temperature=self.data["regional_temperature"][:, timestep, :],
+                        timestep=timestep,
+                    )
+                else:
+                    damage_fraction = np.zeros(
+                        (
+                            len(self.data_loader.REGION_LIST),
+                            self.no_of_ensembles,
+                        )
+                    )
 
                 # Storing the damage fraction for the timestep
                 self.data["damage_fraction"][:, timestep, :] = damage_fraction
 
-                # Calculate the abatement cost
-                abatement_cost = self.abatement.calculate_abatement(
-                    scenario=self.scenario,
-                    timestep=timestep,
-                    emission_control_rate=self.emission_control_rate[:, timestep, :],
-                )
+                if self.enable_abatement:
+                    # Calculate the abatement cost
+                    abatement_cost = self.abatement.calculate_abatement(
+                        scenario=self.scenario,
+                        timestep=timestep,
+                        emission_control_rate=self.emission_control_rate[
+                            :, timestep, :
+                        ],
+                    )
+                else:
+                    abatement_cost = np.zeros(
+                        (
+                            len(self.data_loader.REGION_LIST),
+                            self.no_of_ensembles,
+                        )
+                    )
 
                 # This applies damages and abatement costs and triggers the Investment & Capital Calculation
                 # NOTE This is necessary to calculate the capital and investment for the next timestep
