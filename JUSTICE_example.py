@@ -50,7 +50,14 @@ def get_linear_emission_control():
     return emissions_control_rate
 
 
-def JUSTICE_run(scenarios=2, climate_ensembles=None, social_welfare_function=None):
+def JUSTICE_run(
+    scenarios=2,
+    climate_ensembles=None,
+    social_welfare_function=None,
+    enable_damage_function=True,
+    enable_abatement=True,
+    economy_endogenous_growth=False,
+):
     """
     Run the JUSTICE model for a given scenario
 
@@ -65,6 +72,9 @@ def JUSTICE_run(scenarios=2, climate_ensembles=None, social_welfare_function=Non
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=social_welfare_function,  # WelfareFunction.UTILITARIAN,
         climate_ensembles=climate_ensembles,
+        enable_damage_function=enable_damage_function,
+        enable_abatement=enable_abatement,
+        economy_endogenous_growth=economy_endogenous_growth,
     )
 
     # Get example emissions control rate
@@ -316,7 +326,10 @@ def setup_RBF_for_emission_control(
 if __name__ == "__main__":
     datasets = JUSTICE_run(
         scenarios=2,
-        social_welfare_function=WelfareFunction.PRIORITARIAN,
+        social_welfare_function=WelfareFunction.UTILITARIAN,
+        enable_damage_function=False,
+        enable_abatement=False,
+        economy_endogenous_growth=True,
     )
     # datasets = JUSTICE_stepwise_run(
     #     scenarios=2,

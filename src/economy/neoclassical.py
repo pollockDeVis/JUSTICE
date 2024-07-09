@@ -80,6 +80,10 @@ class NeoclassicalEconomyModel:
             self.endogenous_growth_coefficients = copy.deepcopy(
                 input_dataset.ENDOGENOUS_TFP_INVESTMENT_COEFFICIENTS
             )
+            # Selecting only the required scenario
+            self.endogenous_growth_coefficients = self.endogenous_growth_coefficients[
+                :, :, self.scenario
+            ]
 
         # Assert that the number of scenarios in GDP and Population are the same.
         assert (
@@ -159,6 +163,15 @@ class NeoclassicalEconomyModel:
             (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
         )
 
+        # Initialize endogenous TFP
+        if self.endogenous_growth:
+            self.endogenous_tfp = np.zeros(
+                (
+                    len(self.region_list),
+                    len(self.model_time_horizon),
+                    self.NUM_OF_ENSEMBLES,
+                )
+            )
         # Calculate the baseline per capita growth #TODO to be used in the complex version of Damage Function
         # Initializing the 4D array for baseline per capita growth
         # self.baseline_per_capita_growth = np.zeros(
@@ -319,16 +332,26 @@ class NeoclassicalEconomyModel:
             # propagation of nan values in gross output, net output, consumption and utility
             self.capital = np.where(self.capital < 0, 0, self.capital)
 
-    def _calculate_endogenous_tfp(self, timestep):
-        """
-        This method calculates the endogenous total factor productivity.
-        """
-        pass
-
     def _calculate_output(self, timestep):
 
         if self.endogenous_growth:
-            pass
+            # Calculate the endogenous tfp
+            self._calculate_endogenous_tfp(timestep)
+
+            # Calculate the Output based on gross output
+            self.gross_output[:, timestep, :] = self.endogenous_tfp[:, timestep, :] * (
+                np.power(
+                    self.capital[:, timestep, :],
+                    self.capital_elasticity_in_production_function,
+                )
+                * np.power(
+                    (self.population_array[:, timestep, np.newaxis] / 1000),
+                    (1 - self.capital_elasticity_in_production_function),
+                )
+            )
+            # Setting net output to gross output before any damage or abatement
+            self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
+
         else:
             # Calculate the Output based on gross output
 
@@ -344,6 +367,25 @@ class NeoclassicalEconomyModel:
             )
             # Setting net output to gross output before any damage or abatement
             self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
+
+    def _calculate_endogenous_tfp(self, timestep):
+        """
+        This method calculates the endogenous total factor productivity.
+        """
+        # TODO: Timestep 5 is hardcoded. Change this ASAP
+        # For timestep less than 5, use the same tfp as self.tfp
+        if timestep < 5:
+            self.endogenous_tfp[:, timestep, :] = self.tfp[:, timestep, np.newaxis]
+        else:
+            # Calculate the endogenous tfp
+            self.endogenous_tfp[:, timestep, :] = self.endogenous_tfp[
+                :, timestep - 1, :
+            ] * (1 - self.depreciation_rate_tfp) + self.endogenous_growth_coefficients[
+                :, 0, np.newaxis
+            ] * (
+                self.investment[:, timestep - 1, :]
+                ** self.endogenous_growth_coefficients[:, 1, np.newaxis]
+            )
 
     def _apply_damage_to_output(self, timestep, damage_fraction):
         """
