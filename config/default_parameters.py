@@ -20,6 +20,10 @@ class EconomyDefaults:
                 "elasticity_of_output_to_capital": 0.004,
                 # Depriciation rate for total factor productivity. Dietz & Stern (2015) Endogenous Growth
                 "depreciation_rate_tfp": 0.01,
+                # Damage share of TFP. Dietz & Stern (2015) Endogenous Growth
+                "damage_share_ratio_tfp": 0.05,  # [can range from 0.01 to 1] #NOTE: Vary from 0.05 - 0.5
+                # Capital Damage Share. Dietz & Stern (2015) Endogenous Growth
+                "capital_damage_share": 0.3,  # [can range from 0.01 to 1]
             },
             "POST_KEYNESIAN": {"capital_elasticity_in_production_function": 0.1},
         }

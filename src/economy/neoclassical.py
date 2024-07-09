@@ -67,6 +67,12 @@ class NeoclassicalEconomyModel:
             econ_neoclassical_defaults["elasticity_of_output_to_capital"],
         )
 
+        # Get damage_share_ratio_tfp
+        self.damage_share_ratio_tfp = kwargs.get(
+            "damage_share_ratio_tfp",
+            econ_neoclassical_defaults["damage_share_ratio_tfp"],
+        )
+
         self.elasticity_of_marginal_utility_of_consumption = (
             elasticity_of_marginal_utility_of_consumption
         )
@@ -84,6 +90,11 @@ class NeoclassicalEconomyModel:
             self.endogenous_growth_coefficients = self.endogenous_growth_coefficients[
                 :, :, self.scenario
             ]
+
+            # Create a numpy array of shape (regions, ensembles) to store tfp damage fraction
+            # self.tfp_damage_fraction = np.zeros(
+            #     (len(self.region_list), self.NUM_OF_ENSEMBLES)
+            # )
 
         # Assert that the number of scenarios in GDP and Population are the same.
         assert (
@@ -298,6 +309,13 @@ class NeoclassicalEconomyModel:
                 savings_rate * self.net_output[:, timestep, :]
             )
 
+            # Check if any element is negative in investment. If it is, retain the previous timestep value
+            self.investment[:, timestep, :] = np.where(
+                self.investment[:, timestep, :] > 0,
+                self.investment[:, timestep, :],
+                self.investment[:, timestep - 1, :],
+            )
+
     def _calculate_capital(self, timestep):  # Capital is calculated one timestep ahead
         if timestep < (len(self.model_time_horizon) - 1):
             if timestep == 0:
@@ -330,6 +348,7 @@ class NeoclassicalEconomyModel:
             # Check if any element is negative in capital
             # Need to do this because capital can negative with very high abatement rates leading to
             # propagation of nan values in gross output, net output, consumption and utility
+
             self.capital = np.where(self.capital < 0, 0, self.capital)
 
     def _calculate_output(self, timestep):
@@ -349,6 +368,14 @@ class NeoclassicalEconomyModel:
                     (1 - self.capital_elasticity_in_production_function),
                 )
             )
+
+            #  TODO: test Check if gross output is zero or negative. If it is, retain the previous timestep value
+            self.gross_output[:, timestep, :] = np.where(
+                self.gross_output[:, timestep, :] > 0,
+                self.gross_output[:, timestep, :],
+                self.gross_output[:, timestep - 1, :],
+            )
+
             # Setting net output to gross output before any damage or abatement
             self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
 
@@ -387,6 +414,15 @@ class NeoclassicalEconomyModel:
                 ** self.endogenous_growth_coefficients[:, 1, np.newaxis]
             )
 
+    def _apply_damage_to_tfp(self, timestep, tfp_damage_fraction):
+        """
+        This method applies damage to the TFP.
+        """
+        # Apply damage to the TFP: TFP * (1 - DAMFRAC_TFP)
+        self.endogenous_tfp[:, timestep, :] -= (
+            self.endogenous_tfp[:, timestep, :] * tfp_damage_fraction
+        )
+
     def _apply_damage_to_output(self, timestep, damage_fraction):
         """
         This method applies damage to the output.
@@ -399,6 +435,13 @@ class NeoclassicalEconomyModel:
         )
 
         self.net_output[:, timestep, :] -= self.damage[:, timestep, :]
+
+        # TODO test Check if any element is negative in net output. If it is, retain the previous timestep value
+        self.net_output[:, timestep, :] = np.where(
+            self.net_output[:, timestep, :] > 0,
+            self.net_output[:, timestep, :],
+            self.net_output[:, timestep - 1, :],
+        )
 
     def _apply_abatement_to_output(self, timestep, abatement):
         """
@@ -414,7 +457,14 @@ class NeoclassicalEconomyModel:
         """
         This method calculates the capital and investment.
         """
-        # TODO: Add checks for whether damage and abatement are enabled
+        if self.endogenous_growth:
+            tfp_damage_fraction = self.damage_share_ratio_tfp * damage_fraction
+            disaggregated_output_damage = 1 - (
+                (1 - damage_fraction) / (1 - tfp_damage_fraction)
+            )
+            self._apply_damage_to_tfp(timestep, tfp_damage_fraction)
+            damage_fraction = disaggregated_output_damage
+
         # TODO: Check shape of savings rate
         # Apply damage to the output
         self._apply_damage_to_output(timestep, damage_fraction)

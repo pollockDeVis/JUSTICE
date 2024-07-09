@@ -1,6 +1,7 @@
 import pandas as pd
 from solvers.emodps.rbf import RBF
 import numpy as np
+import h5py
 
 from src.util.data_loader import DataLoader
 from src.util.enumerations import *
@@ -120,6 +121,9 @@ def JUSTICE_stepwise_run(
     min_temperature=0.0,
     max_difference=2.0,
     min_difference=0.0,
+    enable_damage_function=True,
+    enable_abatement=True,
+    economy_endogenous_growth=False,
 ):
     """
     Run the JUSTICE model for a given scenario
@@ -153,6 +157,9 @@ def JUSTICE_stepwise_run(
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=social_welfare_function,
+        enable_damage_function=enable_damage_function,
+        enable_abatement=enable_abatement,
+        economy_endogenous_growth=economy_endogenous_growth,
     )
 
     time_horizon = model.__getattribute__("time_horizon")
@@ -324,6 +331,7 @@ def setup_RBF_for_emission_control(
 
 
 if __name__ == "__main__":
+
     datasets = JUSTICE_run(
         scenarios=2,
         social_welfare_function=WelfareFunction.UTILITARIAN,
@@ -331,11 +339,20 @@ if __name__ == "__main__":
         enable_abatement=True,
         economy_endogenous_growth=True,
     )
+
     # datasets = JUSTICE_stepwise_run(
     #     scenarios=2,
     #     social_welfare_function=WelfareFunction.UTILITARIAN,
-    #     rbf_policy_index=500,
-    #     path_to_rbf_weights="data/optimized_rbf_weights/UTIL_100k/100049.csv",
+    #     rbf_policy_index=32,
+    #     path_to_rbf_weights="data/optimized_rbf_weights/150k/UTIL/150373.csv",
+    #     enable_damage_function=True,
+    #     enable_abatement=True,
+    #     economy_endogenous_growth=True,
     # )
-    # Print the keys of the datasets
-    print(datasets["welfare"])
+    # # Print the keys of the datasets
+    # print(datasets.keys())
+
+    # # Save the datasets as hdf5 file
+    # with h5py.File("data/reevaluation/justice_output_util_150_endo.h5", "w") as f:
+    #     for key, value in datasets.items():
+    #         f.create_dataset(key, data=value)
