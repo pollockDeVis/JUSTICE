@@ -327,8 +327,8 @@ if __name__ == "__main__":
     datasets = JUSTICE_run(
         scenarios=2,
         social_welfare_function=WelfareFunction.UTILITARIAN,
-        enable_damage_function=False,
-        enable_abatement=False,
+        enable_damage_function=True,
+        enable_abatement=True,
         economy_endogenous_growth=True,
     )
     # datasets = JUSTICE_stepwise_run(
