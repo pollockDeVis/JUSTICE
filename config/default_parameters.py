@@ -18,6 +18,8 @@ class EconomyDefaults:
                 "depreciation_rate_capital": 0.1,
                 # The Elasticity of Output with respect to Capital. #Zeta in paper, not named in code (hardcoded)
                 "elasticity_of_output_to_capital": 0.004,
+                # Depriciation rate for total factor productivity. Dietz & Stern (2015) Endogenous Growth
+                "depreciation_rate_tfp": 0.01,
             },
             "POST_KEYNESIAN": {"capital_elasticity_in_production_function": 0.1},
         }

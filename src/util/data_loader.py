@@ -43,6 +43,15 @@ class DataLoader:
         with h5py.File(os.path.join(data_file_path, "population_array.hdf5"), "r") as f:
             self.POPULATION_ARRAY = f["population"][:]
 
+        # Load endogenous tfp growth coefficient for investment
+        with h5py.File(
+            os.path.join(data_file_path, "endogenous_tfp_investment_coefficients.h5"),
+            "r",
+        ) as f:
+            self.ENDOGENOUS_TFP_INVESTMENT_COEFFICIENTS = f[
+                "endogenous_tfp_investment_coefficients"
+            ][:]
+
         # Load the emissions dictionary
         with h5py.File(os.path.join(data_file_path, "emissions_array.hdf5"), "r") as f:
             self.EMISSIONS_ARRAY = f["emissions"][:]

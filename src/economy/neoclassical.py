@@ -23,6 +23,7 @@ class NeoclassicalEconomyModel:
         time_horizon,
         scenario,
         climate_ensembles,
+        endogenous_growth,
         elasticity_of_marginal_utility_of_consumption,
         pure_rate_of_social_time_preference,
         **kwargs,  # variable keyword argument so that we can analyze uncertainty range of any parameters
@@ -36,6 +37,9 @@ class NeoclassicalEconomyModel:
 
         # Saving the scenario
         self.scenario = get_economic_scenario(scenario)
+
+        # Endogenous Growth
+        self.endogenous_growth = endogenous_growth
 
         # Fetch the defaults for neoclassical submodule
         econ_neoclassical_defaults = econ_defaults.get_defaults(
@@ -52,6 +56,12 @@ class NeoclassicalEconomyModel:
             "depreciation_rate_capital",
             econ_neoclassical_defaults["depreciation_rate_capital"],
         )
+        # Get depreciation rate for tfp
+        self.depreciation_rate_tfp = kwargs.get(
+            "depreciation_rate_tfp",
+            econ_neoclassical_defaults["depreciation_rate_tfp"],
+        )
+
         self.elasticity_of_output_to_capital = kwargs.get(
             "elasticity_of_output_to_capital",
             econ_neoclassical_defaults["elasticity_of_output_to_capital"],
@@ -65,6 +75,11 @@ class NeoclassicalEconomyModel:
         self.region_list = input_dataset.REGION_LIST
         self.gdp_array = copy.deepcopy(input_dataset.GDP_ARRAY)
         self.population_array = copy.deepcopy(input_dataset.POPULATION_ARRAY)
+
+        if self.endogenous_growth:
+            self.endogenous_growth_coefficients = copy.deepcopy(
+                input_dataset.ENDOGENOUS_TFP_INVESTMENT_COEFFICIENTS
+            )
 
         # Assert that the number of scenarios in GDP and Population are the same.
         assert (
@@ -101,7 +116,7 @@ class NeoclassicalEconomyModel:
             (len(self.region_list), len(self.data_time_horizon))
         )
 
-        # Calculate the baseline TFP
+        # Calculate the baseline TFP #TODO: Might have to change for endogenous growth
         self.tfp = self.initialize_tfp(
             fixed_savings_rate=self.get_fixed_savings_rate(self.data_time_horizon),
         )
@@ -304,21 +319,31 @@ class NeoclassicalEconomyModel:
             # propagation of nan values in gross output, net output, consumption and utility
             self.capital = np.where(self.capital < 0, 0, self.capital)
 
-    def _calculate_output(self, timestep):
-        # Calculate the Output based on gross output
+    def _calculate_endogenous_tfp(self, timestep):
+        """
+        This method calculates the endogenous total factor productivity.
+        """
+        pass
 
-        self.gross_output[:, timestep, :] = self.tfp[:, timestep, np.newaxis] * (
-            np.power(
-                self.capital[:, timestep, :],
-                self.capital_elasticity_in_production_function,
+    def _calculate_output(self, timestep):
+
+        if self.endogenous_growth:
+            pass
+        else:
+            # Calculate the Output based on gross output
+
+            self.gross_output[:, timestep, :] = self.tfp[:, timestep, np.newaxis] * (
+                np.power(
+                    self.capital[:, timestep, :],
+                    self.capital_elasticity_in_production_function,
+                )
+                * np.power(
+                    (self.population_array[:, timestep, np.newaxis] / 1000),
+                    (1 - self.capital_elasticity_in_production_function),
+                )
             )
-            * np.power(
-                (self.population_array[:, timestep, np.newaxis] / 1000),
-                (1 - self.capital_elasticity_in_production_function),
-            )
-        )
-        # Setting net output to gross output before any damage or abatement
-        self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
+            # Setting net output to gross output before any damage or abatement
+            self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
 
     def _apply_damage_to_output(self, timestep, damage_fraction):
         """

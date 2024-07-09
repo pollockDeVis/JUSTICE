@@ -32,6 +32,7 @@ class JUSTICE:
         scenario=0,
         climate_ensembles=None,
         economy_type=Economy.NEOCLASSICAL,
+        economy_endogenous_growth=False,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=WelfareFunction.UTILITARIAN,
@@ -57,6 +58,7 @@ class JUSTICE:
         self.scenario = scenario
         self.enable_damage_function = enable_damage_function
         self.enable_abatement = enable_abatement
+        self.economy_endogenous_growth = economy_endogenous_growth
 
         # Check for Kwargs. This is implemented for EMA Workbench Support
         if "social_welfare_function_type" in kwargs:
@@ -202,6 +204,7 @@ class JUSTICE:
                 time_horizon=self.time_horizon,
                 scenario=self.scenario,
                 climate_ensembles=self.no_of_ensembles,
+                endogenous_growth=self.economy_endogenous_growth,
                 elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
                 pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
             )
