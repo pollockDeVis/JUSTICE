@@ -418,7 +418,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         ),
     ]
 
-    with MultiprocessingEvaluator(
+    with SequentialEvaluator(
         model
     ) as evaluator:  # MultiprocessingEvaluator SequentialEvaluator
         results = evaluator.perform_experiments(
@@ -427,7 +427,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         )
 
         if filename is None:
-            file_name = f"optimal_open_exploration_{number_of_experiments}.tar.gz"
+            file_name = f"open_exploration_no_mitigation{number_of_experiments}.tar.gz"
 
         if folder is None:
             target_directory = os.path.join(os.getcwd(), "data/output", file_name)
@@ -456,7 +456,7 @@ if __name__ == "__main__":
 
     ema_logging.log_to_stderr(ema_logging.DEBUG)
 
-    perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None)
+    perform_exploratory_analysis(number_of_experiments=300, filename=None, folder=None)
 
     # run_optimization_adaptive(
     #     n_rbfs=4, n_inputs=2, nfe=5, filename=None, folder=None, seed=seed

@@ -193,6 +193,7 @@ def model_wrapper(**kwargs):
     max_difference = 2.0
     min_difference = 0.0
     endogenous_savings_rate = True
+    enable_mitigation = False
 
     time_horizon = model.__getattribute__("time_horizon")
     data_loader = model.__getattribute__("data_loader")
@@ -224,14 +225,19 @@ def model_wrapper(**kwargs):
 
     for timestep in range(n_timesteps):
 
-        # Constrain the emission control rate
-        constrained_emission_control_rate[:, timestep, :] = (
-            emission_constraint.constrain_emission_control_rate(
-                emissions_control_rate[:, timestep, :],
-                timestep,
-                allow_fallback=allow_emission_fallback,
+        if enable_mitigation:
+            # Constrain the emission control rate
+            constrained_emission_control_rate[:, timestep, :] = (
+                emission_constraint.constrain_emission_control_rate(
+                    emissions_control_rate[:, timestep, :],
+                    timestep,
+                    allow_fallback=allow_emission_fallback,
+                )
             )
-        )
+        else:
+            constrained_emission_control_rate[:, timestep, :] = emissions_control_rate[
+                :, timestep, :
+            ]
 
         model.stepwise_run(
             emission_control_rate=constrained_emission_control_rate[:, timestep, :],
@@ -239,26 +245,28 @@ def model_wrapper(**kwargs):
             endogenous_savings_rate=endogenous_savings_rate,
         )
         datasets = model.stepwise_evaluate(timestep=timestep)
-        temperature = datasets["global_temperature"][timestep, :]
 
-        if timestep % 5 == 0:
-            difference = temperature - previous_temperature
-            # Do something with the difference variable
-            previous_temperature = temperature
+        if enable_mitigation:
+            temperature = datasets["global_temperature"][timestep, :]
 
-        # Apply Min Max Scaling to temperature and difference
-        scaled_temperature = (temperature - min_temperature) / (
-            max_temperature - min_temperature
-        )
-        scaled_difference = (difference - min_difference) / (
-            max_difference - min_difference
-        )
+            if timestep % 5 == 0:
+                difference = temperature - previous_temperature
+                # Do something with the difference variable
+                previous_temperature = temperature
 
-        rbf_input = np.array([scaled_temperature, scaled_difference])
+            # Apply Min Max Scaling to temperature and difference
+            scaled_temperature = (temperature - min_temperature) / (
+                max_temperature - min_temperature
+            )
+            scaled_difference = (difference - min_difference) / (
+                max_difference - min_difference
+            )
 
-        # Check if this is not the last timestep
-        if timestep < n_timesteps - 1:
-            emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(rbf_input)
+            rbf_input = np.array([scaled_temperature, scaled_difference])
+
+            # Check if this is not the last timestep
+            if timestep < n_timesteps - 1:
+                emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(rbf_input)
 
     datasets = model.evaluate()
     datasets["constrained_emission_control_rate"] = constrained_emission_control_rate
