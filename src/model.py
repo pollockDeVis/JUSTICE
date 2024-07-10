@@ -207,6 +207,7 @@ class JUSTICE:
                 endogenous_growth=self.economy_endogenous_growth,
                 elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
                 pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
+                **kwargs,
             )
         else:
             # Assert and raise an error if the economy model is not implemented

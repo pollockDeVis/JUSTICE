@@ -332,27 +332,27 @@ def setup_RBF_for_emission_control(
 
 if __name__ == "__main__":
 
-    datasets = JUSTICE_run(
-        scenarios=2,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
-        enable_damage_function=True,
-        enable_abatement=True,
-        economy_endogenous_growth=True,
-    )
-
-    # datasets = JUSTICE_stepwise_run(
+    # datasets = JUSTICE_run(
     #     scenarios=2,
     #     social_welfare_function=WelfareFunction.UTILITARIAN,
-    #     rbf_policy_index=32,
-    #     path_to_rbf_weights="data/optimized_rbf_weights/150k/UTIL/150373.csv",
     #     enable_damage_function=True,
     #     enable_abatement=True,
     #     economy_endogenous_growth=True,
     # )
-    # # Print the keys of the datasets
-    # print(datasets.keys())
 
-    # # Save the datasets as hdf5 file
-    # with h5py.File("data/reevaluation/justice_output_util_150_endo.h5", "w") as f:
-    #     for key, value in datasets.items():
-    #         f.create_dataset(key, data=value)
+    datasets = JUSTICE_stepwise_run(
+        scenarios=2,
+        social_welfare_function=WelfareFunction.UTILITARIAN,
+        rbf_policy_index=32,
+        path_to_rbf_weights="data/optimized_rbf_weights/150k/UTIL/150373.csv",
+        enable_damage_function=True,
+        enable_abatement=True,
+        economy_endogenous_growth=False,
+    )
+    # Print the keys of the datasets
+    print(datasets.keys())
+
+    # Save the datasets as hdf5 file
+    with h5py.File("data/reevaluation/justice_output_util_150_exo.h5", "w") as f:
+        for key, value in datasets.items():
+            f.create_dataset(key, data=value)

@@ -5,7 +5,7 @@ This module wraps the model for uncertainty analysis experiments using EMA.
 # TODO: Move this to solvers. Create a clean solving interface for JUSTICE model using EMA Workbench
 
 import numpy as np
-
+import pandas as pd
 from src.model import JUSTICE
 from src.util.enumerations import *
 from solvers.emodps.rbf import RBF
@@ -157,63 +157,111 @@ def model_wrapper_emodps(**kwargs):
 
 
 def model_wrapper(**kwargs):
-    # TODO - Need to update this wrapper [Deprecated]
+
     scenario = kwargs.pop("ssp_rcp_scenario")
-    elasticity_of_marginal_utility_of_consumption = kwargs.pop(
-        "elasticity_of_marginal_utility_of_consumption"
-    )
-    pure_rate_of_social_time_preference = kwargs.pop(
-        "pure_rate_of_social_time_preference"
-    )
-    inequality_aversion = kwargs.pop("inequality_aversion")
-    economy_type = (Economy.NEOCLASSICAL,)
-    damage_function_type = (DamageFunction.KALKUHL,)
-    abatement_type = (Abatement.ENERDATA,)
-    welfare_function = (WelfareFunction.UTILITARIAN,)
+    damage_share_ratio_tfp = kwargs.pop("damage_share_ratio_tfp")
+    # economy_type = (Economy.NEOCLASSICAL,)
+    # damage_function_type = (DamageFunction.KALKUHL,)
+    # abatement_type = (Abatement.ENERDATA,)
+    # welfare_function = (WelfareFunction.UTILITARIAN,)
 
-    n_regions = kwargs.pop("n_regions")
-    n_timesteps = kwargs.pop("n_timesteps")
-
-    savings_rate = np.zeros((n_regions, n_timesteps))
-    emissions_control_rate = np.zeros((n_regions, n_timesteps))
-
-    # TODO temporarily commented out
-    for i in range(n_regions):
-        for j in range(n_timesteps):
-            savings_rate[i, j] = kwargs.pop(f"savings_rate {i} {j}")
-            emissions_control_rate[i, j] = kwargs.pop(f"emissions_control_rate {i} {j}")
-
-    # Optimal savings rate and emissions control rate RUNS from RICE50
-
-    # TODO: Loading policy levers here - RICE50 optimal runs
-
-    # ssp_scenario = get_economic_scenario(scenario)
-    # optimal_emissions_control = np.load(
-    #     "./data/input/solved_RICE50_data/interpolated_emissions_control.npy",
-    #     allow_pickle=True,
-    # )
-    # optimal_savings_rate = np.load(
-    #     "./data/input/solved_RICE50_data/interpolated_savings_rate.npy",
-    #     allow_pickle=True,
-    # )
-    # savings_rate = optimal_savings_rate[ssp_scenario, :, :]
-    # emissions_control_rate = optimal_emissions_control[ssp_scenario, :, :]
-
+    # Initialize the model
     model = JUSTICE(
         scenario=scenario,
-        economy_type=economy_type,
-        damage_function_type=damage_function_type,
-        abatement_type=abatement_type,
-        social_welfare_function=welfare_function,
+        # economy_type=economy_type,
+        # damage_function_type=damage_function_type,
+        # abatement_type=abatement_type,
+        # social_welfare_function=welfare_function,
+        enable_damage_function=True,
+        enable_abatement=True,
+        economy_endogenous_growth=False,
+        damage_share_ratio_tfp=damage_share_ratio_tfp,
     )
 
-    model.run(savings_rate=savings_rate, emission_control_rate=emissions_control_rate)
-    datasets = model.evaluate(
-        welfare_function=welfare_function,
-        elasticity_of_marginal_utility_of_consumption=elasticity_of_marginal_utility_of_consumption,
-        pure_rate_of_social_time_preference=pure_rate_of_social_time_preference,
-        inequality_aversion=inequality_aversion,
+    # TODO: Harcoded values for now
+    rbf_policy_index = 32
+    n_inputs_rbf = 2
+    path_to_rbf_weights = "data/optimized_rbf_weights/150k/UTIL/150373.csv"
+    max_annual_growth_rate = 0.04
+    emission_control_start_timestep = 10
+    min_emission_control_rate = 0.01
+    allow_emission_fallback = False
+    previous_temperature = 0
+    difference = 0
+    max_temperature = 16.0
+    min_temperature = 0.0
+    max_difference = 2.0
+    min_difference = 0.0
+    endogenous_savings_rate = True
+
+    time_horizon = model.__getattribute__("time_horizon")
+    data_loader = model.__getattribute__("data_loader")
+    no_of_ensembles = model.__getattribute__("no_of_ensembles")
+    n_regions = len(data_loader.REGION_LIST)
+    n_timesteps = len(time_horizon.model_time_horizon)
+
+    # Setting up the RBF. Note: this depends on the setup of the optimization run
+    rbf = setup_RBF_for_emission_control(
+        region_list=data_loader.REGION_LIST,
+        rbf_policy_index=rbf_policy_index,
+        n_inputs_rbf=n_inputs_rbf,
+        path_to_rbf_weights=path_to_rbf_weights,
     )
+    emission_constraint = EmissionControlConstraint(
+        max_annual_growth_rate=max_annual_growth_rate,
+        emission_control_start_timestep=emission_control_start_timestep,
+        min_emission_control_rate=min_emission_control_rate,
+    )
+
+    # Initialize datasets to store the results
+    datasets = {}
+
+    # Initialize emissions control rate
+    emissions_control_rate = np.zeros((n_regions, n_timesteps, no_of_ensembles))
+    constrained_emission_control_rate = np.zeros(
+        (n_regions, n_timesteps, no_of_ensembles)
+    )
+
+    for timestep in range(n_timesteps):
+
+        # Constrain the emission control rate
+        constrained_emission_control_rate[:, timestep, :] = (
+            emission_constraint.constrain_emission_control_rate(
+                emissions_control_rate[:, timestep, :],
+                timestep,
+                allow_fallback=allow_emission_fallback,
+            )
+        )
+
+        model.stepwise_run(
+            emission_control_rate=constrained_emission_control_rate[:, timestep, :],
+            timestep=timestep,
+            endogenous_savings_rate=endogenous_savings_rate,
+        )
+        datasets = model.stepwise_evaluate(timestep=timestep)
+        temperature = datasets["global_temperature"][timestep, :]
+
+        if timestep % 5 == 0:
+            difference = temperature - previous_temperature
+            # Do something with the difference variable
+            previous_temperature = temperature
+
+        # Apply Min Max Scaling to temperature and difference
+        scaled_temperature = (temperature - min_temperature) / (
+            max_temperature - min_temperature
+        )
+        scaled_difference = (difference - min_difference) / (
+            max_difference - min_difference
+        )
+
+        rbf_input = np.array([scaled_temperature, scaled_difference])
+
+        # Check if this is not the last timestep
+        if timestep < n_timesteps - 1:
+            emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(rbf_input)
+
+    datasets = model.evaluate()
+    datasets["constrained_emission_control_rate"] = constrained_emission_control_rate
 
     return datasets
 
@@ -267,6 +315,56 @@ def model_wrapper_static_optimization(**kwargs):
     datasets["welfare_utilitarian"] = np.mean(datasets["welfare_utilitarian"])
 
     return datasets
+
+
+def setup_RBF_for_emission_control(
+    region_list,
+    rbf_policy_index,
+    n_inputs_rbf,
+    path_to_rbf_weights,
+):
+
+    # Read the csv file
+    rbf_decision_vars = pd.read_csv(path_to_rbf_weights)
+
+    # select 6810 row
+    rbf_decision_vars = rbf_decision_vars.iloc[rbf_policy_index, :]
+
+    # Read the columns starting with name 'center'
+    center_columns = rbf_decision_vars.filter(regex="center")
+
+    # Read the columns starting with name 'radii'
+    radii_columns = rbf_decision_vars.filter(regex="radii")
+
+    # Read the columns starting with name 'weights'
+    weights_columns = rbf_decision_vars.filter(regex="weights")
+
+    # Coverting the center columns to a numpy array
+    center_columns = center_columns.to_numpy()
+
+    # Coverting the radii columns to a numpy array
+    radii_columns = radii_columns.to_numpy()
+
+    # Coverting the weights columns to a numpy array
+    weights_columns = weights_columns.to_numpy()
+
+    # centers = n_rbfs x n_inputs # radii = n_rbfs x n_inputs
+    # weights = n_outputs x n_rbfs
+
+    n_outputs_rbf = len(region_list)
+
+    rbf = RBF(n_rbfs=(n_inputs_rbf + 2), n_inputs=n_inputs_rbf, n_outputs=n_outputs_rbf)
+
+    # Populating the decision variables
+    centers_flat = center_columns.flatten()
+    radii_flat = radii_columns.flatten()
+    weights_flat = weights_columns.flatten()
+
+    decision_vars = np.concatenate((centers_flat, radii_flat, weights_flat))
+
+    rbf.set_decision_vars(decision_vars)
+
+    return rbf
 
 
 def get_outcome_names():
