@@ -174,12 +174,12 @@ def model_wrapper(**kwargs):
         # social_welfare_function=welfare_function,
         enable_damage_function=True,
         enable_abatement=True,
-        economy_endogenous_growth=False,
+        economy_endogenous_growth=True,
         damage_share_ratio_tfp=damage_share_ratio_tfp,
     )
 
     # TODO: Harcoded values for now
-    rbf_policy_index = 32
+    rbf_policy_index = 22  # 32
     n_inputs_rbf = 2
     path_to_rbf_weights = "data/optimized_rbf_weights/150k/UTIL/150373.csv"
     max_annual_growth_rate = 0.04
@@ -193,7 +193,7 @@ def model_wrapper(**kwargs):
     max_difference = 2.0
     min_difference = 0.0
     endogenous_savings_rate = True
-    enable_mitigation = False
+    enable_mitigation = True
 
     time_horizon = model.__getattribute__("time_horizon")
     data_loader = model.__getattribute__("data_loader")

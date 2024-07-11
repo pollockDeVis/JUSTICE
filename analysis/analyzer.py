@@ -309,113 +309,136 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
     # Specify outcomes #All outcomes have shape (57, 286, 1001) except global_temperature which has shape (286, 1001)
     model.outcomes = [
         ArrayOutcome(
-            "mean_net_economic_output",
-            function=functools.partial(np.mean, axis=2),
+            "net_economic_output",
+            function=functools.partial(np.sum, axis=0),
             variable_name="net_economic_output",
         ),
         ArrayOutcome(
-            "low_economic_output",
-            function=functools.partial(np.percentile, q=0, axis=2),
-            variable_name="net_economic_output",
-        ),
-        ArrayOutcome(
-            "high_net_economic_output",
-            function=functools.partial(np.percentile, q=100, axis=2),
-            variable_name="net_economic_output",
-        ),
-        ArrayOutcome(
-            "mean_consumption_per_capita",
-            function=functools.partial(np.mean, axis=2),
+            "consumption_per_capita",
+            function=functools.partial(np.sum, axis=0),
             variable_name="consumption_per_capita",
         ),
+        # ArrayOutcome(
+        #     "emissions",
+        #     variable_name="emissions",
+        # ),
         ArrayOutcome(
-            "low_consumption_per_capita",
-            function=functools.partial(np.percentile, q=0, axis=2),
-            variable_name="consumption_per_capita",
-        ),
-        ArrayOutcome(
-            "high_consumption_per_capita",
-            function=functools.partial(np.percentile, q=100, axis=2),
-            variable_name="consumption_per_capita",
-        ),
-        ArrayOutcome(
-            "mean_emissions",
-            function=functools.partial(np.mean, axis=2),
-            variable_name="emissions",
-        ),
-        ArrayOutcome(
-            "low_emissions",
-            function=functools.partial(np.percentile, q=0, axis=2),
-            variable_name="emissions",
-        ),
-        ArrayOutcome(
-            "high_emissions",
-            function=functools.partial(np.percentile, q=100, axis=2),
-            variable_name="emissions",
-        ),
-        ArrayOutcome(
-            "mean_economic_damage",
-            function=functools.partial(np.mean, axis=2),
+            "economic_damage",
+            function=functools.partial(np.sum, axis=0),
             variable_name="economic_damage",
         ),
         ArrayOutcome(
-            "low_economic_damage",
-            function=functools.partial(np.percentile, q=0, axis=2),
-            variable_name="economic_damage",
-        ),
-        ArrayOutcome(
-            "high_economic_damage",
-            function=functools.partial(np.percentile, q=100, axis=2),
-            variable_name="economic_damage",
-        ),
-        ArrayOutcome(
-            "mean_abatement_cost",
-            function=functools.partial(np.mean, axis=2),
-            variable_name="abatement_cost",
-        ),
-        ArrayOutcome(
-            "low_abatement_cost",
-            function=functools.partial(np.percentile, q=0, axis=2),
-            variable_name="abatement_cost",
-        ),
-        ArrayOutcome(
-            "high_abatement_cost",
-            function=functools.partial(np.percentile, q=100, axis=2),
-            variable_name="abatement_cost",
-        ),
-        ArrayOutcome(
-            "mean_consumption",
-            function=functools.partial(np.mean, axis=2),
-            variable_name="consumption",
-        ),
-        ArrayOutcome(
-            "low_consumption",
-            function=functools.partial(np.percentile, q=0, axis=2),
-            variable_name="consumption",
-        ),
-        ArrayOutcome(
-            "high_consumption",
-            function=functools.partial(np.percentile, q=100, axis=2),
-            variable_name="consumption",
-        ),
-        ArrayOutcome(
-            "mean_global_temperature",
-            function=functools.partial(np.mean, axis=1),
-            variable_name="global_temperature",
-        ),  # (286, 1001)
-        ArrayOutcome(
-            "low_global_temperature",
-            function=functools.partial(np.percentile, q=0, axis=1),
-            variable_name="global_temperature",
-        ),  # (286, 1001)
-        ArrayOutcome(
-            "high_global_temperature",
-            function=functools.partial(np.percentile, q=100, axis=1),
+            "global_temperature",
             variable_name="global_temperature",
         ),
-        ScalarOutcome(
-            "welfare",
-        ),
+        # ArrayOutcome(
+        #     "mean_net_economic_output",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="net_economic_output",
+        # ),
+        # ArrayOutcome(
+        #     "low_economic_output",
+        #     function=functools.partial(np.percentile, q=0, axis=2),
+        #     variable_name="net_economic_output",
+        # ),
+        # ArrayOutcome(
+        #     "high_net_economic_output",
+        #     function=functools.partial(np.percentile, q=100, axis=2),
+        #     variable_name="net_economic_output",
+        # ),
+        # ArrayOutcome(
+        #     "mean_consumption_per_capita",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="consumption_per_capita",
+        # ),
+        # ArrayOutcome(
+        #     "low_consumption_per_capita",
+        #     function=functools.partial(np.percentile, q=0, axis=2),
+        #     variable_name="consumption_per_capita",
+        # ),
+        # ArrayOutcome(
+        #     "high_consumption_per_capita",
+        #     function=functools.partial(np.percentile, q=100, axis=2),
+        #     variable_name="consumption_per_capita",
+        # ),
+        # ArrayOutcome(
+        #     "mean_emissions",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="emissions",
+        # ),
+        # ArrayOutcome(
+        #     "low_emissions",
+        #     function=functools.partial(np.percentile, q=0, axis=2),
+        #     variable_name="emissions",
+        # ),
+        # ArrayOutcome(
+        #     "high_emissions",
+        #     function=functools.partial(np.percentile, q=100, axis=2),
+        #     variable_name="emissions",
+        # ),
+        # ArrayOutcome(
+        #     "mean_economic_damage",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="economic_damage",
+        # ),
+        # ArrayOutcome(
+        #     "low_economic_damage",
+        #     function=functools.partial(np.percentile, q=0, axis=2),
+        #     variable_name="economic_damage",
+        # ),
+        # ArrayOutcome(
+        #     "high_economic_damage",
+        #     function=functools.partial(np.percentile, q=100, axis=2),
+        #     variable_name="economic_damage",
+        # ),
+        # ArrayOutcome(
+        #     "mean_abatement_cost",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="abatement_cost",
+        # ),
+        # ArrayOutcome(
+        #     "low_abatement_cost",
+        #     function=functools.partial(np.percentile, q=0, axis=2),
+        #     variable_name="abatement_cost",
+        # ),
+        # ArrayOutcome(
+        #     "high_abatement_cost",
+        #     function=functools.partial(np.percentile, q=100, axis=2),
+        #     variable_name="abatement_cost",
+        # ),
+        # ArrayOutcome(
+        #     "mean_consumption",
+        #     function=functools.partial(np.mean, axis=2),
+        #     variable_name="consumption",
+        # ),
+        # ArrayOutcome(
+        #     "low_consumption",
+        #     function=functools.partial(np.percentile, q=0, axis=2),
+        #     variable_name="consumption",
+        # ),
+        # ArrayOutcome(
+        #     "high_consumption",
+        #     function=functools.partial(np.percentile, q=100, axis=2),
+        #     variable_name="consumption",
+        # ),
+        # ArrayOutcome(
+        #     "mean_global_temperature",
+        #     function=functools.partial(np.mean, axis=1),
+        #     variable_name="global_temperature",
+        # ),  # (286, 1001)
+        # ArrayOutcome(
+        #     "low_global_temperature",
+        #     function=functools.partial(np.percentile, q=0, axis=1),
+        #     variable_name="global_temperature",
+        # ),  # (286, 1001)
+        # ArrayOutcome(
+        #     "high_global_temperature",
+        #     function=functools.partial(np.percentile, q=100, axis=1),
+        #     variable_name="global_temperature",
+        # ),
+        # ScalarOutcome(
+        #     "welfare",
+        # ),
     ]
 
     with SequentialEvaluator(
@@ -427,7 +450,7 @@ def perform_exploratory_analysis(number_of_experiments=10, filename=None, folder
         )
 
         if filename is None:
-            file_name = f"open_exploration_no_mitigation{number_of_experiments}.tar.gz"
+            file_name = f"new_oe_endo_mitigation_{number_of_experiments}.tar.gz"
 
         if folder is None:
             target_directory = os.path.join(os.getcwd(), "data/output", file_name)
@@ -456,7 +479,7 @@ if __name__ == "__main__":
 
     ema_logging.log_to_stderr(ema_logging.DEBUG)
 
-    perform_exploratory_analysis(number_of_experiments=300, filename=None, folder=None)
+    perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None)
 
     # run_optimization_adaptive(
     #     n_rbfs=4, n_inputs=2, nfe=5, filename=None, folder=None, seed=seed
