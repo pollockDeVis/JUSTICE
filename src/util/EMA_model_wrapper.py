@@ -193,7 +193,7 @@ def model_wrapper(**kwargs):
     max_difference = 2.0
     min_difference = 0.0
     endogenous_savings_rate = True
-    enable_mitigation = True
+    enable_mitigation = False
 
     time_horizon = model.__getattribute__("time_horizon")
     data_loader = model.__getattribute__("data_loader")
