@@ -85,7 +85,7 @@ def plot_choropleth(region_country_df, variable_name, title, output_dir, country
         locations="CountryCode",
         color="Value",
         hover_name="CountryName",
-        color_continuous_scale="amp",
+        color_continuous_scale="tempo_r",
     )
 
     fig.update_layout(
@@ -117,9 +117,9 @@ def process_choropleth_variables(input_dir, output_dir, region_list, region_mapp
     #  'recycling_cost',    
        #'emissions_avoided',    
     #  'waste',
-     'depletion_ratio',
+    # 'depletion_ratio',
     # 'damage_fraction',
-    #  'welfare_regional_temporal',
+      'welfare_regional_temporal',
     #  'disentangled_utility',
     #  'consumption_per_capita'
     ]
@@ -130,9 +130,9 @@ def process_choropleth_variables(input_dir, output_dir, region_list, region_mapp
     #  'Recycling Cost Change (%) 2100',    
        #'Emissions Avoided Change (%) 2100',
     #  'Waste Change (%) 2100',
-      'Depletion Ratio CE 2100',
-    #  'Damage Fraction CE 2100'
-    #  'Welfare Change (%) 2100',
+    #  'Depletion Ratio CE 2100',
+    #  'Damage Fraction BAU 2100'
+      'Welfare CE 2100',
     #  'Disentangled Utility Change (%) 2100',
     #  'Consumption per capita Change (%) 2100'
     ]
@@ -185,7 +185,7 @@ data_loader = DataLoader()
 region_list= data_loader.REGION_LIST
 region_mapping_path = 'data/input/rice50_regions_dict.json'
 # Example usage:
-input_dir = 'data/output/ce_depletion'  # Choose either 'data/output/ce_depletion' or 'data/output/bau_depletion'
+input_dir = 'data/output/ce'  # Choose either 'data/output/ce_depletion' or 'data/output/bau_depletion'
 output_dir = 'figures/choropleths/ce'  # Adjust directory as needed
 
 process_choropleth_variables(input_dir, output_dir, region_list, region_mapping_path)
