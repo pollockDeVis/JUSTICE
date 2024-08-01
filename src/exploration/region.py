@@ -35,7 +35,15 @@ class Region:
 
     """
 
-    def __init__(self, twolevelsgame_model, id, code, N, timestep, dict_regions_distribution_income):
+    def __init__(
+        self,
+        twolevelsgame_model,
+        id,
+        code,
+        N,
+        timestep,
+        dict_regions_distribution_income,
+    ):
         """
         policy_model the overarching policy class
         id a unique identifier for the region
@@ -45,10 +53,12 @@ class Region:
         self.twolevelsgame_model = twolevelsgame_model
         self.id = id
         self.code = code
-        self.distribution_income = dict_regions_distribution_income[self.code]/100
-        print("=======V "+self.code+" V========")
-        print(self.distribution_income)
-        print(np.sum(self.distribution_income))
+        self.distribution_income = dict_regions_distribution_income[self.code] / 100
+        self.distribution_cost_mitigation = []
+        self.distribution_cost_damages = []
+        # print("=======V " + self.code + " V========")
+        # print(self.distribution_income)
+        # print(np.sum(self.distribution_income))
 
         # Generating the N households (ie, constituency. N = 100 by default from Policy() )
         self.n_households = N
@@ -56,8 +66,10 @@ class Region:
 
         for i in range(N):
             # Initialisation of different households and their perspectives.
-            quintile = i/(0.2*N)-1
-            self.households += [Household(self, quintile)]
+            quintile = int(i / (0.2 * N))
+            self.households += [
+                Household(self, self.distribution_income.index[quintile], i)
+            ]
 
         # ------ Local Opinions Dynamics Parameters ------
         # TODO APN: All OD processes relies on same OD params. Could be interesting to have a specific class for OD defined with proper conf for each different considerations.
@@ -69,7 +81,7 @@ class Region:
         self.opdyn_agreement = 0.001
         self.opdyn_lambda_noise = 0
         self.opdyn_threshold_close = 0.5
-        self.opdyn_threshold_far = 1
+        self.opdyn_threshold_far = 2
         self.opdyn_external_worry_decay = 0.7
 
         # Negotiator, negotiation strategy depends on constituency
@@ -77,13 +89,21 @@ class Region:
         self.update_state_policy_from_constituency(timestep)
 
     def aggregate_households_opinions(self, timestep):
+
+        self.twolevelsgame_model.f_household[1].writerow(
+                [timestep,
+                self.id]+
+                [hh.threshold_expected_temperature_elevation for hh in self.households],
+
+        )
+
         array_utility = np.array([hh.assess_policy(timestep) for hh in self.households])
         array_support = array_utility > 0
         array_opposition = array_utility < 0
 
         share_support = np.count_nonzero(array_support) / self.n_households
         share_opposition = np.count_nonzero(array_opposition) / self.n_households
-        share_neutral = 1 - (share_support+share_opposition)
+        share_neutral = 1 - (share_support + share_opposition)
 
         """
         # Is there more support or opposition?
@@ -97,24 +117,26 @@ class Region:
 
         return [share_opposition, share_neutral, share_support]
 
-    def update_regional_opinion(self):
+    def update_regional_opinion(self, timestep):
         # Update on observations (uses FaIR-Perspectives ==> Understanding)
-        self.update_from_information()
+        self.update_from_information(timestep)
 
         # Update on opinions (==> Social learning)
         self.update_from_social_network()
 
-    def update_from_information(self):
+    def update_from_information(self, timestep):
         for hh in self.households:
             hh.update_climate_distrib_beliefs(
-                self.twolevelsgame_model.justice_model.rng
+                self.twolevelsgame_model.justice_model.rng, timestep
             )
         return
 
     def update_from_social_network(self):
-        #TODO Update the content of this function
-        #self.update_climate_distrib_beliefs_from_social()
-        # self.spreading_climate_worries(self.twolevelsgame_model.justice_model.rng)  # TODO APN: Distinguish monetary vs non-monetary aspects
+        # calling the rng: self.twolevelsgame_model.justice_model.rng
+        # TODO Update the content of this function
+        self.spreading_climate_threshold()
+        # self.update_climate_distrib_beliefs_from_social()
+        # self.spreading_climate_worries()  # TODO APN: Distinguish monetary vs non-monetary aspects
         # self.spreading_abatement_worries(self.twolevelsgame_model.justice_model.rng)
         return
 
@@ -200,49 +222,43 @@ class Region:
                 ].climate_distrib_beliefs.copy()
     """
 
-
-    def spreading_climate_worries(self, rng):
+    def spreading_climate_threshold(self):
+        """
+        Climate threshold is a field of a household. The value of this field represents the limit on the climate temperature elevation compared to preinductrial levels
+        that the household thinks can be handled. This climate threshold has an effect on the policy support, as it translate into more or less strong worry level for the
+        households.
+        """
         n = len(self.households)
         I = np.eye(n)
         k = 0
 
         v1 = np.ones((n, 1))
 
-        vect_internal_worry = np.matrix(
-            [[hh.internal_climate_worry] for hh in self.households]
+        # Agents' thresholds related to temperature elevation
+        vect_thresholds = np.array(
+            [[hh.threshold_expected_temperature_elevation] for hh in self.households]
         )
-        # Agents' worries related to climate change
-        vect_external_worry = np.matrix(
-            [[hh.external_climate_worry] for hh in self.households]
-        )
-        # Media/Extreme weather events generated worry related to climate change
-        vect_aggregated_worry = np.clip(
-            vect_internal_worry + vect_external_worry, -1, 1
-        )
-        # Resulting worries
 
-        dispersion = np.max(
-            np.abs(vect_aggregated_worry @ v1.T - vect_aggregated_worry @ v1.T)
-        )
+        # Resulting dipersion
+        dispersion = np.max(np.abs(vect_thresholds @ v1.T - v1 @ vect_thresholds.T))
+
         while (dispersion > self.opdyn_agreement) & (k < self.opdyn_max_iter):
             k += 1
             # Create the network
             L = (
                 np.abs(
-                    vect_aggregated_worry @ v1.T - (vect_aggregated_worry @ v1)
+                    vect_thresholds @ v1.T - (v1 @ vect_thresholds.T))
                     < self.opdyn_threshold_close
-                )
-                - I
-            )
+                )                - I
+
             Lclose = np.diag(np.sum(L, 1)) - L
 
             L = (
                 np.abs(
-                    vect_aggregated_worry @ v1.T - (vect_aggregated_worry @ v1)
+                    vect_thresholds @ v1.T - (v1 @ vect_thresholds.T))
                     > self.opdyn_threshold_far
-                )
-                - I
-            )
+                )                - I
+
             Lfar = np.diag(np.sum(L, 1)) - L
 
             # L = generateAdjacencyMatrix(n,'random', 1-lbd);
@@ -250,27 +266,57 @@ class Region:
 
             L = Lclose - Lfar  # + Lalea;
 
-            # Update "internal" worry
-            vect_internal_worry = (
-                I - self.opdyn_influence * L
-            ) @ vect_aggregated_worry - vect_external_worry
+            # Update thresholds
+            vect_thresholds = np.clip((I - self.opdyn_influence * L) @ vect_thresholds, 0, 8)
 
-            # Update "external" worry
-            vect_external_worry = np.clip(
-                vect_external_worry * self.opdyn_external_worry_decay
-                + rng.random() * 0.1,
-                -1,
-                1,
-            )
+            dispersion = np.max(np.abs(vect_thresholds @ v1.T - v1 @ vect_thresholds.T))
 
-            vect_aggregated_worry = np.clip(
-                vect_internal_worry + vect_external_worry, -1, 1
-            )
-            dispersion = np.max(
-                np.abs(vect_aggregated_worry @ v1.T - vect_aggregated_worry @ v1.T)
-            )
+        i=0
+        for hh in self.households:
+            hh.threshold_expected_temperature_elevation=vect_thresholds[i][0]
+            i = i+1
+
+    def emission_control_rate(self):
+        """PARAMETRIZED EMISSION POLICY
+        #TODO Linspace seems to work in case of timestep = 1. Perhaps not working for other values...
+        nb_pts = (self.policy_model.justice_model.time_horizon.end_year - self.policy_model.justice_model.time_horizon.start_year)//self.policy_model.justice_model.time_horizon.timestep +1;
+        X = np.linspace(self.policy_model.justice_model.time_horizon.start_year,self.policy_model.justice_model.time_horizon.end_year, nb_pts);
+        np.clip(X,self.policy[0],self.policy[2]) #TODO this clip() function might not be necessary
+        ecr_projection=exponential_first_order(X, self.policy[0], self.policy[2], self.policy[1]);
+        #ecr_projection=linear(X, 0.2, self.policy[0], 1, self.policy[1]);
+        """
+
+        """ PIECEWISE LINEAR POLICY """
+        start_year = self.twolevelsgame_model.justice_model.time_horizon.start_year
+        pol_at_start_year = 0
+        # TODO APN change policy at start year. 1) It should be defined somewhere else (maybe as an attribute of the negotiator) 2) it should be changeable at the creation of the abm-justice model
+        end_year = self.twolevelsgame_model.justice_model.time_horizon.end_year
+        timestep_size = 1
+        # TODO APN ge the timestep size from the model (it is not necessarily always 1 -  could be 5 years)
+        policy = self.negotiator.policy
+
+        # End of can comment
+
+        last_p_year = start_year
+        last_pol = pol_at_start_year
+
+        f = scipy.interpolate.interp1d(
+            np.insert(np.append(policy[0], end_year), 0, start_year),
+            np.insert(np.append(policy[1], policy[1, -1]), 0, pol_at_start_year),
+            kind="linear",
+        )
+
+        ecr_projection = f(
+            np.linspace(start_year, end_year, int(end_year - start_year + 1))
+        )
+
+        return np.tile(
+            np.matrix(np.clip(ecr_projection, 0, 1)).T,
+            self.twolevelsgame_model.justice_model.no_of_ensembles,
+        )
 
     def spreading_abatement_worries(self, rng):
+        # NOT USED ANYWHERE, KEEPING IT TO SAVE AN EXAMPLE
         n = len(self.households)
         I = np.eye(n)
         k = 0
@@ -340,42 +386,3 @@ class Region:
             )
 
         return
-
-    def emission_control_rate(self):
-        """PARAMETRIZED EMISSION POLICY
-        #TODO Linspace seems to work in case of timestep = 1. Perhaps not working for other values...
-        nb_pts = (self.policy_model.justice_model.time_horizon.end_year - self.policy_model.justice_model.time_horizon.start_year)//self.policy_model.justice_model.time_horizon.timestep +1;
-        X = np.linspace(self.policy_model.justice_model.time_horizon.start_year,self.policy_model.justice_model.time_horizon.end_year, nb_pts);
-        np.clip(X,self.policy[0],self.policy[2]) #TODO this clip() function might not be necessary
-        ecr_projection=exponential_first_order(X, self.policy[0], self.policy[2], self.policy[1]);
-        #ecr_projection=linear(X, 0.2, self.policy[0], 1, self.policy[1]);
-        """
-
-        """ PIECEWISE LINEAR POLICY """
-        start_year = self.twolevelsgame_model.justice_model.time_horizon.start_year
-        pol_at_start_year = 0
-        # TODO APN change policy at start year. 1) It should be defined somewhere else (maybe as an attribute of the negotiator) 2) it should be changeable at the creation of the abm-justice model
-        end_year = self.twolevelsgame_model.justice_model.time_horizon.end_year
-        timestep_size = 1
-        # TODO APN ge the timestep size from the model (it is not necessarily always 1 -  could be 5 years)
-        policy = self.negotiator.policy
-
-        # End of can comment
-
-        last_p_year = start_year
-        last_pol = pol_at_start_year
-
-        f = scipy.interpolate.interp1d(
-            np.insert(np.append(policy[0], end_year), 0, start_year),
-            np.insert(np.append(policy[1], policy[1, -1]), 0, pol_at_start_year),
-            kind="linear",
-        )
-
-        ecr_projection = f(
-            np.linspace(start_year, end_year, int(end_year - start_year + 1))
-        )
-
-        return np.tile(
-            np.matrix(np.clip(ecr_projection, 0, 1)).T,
-            self.twolevelsgame_model.justice_model.no_of_ensembles,
-        )

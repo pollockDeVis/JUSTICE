@@ -5,8 +5,8 @@ import glob
 import matplotlib.pyplot as plt
 
 # "../../data/output/SAVE_2024_03_13_2004/"
-path_list_1 = glob.glob("../../data/output/SAVE_2024_05_20_1101")
-path_list_2 = glob.glob("../../data/output/SAVE_2024_05_20_1156")
+path_list_1 = glob.glob("../../data/output/SAVE_2024_07_10_1202")
+path_list_2 = glob.glob("../../data/output/SAVE_2024_07_09_1724")
 # print(path_list)
 for save_path_1 in path_list_1:
     for save_path_2 in path_list_2:

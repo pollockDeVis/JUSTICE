@@ -5,7 +5,7 @@ import glob
 import matplotlib.pyplot as plt
 
 # "../../data/output/SAVE_2024_03_13_2004/"
-path_list = glob.glob("../../data/output/SAVE_2024_05_20_1113")
+path_list = glob.glob("../../data/output/SAVE_2024_08_01_1651")
 # print(path_list)
 for save_path in path_list:
     print(save_path)
@@ -13,7 +13,7 @@ for save_path in path_list:
     print("\t" + f.read())
     df = pd.read_csv(save_path + "\policy.csv", header=None)
 
-    region = 53
+    region = 50
 
     region_mask = df[0] == region
     count_rows = np.count_nonzero(region_mask)
@@ -29,7 +29,7 @@ for save_path in path_list:
     plt.plot(current_time_colums[region_mask], year_shift[region_mask], "*")
     plt.plot(current_time_colums[region_mask], max_possible_shift[region_mask], "-")
     plt.title("YEAR SHIFT region " + str(region) + "(" + save_path + ")")
-    plt.legend(["Shift in policy", "Maximum achievable shift"])
+    plt.legend(["Shift in policy", "Maximum achievable shift\n(compared to next policy goal)"])
     plt.xlabel("years")
     plt.ylabel("year shift")
 
@@ -63,7 +63,7 @@ for save_path in path_list:
     plt.ylabel("emission control rate")
 
     plt.figure()
-    df = pd.read_csv(save_path + "\emissions.csv", header=None, sep=";")
+    df = pd.read_csv(save_path + "\emissions.csv", header=None, sep=",")
 
     region_mask = df[0] == region
     count_rows = np.count_nonzero(region_mask)
@@ -77,7 +77,9 @@ for save_path in path_list:
     for i in range(emissions_colums.shape[0]):
         if region_mask[i]:
             plt.plot(
-                years_colums, emissions_colums.iloc[i], alpha=alpha_space[alpha_count]
+                years_colums[:80],
+                emissions_colums.iloc[i][:80],
+                alpha=alpha_space[alpha_count],
             )
             last_i = i
             alpha_count += 1
@@ -91,7 +93,10 @@ for save_path in path_list:
     plt.legend(["Last policy", "Actual emission cutting rate pathway"])
     plt.title("LAST POLICY vs FULL RUN region " + str(region) + "(" + save_path + ")")
     plt.xlabel("years")
+    ax = plt.gca()
+    ax.set_xlim(2015, 2300)
 
+    """
     df = pd.read_csv(save_path + "\household.csv", header=None, sep=",")
     region_mask = df[0] == region
     timestep_column = df[df.columns[1]]
@@ -129,5 +134,6 @@ for save_path in path_list:
         + ")"
     )
     plt.xlabel("timestep")
+    """
 
 plt.show()

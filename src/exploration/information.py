@@ -48,7 +48,7 @@ class Information:
         # self.pure_rate_of_social_time_preference = 0.015
         # self.inequality_aversion = 0
 
-        self.IPCC_report_period = 2000
+        self.IPCC_report_period = 20
         self.local_policy_update_period = 5
 
         # TODO APN: Change to numpy arrays
@@ -56,10 +56,10 @@ class Information:
         # Last known forecast by FaIR (every 10 years) under the form [year; mean_temperature; var_temperature]
         self.local_temperature_information = []
         # Last known downscaled forecast by FaIr (every 10 years) under the forme [year; mean_temperature; var_temperature] for each region
-        self.global_distrib_flsi = [[] for i in range(Household.N_CLIMATE_BELIEFS)]
+        self.global_distrib_flsi = np.empty([Household.N_CLIMATE_BELIEFS, int((Household.DISTRIB_MAX_VALUE-Household.DISTRIB_MIN_VALUE)/Household.DISTRIB_RESOLUTION)])
         # Estimations of future temperature elevation (ground) at global scale at future years BELIEF_YEAR_OFFSET
         self.regional_distrib_flsi = [
-            [[] for i in range(Household.N_CLIMATE_BELIEFS)] for r in range(57)
+            [np.empty([Household.N_CLIMATE_BELIEFS, int((Household.DISTRIB_MAX_VALUE-Household.DISTRIB_MIN_VALUE)/Household.DISTRIB_RESOLUTION)])] for r in range(57)
         ]
         # Estimations of future temperature elevation (ground) at local scale at future years BELIEF_YEAR_OFFSET
         # TODO APN: 57 is the number of regions: use global var or get from JUSTICE model
@@ -267,14 +267,14 @@ class Information:
         for r in range(57):
             for i in range(Household.N_CLIMATE_BELIEFS):
                 year = Household.BELIEF_YEAR_OFFSET[i]
-                self.regional_distrib_flsi[r][i] = Household.gaussian_distrib(
+                self.regional_distrib_flsi[r][0][i] = Household.gaussian_distrib(
                     g_mean=self.local_temperature_information[0][r][year],
                     g_std=self.local_temperature_information[1][r][year],
                 )
-                norm_coeff = np.sum(self.regional_distrib_flsi[r][i], axis=0)
+                norm_coeff = np.sum(self.regional_distrib_flsi[r][0][i], axis=0)
                 # TODO NOT SURE ABOUT THE COMPUTATION OF NORM COEFF HERE
-                self.regional_distrib_flsi[r][i] = (
-                    self.regional_distrib_flsi[r][i] / norm_coeff
+                self.regional_distrib_flsi[r][0][i] = (
+                    self.regional_distrib_flsi[r][0][i] / norm_coeff
                 )
 
         return

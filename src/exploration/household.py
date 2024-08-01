@@ -8,7 +8,7 @@ import numpy as np
 
 
 class Household:
-    DISTRIB_RESOLUTION = 0.01
+    DISTRIB_RESOLUTION = 0.1
     # Resolution of distribution in CELSIUS
     DISTRIB_MIN_VALUE = -2
     # Minimum temperature deviation relative to preindustrial levels in CELSIUS
@@ -31,21 +31,22 @@ class Household:
     # global_distrib_flsi = [[] for i in range(N_CLIMATE_BELIEFS)]; get from the information module
     # regional_distrib_flsi = [[[]] for r in range(56)] get from the information module
 
-    def __init__(self, region, quintile):
+    def __init__(self, region, quintile, id):
         self.model_region = region
+        self.id = id
 
         # Initialising climate intuition
         self.climate_init_mean_beliefs = np.array(
             [
-                np.random.random() * Household.DISTRIB_MAX_VALUE,
-                np.random.random() * Household.DISTRIB_MAX_VALUE,
-                np.random.random() * Household.DISTRIB_MAX_VALUE,
-                np.random.random() * Household.DISTRIB_MAX_VALUE,
+                np.random.random() * 2+1,
+                np.random.random() * 2+1,
+                np.random.random() * 2+1,
+                np.random.random() * 2+1,
             ]
         )
         # Temperature expected for BELIEF_YEAR_OFFSET years
-        self.climate_init_var_beliefs = np.array([0.01, 0.01, 0.01, 0.01])
-        # Confidance in the expectation
+        self.climate_init_var_beliefs = np.array([1, 1, 1, 1])
+        # Confidence in the expectation
 
         distrib_beliefs = np.array(
             [
@@ -76,18 +77,20 @@ class Household:
         ###################################################
         ################## Sensitivities ##################
         ###################################################
+        #between 0 and 1
+        self.sensitivity_to_threshold_information = 0.2
         # > Between 0 and 2
         self.sensitivity_to_costs = 1
         # > Between 0 and 8
-        self.threshold_expected_temperature_elevation = 1.5
+        self.threshold_expected_temperature_elevation = np.random.random() * 8
         # >Between -1 and 1
         self.elasticity_expected_mitigation_distribution = 0
         self.elasticity_expected_loss_damages_distribution = 0
         # Coefficient for climate damage evaluation (see RICE2013R: psi_2)
         self.psi_2 = 2.67 * 10**-3
 
-        #Wages and consumption
-        self.quintile = quintile;
+        # Wages and consumption
+        self.quintile = quintile
 
     def expected_climate_damages(self):
         temp_profile = Household.belief_to_projection(
@@ -120,7 +123,7 @@ class Household:
             self.model_region.twolevelsgame_model.justice_model.information_model.global_distrib_flsi
         )
 
-    def update_climate_distrib_beliefs(self, rng):
+    def update_climate_distrib_beliefs(self, rng, timestep):
         """
         Updating the climate beliefs distributions for an agent based on available information
 
@@ -130,44 +133,30 @@ class Household:
 
         """
         p = rng.random()
+
         if p < self.P_INFORMATION:
-            # Updating with information
-            self.climate_distrib_beliefs = (
-                self.climate_distrib_beliefs * self.filtered_climate_information()
-            )
-        else:
-            # TODO ADP: Let the belief unchanged (because parametrization hard)
-            # Imperfect memory
-            mean_beliefs = Household.mean_distribution(self.climate_distrib_beliefs)
-            distrib_beliefs_save = self.climate_distrib_beliefs
-            # Compute distribution based on initial std for agent
-            self.climate_distrib_beliefs = np.array(
-                [
-                    Household.gaussian_distrib(
-                        g_mean=mean_beliefs[i], g_std=self.climate_init_var_beliefs[i]
-                    )
-                    for i in range(self.N_CLIMATE_BELIEFS)
-                ]
-            )
-            norm_coeff = np.sum(self.climate_distrib_beliefs, axis=1)
+            #Updating from information module: Expectation about temperature elevation
+            self.climate_distrib_beliefs = self.climate_distrib_beliefs * self.filtered_climate_information()
+            #Objective temperature threshold
+            self.threshold_expected_temperature_elevation = (1-self.sensitivity_to_threshold_information)*self.threshold_expected_temperature_elevation + self.sensitivity_to_threshold_information*1.5
+        # TODO ADP: In case of no information (ELSE case) we can have a memory effect, or biases taking place
+        # But for now, I let it all empty
+
+        norm_coeff = np.sum(self.climate_distrib_beliefs, axis=1)
+        #print(norm_coeff)
+
+        try:
             self.climate_distrib_beliefs = np.array(
                 [
                     self.climate_distrib_beliefs[i, :] / norm_coeff[i]
                     for i in range(self.N_CLIMATE_BELIEFS)
                 ]
             )
-            # Merging of learned belief and belief with initial std
-            self.climate_distrib_beliefs = (
-                self.GAMMA * distrib_beliefs_save
-                + (1 - self.GAMMA) * self.climate_distrib_beliefs
-            )
+        except Warning:
+            print(norm_coeff)
 
-        norm_coeff = np.sum(self.climate_distrib_beliefs, axis=1)
-        self.climate_distrib_beliefs = np.array(
-            [
-                self.climate_distrib_beliefs[i, :] / norm_coeff[i]
-                for i in range(self.N_CLIMATE_BELIEFS)
-            ]
+        self.model_region.twolevelsgame_model.f_household_beliefs[1].writerow(
+            [timestep, self.model_region.id, self.id]+self.climate_distrib_beliefs[-1].tolist()
         )
 
     def assess_policy(self, timestep):
@@ -185,80 +174,48 @@ class Household:
 
         # Expected temperature elevation (worry)
         temp = Household.mean_distribution(self.climate_distrib_beliefs[-1])
-        #TODO: A better function for evaluation could be interesting
-        if temp >= self.threshold_expected_temperature_elevation:
-            expected_temperature_evaluation = temp / self.threshold_expected_temperature_elevation #support
-        else:
-            expected_temperature_evaluation = 0 #neutral
+        expected_temperature_elevation = 1 + (
+            temp - self.threshold_expected_temperature_elevation
+        )
 
-        #Experienced extreme weather events (can also weave in a community based level of worry)
-        #TODO: find database of extreme weather events
+        # Experienced climate change with shifting baeline OR extreme weather events
+        # TODO: find database of extreme weather events
 
-        #FIXME: Put real values down below
-        #Experienced climate damages
-        loss_and_damages = 0
-        #Experienced mitigation costs
-        mitigation_costs = 0
-        #Experienced Economic Context
+        # FIXME: Put real values down below
+        # Experienced climate damages
+        loss_and_damages = self.model_region.distribution_cost_damages[self.quintile]
+        # Experienced mitigation costs
+        mitigation_costs = self.model_region.distribution_cost_mitigation[self.quintile]
+        # Experienced Economic Context
         if mitigation_costs > loss_and_damages:
-            experienced_economic_context = -1 #opposition
+            experienced_economic_context = -1  # opposition
         else:
-            experienced_economic_context = 1 #support
+            experienced_economic_context = 1  # support
 
-        #FIXME: Put real values down below
-        #Expected climate damages
-        expected_loss_and_damages = 0 #self.expected_climate_damages #+*-/...
-        #Expected mitigation costs
+        # FIXME: Put real values down below
+        # Expected climate damages
+        expected_loss_and_damages = 0  # self.expected_climate_damages #+*-/...
+        # Expected mitigation costs
         expected_mitigation_costs = 0
-        #Expected Economic Context
+        # Expected Economic Context
         if expected_mitigation_costs > expected_loss_and_damages:
-            expected_economic_context = -1 #opposition
+            expected_economic_context = -1  # opposition
         else:
-            expected_economic_context = 1 #support
+            expected_economic_context = 1  # support
+
+        # FIXME: delete next line when real values are use for expectation of costs
+        expected_economic_context = 0
 
         U = (
-                self.sensitivity_to_costs * expected_economic_context
-                + self.sensitivity_to_costs * experienced_economic_context
-                + expected_temperature_evaluation
-                - self.model_region.negotiator.policy[1, 0]
-        )
-
-
-        """
-        # experienced_economic_context = +1 -1 +0
-        regional_consumption_per_capita = (
-            self.model_region.twolevelsgame_model.justice_model.consumption_per_capita[
-                self.model_region.id
-            ]
-        )
-        global_mean_consumption_per_capita = np.mean(
-            self.model_region.twolevelsgame_model.justice_model.consumption_per_capita
-        )
-
-        experienced_economic_context = 0  # Neutral
-        if regional_consumption_per_capita > 1.2 * global_mean_consumption_per_capita:
-            experienced_economic_context = 1  # Support
-        elif (
-            regional_consumption_per_capita < 0.99 * global_mean_consumption_per_capita
-        ):
-            experienced_economic_context = -1  # Opposition
-
-        (self.model_region.twolevelsgame_model.f_household)[1].writerow(
-            [self.model_region.id, timestep]
-            + [expected_temperature_evaluation]
-            + [experienced_economic_context]
-        )
-        U = (
-            expected_temperature_evaluation
-            + experienced_economic_context
+            self.sensitivity_to_costs
+            * (expected_economic_context + experienced_economic_context)
+            + expected_temperature_elevation
             - self.model_region.negotiator.policy[1, 0]
         )
 
-        U = min(-1 + np.random.random() * 0.01 * timestep, 1)
-
-        # + expected temperature elevation and CC dmgs (future) + experienced temperature elevation and Xtrm weather events (present)
-        # - expected economic cost of abatement (future) - experienced economic context (present)
-        """
+        self.model_region.twolevelsgame_model.f_household_assessment[1].writerow(
+            [timestep, self.model_region.id, self.id, self.sensitivity_to_costs, loss_and_damages, mitigation_costs, experienced_economic_context, expected_loss_and_damages, expected_mitigation_costs, expected_economic_context, expected_temperature_elevation, self.model_region.negotiator.policy[1,0],U]
+        )
 
         return U
 

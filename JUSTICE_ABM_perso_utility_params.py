@@ -20,6 +20,10 @@ from matplotlib import pyplot as plt
 from alive_progress import alive_bar
 from src.util.emission_control_constraint import EmissionControlConstraint
 
+import warnings
+
+#warnings.filterwarnings("error")
+
 matplotlib.rcParams["figure.dpi"] = 300
 
 
@@ -33,8 +37,10 @@ matplotlib.rcParams["figure.dpi"] = 300
 for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
     print(idx, scenarios)
 
+#np.seterr(invalid='warn')
 
 scenarios = 7
+max_time_steps = 100
 
 
 for i in range(1):
@@ -66,8 +72,8 @@ for i in range(1):
     #####################       Step-by-Step Run        ###########################
     ###############################################################################
     print("Step-by-step run:")
-    with alive_bar(len(model.time_horizon.model_time_horizon), force_tty=True) as bar:
-        for timestep in range(len(model.time_horizon.model_time_horizon)):
+    with alive_bar(max_time_steps, force_tty=True) as bar:
+        for timestep in range(max_time_steps):
 
             model.abm_stepwise_run(
                 timestep=timestep, endogenous_savings_rate=True

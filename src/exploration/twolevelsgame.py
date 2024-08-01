@@ -8,6 +8,8 @@ from typing import Any
 import numpy as np
 from scipy.interpolate import interp1d
 import copy
+
+from src.exploration.household import Household
 from src.exploration.region import Region
 import csv
 import json
@@ -107,12 +109,62 @@ class TwoLevelsGame:
             f5,
             csv.writer(f5, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
+        self.f_household[1].writerow(
+            ["Timestep", "Region"]
+            + ["Household Threshold" for i in range(population_size_by_region)]
+        )
+
+        f5_beliefs = open(path + "household_beliefs.csv", "w", newline="")
+        self.f_household_beliefs = (
+            f5_beliefs,
+            csv.writer(
+                f5_beliefs, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
+            ),
+        )
+        self.f_household_beliefs[1].writerow(
+            ["Timestep", "Region", "Household ID"]
+            + [
+                "belief T(y+99)=" + str(i)
+                for i in np.arange(
+                    Household.DISTRIB_MIN_VALUE,
+                    Household.DISTRIB_MAX_VALUE,
+                    Household.DISTRIB_RESOLUTION,
+                )
+            ]
+        )
+        f_household_assessment = open(
+            path + "household_policy_assessment.csv", "w", newline=""
+        )
+        self.f_household_assessment = (
+            f_household_assessment,
+            csv.writer(
+                f_household_assessment, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
+            ),
+        )
+        self.f_household_assessment[1].writerow(
+            [
+                "Timestep",
+                "Region",
+                "Household ID",
+                "sensitivity to costs",
+                "loss_and_damages",
+                "mitigation_costs",
+                "experienced_economic_context",
+                "expected_loss_and_damages",
+                "expected_mitigation_costs",
+                "expected_economic_context",
+                "expected temperature",
+                "current policy level",
+                "Resulting Utility"
+            ]
+        )
+
 
         # id region, emission control rate profile (historical + pledges)
         f6 = open(path + "emissions.csv", "w", newline="")
         self.f_emissions = (
             f6,
-            csv.writer(f6, delimiter=";", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+            csv.writer(f6, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
 
         self.f_parameters = open(path + "parameters.txt", "w", newline="")
@@ -127,15 +179,17 @@ class TwoLevelsGame:
             skiprows=[0, 2, 3],
             skipfooter=62,
         )
-        dict_regions_rows = json.load(
-            open("data/input/inputs_ABM/rice50_region_names_to_world_bank.json")
-        )
+
         dict_regions_distribution_income = {}
-        for key in dict_regions_rows.keys():
-            if key != "_comment":
-                dict_regions_distribution_income[key] = df.loc[
-                    dict_regions_rows[key]
-                ].mean(axis=0)
+        with open(
+            "data/input/inputs_ABM/rice50_region_names_to_world_bank.json"
+        ) as rice50_region_names_to_world_bank:
+            dict_regions_rows = json.load(rice50_region_names_to_world_bank)
+            for key in dict_regions_rows.keys():
+                if key != "_comment":
+                    dict_regions_distribution_income[key] = df.loc[
+                        dict_regions_rows[key]
+                    ].mean(axis=0)
 
         self.justice_model = justice_model
         i = 0
@@ -216,7 +270,7 @@ class TwoLevelsGame:
 
         for region in self.regions:
 
-            if region.code == "chn" and timestep==25:
+            if region.code == "usa" and timestep == 58:
                 print("flag pour debug")
 
             # Size is 57*5: consumption (net of damages and mitigation costs) for regions and each quintiles
@@ -225,7 +279,7 @@ class TwoLevelsGame:
                 5
                 * net_average_consumption[region.id]
                 * (1 + average_damages[region.id])
-                / (1 - average_abatement[region.id])
+                / (1 - 0 * average_abatement[region.id])
                 * region.distribution_income
             )
 
@@ -239,11 +293,10 @@ class TwoLevelsGame:
                 / np.sum(np.power(region.distribution_income, xi_damage))
             )
             abatement_share = (
-                    np.power(region.distribution_income, xi_abatement)
-                    * 1
-                    / np.sum(np.power(region.distribution_income, xi_abatement))
+                np.power(region.distribution_income, xi_abatement)
+                * 1
+                / np.sum(np.power(region.distribution_income, xi_abatement))
             )
-
 
             quintiles_damage_costs = (
                 5
@@ -252,13 +305,18 @@ class TwoLevelsGame:
                 * damage_share
             )
 
+            region.distribution_cost_damages = quintiles_damage_costs.copy()
 
+            # TODO: You can put a 0* in front to test for loss and damages distribution costs only
             quintiles_abatement_costs = (
                 5
                 * net_average_consumption[region.id]
-                * ((1+average_damages[region.id]) * average_abatement[region.id])/(1 - average_abatement[region.id])
+                * ((1 + average_damages[region.id]) * average_abatement[region.id])
+                / (1 - average_abatement[region.id])
                 * abatement_share
             )
+
+            region.distribution_cost_mitigation = quintiles_abatement_costs.copy()
 
             # Theoretically it should be such that the sum of disaggregated post costs is equivalent to the net average consumption
             disaggregated_post_costs_consumption = (
@@ -279,7 +337,7 @@ class TwoLevelsGame:
                 + [np.mean(disaggregated_post_costs_consumption)]
             )
 
-            region.update_regional_opinion()
+            region.update_regional_opinion(timestep)
             if timestep % self.Y_policy == 0:
                 region.update_state_policy_from_constituency(timestep)
 
@@ -301,8 +359,10 @@ class TwoLevelsGame:
 
             for region in self.regions:
                 # Take into account possible public opinion pressure to delay ECR=1 target
-                regional_earliest_achievable_end_target = (
-                    region.negotiator.regional_pressure_later_ecr
+                regional_earliest_achievable_end_target = np.ceil(
+                    (1 - region.negotiator.policy[1, 1])
+                    / region.negotiator.max_cutting_rate_gradient
+                    + region.negotiator.policy[0, 1]
                 )
 
                 # take into account track record for expected target year
@@ -315,16 +375,19 @@ class TwoLevelsGame:
                     region.negotiator.policy[0, -1] + regional_expected_end_target
                 ) / 2
                 if tentative_end_year_pledge > avg_global_net_zero_year:
-                    tentative_end_year_pledge = (
-                        tentative_end_year_pledge + avg_global_net_zero_year
-                    ) / 2
+                    coeff = (2000 - avg_global_net_zero_year) / (
+                        2000 - tentative_end_year_pledge
+                    )
+                    tentative_end_year_pledge = (coeff) * tentative_end_year_pledge + (
+                        1 - coeff
+                    ) * avg_global_net_zero_year
                 if tentative_end_year_pledge < regional_earliest_achievable_end_target:
                     print(
                         "For region ",
                         region.id,
                         " new pledge impossible because ",
                         tentative_end_year_pledge,
-                        " > ",
+                        " < ",
                         regional_earliest_achievable_end_target,
                     )
                     tentative_end_year_pledge = regional_earliest_achievable_end_target
