@@ -14,6 +14,8 @@ from src.util.model_time import TimeHorizon
 from src.model import JUSTICE
 
 # from src.model_abm import OLD_ABM_JUSTICE
+# loading XML file
+from src.exploration.DataLoaderTwoLevelGame import DataLoaderTwoLevelGame
 from src.model_abm_justice import AbmJustice
 import matplotlib
 from matplotlib import pyplot as plt
@@ -22,7 +24,7 @@ from src.util.emission_control_constraint import EmissionControlConstraint
 
 import warnings
 
-#warnings.filterwarnings("error")
+# warnings.filterwarnings("error")
 
 matplotlib.rcParams["figure.dpi"] = 300
 
@@ -37,7 +39,8 @@ matplotlib.rcParams["figure.dpi"] = 300
 for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
     print(idx, scenarios)
 
-#np.seterr(invalid='warn')
+
+# np.seterr(invalid='warn')
 
 scenarios = 7
 max_time_steps = 100

@@ -3,6 +3,7 @@ import csv
 import pandas as pd
 import glob
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 # "../../data/output/SAVE_2024_03_13_2004/"
 path_list = glob.glob("../../data/output/SAVE_2024_08_01_1651")
@@ -11,9 +12,9 @@ for save_path in path_list:
     print(save_path)
     f = open(save_path + "\parameters.txt", "r")
     print("\t" + f.read())
-    df = pd.read_csv(save_path + "\policy.csv", header=None)
+    df = pd.read_csv(save_path + "\policy.csv", header=None, dtype="float64")
 
-    region = 50
+    region = 1
 
     region_mask = df[0] == region
     count_rows = np.count_nonzero(region_mask)
@@ -29,7 +30,9 @@ for save_path in path_list:
     plt.plot(current_time_colums[region_mask], year_shift[region_mask], "*")
     plt.plot(current_time_colums[region_mask], max_possible_shift[region_mask], "-")
     plt.title("YEAR SHIFT region " + str(region) + "(" + save_path + ")")
-    plt.legend(["Shift in policy", "Maximum achievable shift\n(compared to next policy goal)"])
+    plt.legend(
+        ["Shift in policy", "Maximum achievable shift\n(compared to next policy goal)"]
+    )
     plt.xlabel("years")
     plt.ylabel("year shift")
 
@@ -63,6 +66,13 @@ for save_path in path_list:
     plt.ylabel("emission control rate")
 
     plt.figure()
+    cmap = plt.get_cmap("rainbow", 57)
+    for r in range(57):
+        mask = (df[0]==r)
+        plt.scatter(df[1][mask], years_colums[10][mask], color=cmap(r))
+
+
+    plt.figure()
     df = pd.read_csv(save_path + "\emissions.csv", header=None, sep=",")
 
     region_mask = df[0] == region
@@ -94,7 +104,7 @@ for save_path in path_list:
     plt.title("LAST POLICY vs FULL RUN region " + str(region) + "(" + save_path + ")")
     plt.xlabel("years")
     ax = plt.gca()
-    ax.set_xlim(2015, 2300)
+    ax.set_xlim(2015, 2100)
 
     """
     df = pd.read_csv(save_path + "\household.csv", header=None, sep=",")

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 # "../../data/output/SAVE_2024_03_13_2004/"
-path_list = glob.glob("../../data/output/SAVE_2024_08_01_1651")
+path_list = glob.glob("../../data/output/SAVE_2024_08_15_0845")
 # print(path_list)
 for save_path in path_list:
     print(save_path)

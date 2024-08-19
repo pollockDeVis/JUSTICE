@@ -6,24 +6,27 @@ Created on Tue Mar  5 10:20:58 2024
 """
 import numpy as np
 
+from src.exploration.DataLoaderTwoLevelGame import XML_init_values
 
-class Household:
-    DISTRIB_RESOLUTION = 0.1
+
+class Household():
+    DISTRIB_RESOLUTION = XML_init_values.Household_DISTRIB_RESOLUTION
     # Resolution of distribution in CELSIUS
-    DISTRIB_MIN_VALUE = -2
+    DISTRIB_MIN_VALUE = XML_init_values.Household_DISTRIB_MIN_VALUE
     # Minimum temperature deviation relative to preindustrial levels in CELSIUS
-    DISTRIB_MAX_VALUE = +8
+    DISTRIB_MAX_VALUE = XML_init_values.Household_DISTRIB_MAX_VALUE
     # Maximum temperature deviation relative to preindustrial levels in CELSIUS
     DISTRIB_X_AXIS = np.arange(DISTRIB_MIN_VALUE, DISTRIB_MAX_VALUE, DISTRIB_RESOLUTION)
     # Support for the distribution
-    BELIEF_YEAR_OFFSET = np.array([0, 10, 50, 99])
-    # The years in the future for which each agent has to have a specific belief of temperature elevation
+    BELIEF_YEAR_OFFSET = np.array([-1, XML_init_values.Household_BELIEF_YEAR_OFFSET])
+    # The years offset (compared to 2015) for which each agent has to have a specific belief of temperature elevation
+    # The first belief is always about the current temperature elevation (it is moving)
     N_CLIMATE_BELIEFS = len(BELIEF_YEAR_OFFSET)
     # Number of beliefs
-    DEFAULT_INFORMATION_STD = 0.01
-    P_INFORMATION = 0.5
+    DEFAULT_INFORMATION_STD = XML_init_values.Household_DEFAULT_INFORMATION_STD
+    P_INFORMATION = XML_init_values.Household_P_INFORMATION
     # Probability to assimilate information at a given timestep
-    GAMMA = 0.3
+    GAMMA = XML_init_values.Household_GAMMA
     # Imperfect memory parameter
 
     # global_temperature_information = []; get from the information module
@@ -38,14 +41,21 @@ class Household:
         # Initialising climate intuition
         self.climate_init_mean_beliefs = np.array(
             [
-                np.random.random() * 2+1,
-                np.random.random() * 2+1,
-                np.random.random() * 2+1,
-                np.random.random() * 2+1,
+                np.random.random()
+                * XML_init_values.Household_climate_init_mean_beliefs_var
+                + XML_init_values.Household_climate_init_mean_beliefs_floor,
+                np.random.random()
+                * XML_init_values.Household_climate_init_mean_beliefs_var
+                + XML_init_values.Household_climate_init_mean_beliefs_floor,
             ]
         )
         # Temperature expected for BELIEF_YEAR_OFFSET years
-        self.climate_init_var_beliefs = np.array([1, 1, 1, 1])
+        self.climate_init_var_beliefs = np.array(
+            [
+                XML_init_values.Household_climate_init_var_beliefs_current,
+                XML_init_values.Household_climate_init_var_beliefs_offset1,
+            ]
+        )
         # Confidence in the expectation
 
         distrib_beliefs = np.array(
@@ -77,7 +87,7 @@ class Household:
         ###################################################
         ################## Sensitivities ##################
         ###################################################
-        #between 0 and 1
+        # between 0 and 1
         self.sensitivity_to_threshold_information = 0.2
         # > Between 0 and 2
         self.sensitivity_to_costs = 1
@@ -135,15 +145,21 @@ class Household:
         p = rng.random()
 
         if p < self.P_INFORMATION:
-            #Updating from information module: Expectation about temperature elevation
-            self.climate_distrib_beliefs = self.climate_distrib_beliefs * self.filtered_climate_information()
-            #Objective temperature threshold
-            self.threshold_expected_temperature_elevation = (1-self.sensitivity_to_threshold_information)*self.threshold_expected_temperature_elevation + self.sensitivity_to_threshold_information*1.5
+            # Updating from information module: Expectation about temperature elevation
+            self.climate_distrib_beliefs = (
+                self.climate_distrib_beliefs * self.filtered_climate_information()
+            )
+            # Objective temperature threshold
+            self.threshold_expected_temperature_elevation = (
+                (1 - self.sensitivity_to_threshold_information)
+                * self.threshold_expected_temperature_elevation
+                + self.sensitivity_to_threshold_information * 1.5
+            )
         # TODO ADP: In case of no information (ELSE case) we can have a memory effect, or biases taking place
         # But for now, I let it all empty
 
         norm_coeff = np.sum(self.climate_distrib_beliefs, axis=1)
-        #print(norm_coeff)
+        # print(norm_coeff)
 
         try:
             self.climate_distrib_beliefs = np.array(
@@ -156,7 +172,8 @@ class Household:
             print(norm_coeff)
 
         self.model_region.twolevelsgame_model.f_household_beliefs[1].writerow(
-            [timestep, self.model_region.id, self.id]+self.climate_distrib_beliefs[-1].tolist()
+            [timestep, self.model_region.id, self.id]
+            + self.climate_distrib_beliefs[-1].tolist()
         )
 
     def assess_policy(self, timestep):
@@ -214,7 +231,21 @@ class Household:
         )
 
         self.model_region.twolevelsgame_model.f_household_assessment[1].writerow(
-            [timestep, self.model_region.id, self.id, self.sensitivity_to_costs, loss_and_damages, mitigation_costs, experienced_economic_context, expected_loss_and_damages, expected_mitigation_costs, expected_economic_context, expected_temperature_elevation, self.model_region.negotiator.policy[1,0],U]
+            [
+                timestep,
+                self.model_region.id,
+                self.id,
+                self.sensitivity_to_costs,
+                loss_and_damages,
+                mitigation_costs,
+                experienced_economic_context,
+                expected_loss_and_damages,
+                expected_mitigation_costs,
+                expected_economic_context,
+                expected_temperature_elevation,
+                self.model_region.negotiator.policy[1, 0],
+                U,
+            ]
         )
 
         return U

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Simulation>
+    <Class name="TwoLevelsGame">
+        <Attribute name="Y_nego" type="int">5</Attribute>
+        <Attribute name="Y_policy" type="int">5</Attribute>
+    </Class>
+    <Class name="Region">
+        <Attribute name="n_households" type="int">100</Attribute>
+        <Attribute name="opdyn_max_iter" type="float">1</Attribute>
+        <Attribute name="opdyn_influence" type="float">.001</Attribute>
+		<Attribute name="opdyn_learning" type="float">.01</Attribute>
+        <Attribute name="opdyn_agreement" type="float">.001</Attribute>
+        <Attribute name="opdyn_lambda_noise" type="float">0</Attribute>
+        <Attribute name="opdyn_threshold_close" type="float">.5</Attribute>
+		<Attribute name="opdyn_threshold_far" type="float">1.</Attribute>
+        <Attribute name="opdyn_external_worry_decay" type="float">.7</Attribute>
+
+    </Class>
+    <Class name="Negotiator">
+        <Attribute name="policy_start_year" type="float">2015.</Attribute>
+        <Attribute name="policy_end_year" type="float">2100.</Attribute>
+        <Attribute name="policy_period" type="float">5</Attribute>
+		<Attribute name="ecr_start_year" type="float">0</Attribute>
+		<Attribute name="ecr_first_term" type="float">0</Attribute>
+		<Attribute name="ecr_end_year" type="float">1</Attribute>
+		<Attribute name="max_cutting_rate_gradient" type="float">.04</Attribute>
+    </Class>
+	    <Class name="Household">
+        <Attribute name="DISTRIB_RESOLUTION" type="float">.1</Attribute>
+        <Attribute name="DISTRIB_MIN_VALUE" type="float">-2</Attribute>
+        <Attribute name="DISTRIB_MAX_VALUE" type="float">8</Attribute>
+		<Attribute name="BELIEF_YEAR_OFFSET" type="int">185</Attribute>
+		<Attribute name="DEFAULT_INFORMATION_STD" type="float">.01</Attribute>
+		<Attribute name="P_INFORMATION" type="float">.5</Attribute>
+		<Attribute name="GAMMA" type="float">0.3</Attribute>
+		<Attribute name="climate_init_mean_beliefs_floor" type="float">1</Attribute>
+		<Attribute name="climate_init_mean_beliefs_var" type="float">2</Attribute>
+		<Attribute name="climate_init_var_beliefs_current" type="float">.5</Attribute>
+		<Attribute name="climate_init_var_beliefs_offset1" type="float">0.01</Attribute>
+		<Attribute name="ecr_end_year" type="float">1</Attribute>
+		<Attribute name="ecr_end_year" type="float">1</Attribute>
+    </Class>
+    <!-- Add more Class elements as needed -->
+</Simulation>

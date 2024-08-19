@@ -7,30 +7,42 @@ Created on Tue Mar  5 10:22:14 2024
 import numpy as np
 from scipy import interpolate as scint
 
+from src.exploration.DataLoaderTwoLevelGame import (
+    DataLoaderTwoLevelGame,
+    XML_init_values,
+)
+
 
 class Negotiator:
     def __init__(
         self,
         region,
-        policy_start_year=2015.0,
-        policy_end_year=2100.0,
-        policy_period=5.0,
     ):
         self.region_model = region
-        self.policy_start_year = policy_start_year
+        self.policy_start_year = XML_init_values.Negotiator_policy_start_year
+        self.policy_period = XML_init_values.Negotiator_policy_period
         self.policy = np.array(
             [
-                [policy_start_year, policy_start_year + policy_period, policy_end_year],
-                [0.0, 0.0, 1.0],
+                [
+                    self.policy_start_year,
+                    self.policy_start_year + self.policy_period,
+                    XML_init_values.Negotiator_policy_end_year,
+                ],
+                [
+                    XML_init_values.Negotiator_ecr_start_year,
+                    XML_init_values.Negotiator_ecr_first_term,
+                    XML_init_values.Negotiator_ecr_end_year,
+                ],
             ]
         )
-        self.policy_period = policy_period
 
         # Some parameters
         # Maximum emission cutting rate gradient per year
-        self.max_cutting_rate_gradient = 0.04
+        self.max_cutting_rate_gradient = (
+            XML_init_values.Negotiator_max_cutting_rate_gradient
+        )
 
-        self.regional_pressure_later_ecr = policy_end_year
+        self.regional_pressure_later_ecr = XML_init_values.Negotiator_policy_end_year
         self.regional_pressure_earlier_ecr = 0
 
     def international_netzero_proposal(self):
@@ -51,7 +63,7 @@ class Negotiator:
         if (
             self.policy[0, 1] == current_time
             and self.policy[0, 1] + self.policy_period < self.policy[0, 2]
-            and self.policy[1,1] != 1
+            and self.policy[1, 1] != 1
         ):
             # identify new target
             now = self.policy[:, 1].copy()
@@ -71,9 +83,9 @@ class Negotiator:
             )  # support = share of opposition, neutral and support
 
             range_of_shift = self.delta_shift_range()
-            if support[2]>support[0]:
+            if support[2] > support[0]:
                 delta_shift = range_of_shift * support[2]
-            elif support[2]<=support[0]:
+            elif support[2] <= support[0]:
                 delta_shift = (self.policy[1, 0] - self.policy[1, 1]) * support[0]
             else:
                 delta_shift = 0
@@ -81,7 +93,7 @@ class Negotiator:
             max_cutting_rate_gradient = self.max_cutting_rate_gradient
 
             # Shifting policy target
-            #TODO APN: Forbid carbon capture for now (look @ AR6 database later)
+            # TODO APN: Forbid carbon capture for now (look @ AR6 database later)
             self.policy[1, 1] = min(delta_shift + self.policy[1, 1], 1)
 
             (self.region_model.twolevelsgame_model.f_policy)[1].writerow(
@@ -114,8 +126,13 @@ class Negotiator:
         # The time it will take from policy goal in policy[:,1] to reach target ecr=1 given track record
         # Plus the time assigned for goal in policy[:,1]
         # Reminder that policy[0,:] = years and policy[1,:] = ecr targets
-        if (self.policy[1, 1] - self.policy[1, 0])!=0:
-            return np.ceil((1.0 - self.policy[1, 1]) * (self.policy[0, 1] - self.policy[0, 0]) / (self.policy[1, 1] - self.policy[1, 0]) + self.policy[0, 1])
+        if (self.policy[1, 1] - self.policy[1, 0]) != 0:
+            return np.ceil(
+                (1.0 - self.policy[1, 1])
+                * (self.policy[0, 1] - self.policy[0, 0])
+                / (self.policy[1, 1] - self.policy[1, 0])
+                + self.policy[0, 1]
+            )
         else:
             return self.policy[0, -1]
 

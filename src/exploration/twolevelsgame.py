@@ -9,12 +9,14 @@ import numpy as np
 from scipy.interpolate import interp1d
 import copy
 
+from src.exploration.DataLoaderTwoLevelGame import XML_init_values
 from src.exploration.household import Household
 from src.exploration.region import Region
 import csv
 import json
 from datetime import datetime
 import pandas as pd
+
 
 
 class TwoLevelsGame:
@@ -28,7 +30,6 @@ class TwoLevelsGame:
         self,
         justice_model,
         number_regions=57,
-        population_size_by_region=10,
         timestep=0,
     ):
         """
@@ -36,6 +37,8 @@ class TwoLevelsGame:
         number_of_region refers to the number of regions in the model
         population_size_by_region refers to the number of households in each opinion dynamics model
         """
+
+
 
         # Saving data (TODO APN: Create a class for saving methods and structures)
         # -> Create folder for current simulation
@@ -111,7 +114,7 @@ class TwoLevelsGame:
         )
         self.f_household[1].writerow(
             ["Timestep", "Region"]
-            + ["Household Threshold" for i in range(population_size_by_region)]
+            + ["Household Threshold" for i in range(XML_init_values.Region_n_households)]
         )
 
         f5_beliefs = open(path + "household_beliefs.csv", "w", newline="")
@@ -200,7 +203,6 @@ class TwoLevelsGame:
                     self,
                     i,
                     code,
-                    population_size_by_region,
                     timestep,
                     dict_regions_distribution_income,
                 )
@@ -220,9 +222,9 @@ class TwoLevelsGame:
 
         # Parameters for international negotiations
         self.Y_nego = (
-            5  # How many years between a new set of international negotiation rounds
+            XML_init_values.TwoLevelsGame_Y_nego  # How many years between a new set of international negotiation rounds
         )
-        self.Y_policy = 5  # How many years between a new set of regional policy update
+        self.Y_policy = XML_init_values.TwoLevelsGame_Y_policy  # How many years between a new set of regional policy update
 
     def step(self, timestep):
         """

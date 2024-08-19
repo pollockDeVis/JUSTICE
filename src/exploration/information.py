@@ -56,20 +56,38 @@ class Information:
         # Last known forecast by FaIR (every 10 years) under the form [year; mean_temperature; var_temperature]
         self.local_temperature_information = []
         # Last known downscaled forecast by FaIr (every 10 years) under the forme [year; mean_temperature; var_temperature] for each region
-        self.global_distrib_flsi = np.empty([Household.N_CLIMATE_BELIEFS, int((Household.DISTRIB_MAX_VALUE-Household.DISTRIB_MIN_VALUE)/Household.DISTRIB_RESOLUTION)])
+        self.global_distrib_flsi = np.empty(
+            [
+                Household.N_CLIMATE_BELIEFS,
+                int(
+                    (Household.DISTRIB_MAX_VALUE - Household.DISTRIB_MIN_VALUE)
+                    / Household.DISTRIB_RESOLUTION
+                ),
+            ]
+        )
         # Estimations of future temperature elevation (ground) at global scale at future years BELIEF_YEAR_OFFSET
         self.regional_distrib_flsi = [
-            [np.empty([Household.N_CLIMATE_BELIEFS, int((Household.DISTRIB_MAX_VALUE-Household.DISTRIB_MIN_VALUE)/Household.DISTRIB_RESOLUTION)])] for r in range(57)
+            [
+                np.empty(
+                    [
+                        Household.N_CLIMATE_BELIEFS,
+                        int(
+                            (Household.DISTRIB_MAX_VALUE - Household.DISTRIB_MIN_VALUE)
+                            / Household.DISTRIB_RESOLUTION
+                        ),
+                    ]
+                )
+            ]
+            for r in range(57)
         ]
         # Estimations of future temperature elevation (ground) at local scale at future years BELIEF_YEAR_OFFSET
         # TODO APN: 57 is the number of regions: use global var or get from JUSTICE model
-
 
         self.global_temperature_projection1 = []
         self.local_temperature_projection1 = []
         self.local_consumption_per_capita1 = []
         self.global_temperature_projection2 = []
-        self.local_temperature_projection2= []
+        self.local_temperature_projection2 = []
         self.local_consumption_per_capita2 = []
         self.global_temperature_projection3 = []
         self.local_temperature_projection3 = []
@@ -110,11 +128,9 @@ class Information:
         projection_model_support = JusticeProjection(self.justice_model)
         projection_model_opposition = JusticeProjection(self.justice_model)
 
-
-        ecr1=[]
-        ecr2=[]
-        ecr3=[]
-
+        ecr1 = []
+        ecr2 = []
+        ecr3 = []
 
         for i in range(time_step, time_step + 5):
             projection_model_base.stepwise_run(
@@ -129,33 +145,36 @@ class Information:
             datasets_base = projection_model_base.stepwise_evaluate(timestep=i)
             datasets_support = projection_model_support.stepwise_evaluate(timestep=i)
             datasets_opposition = projection_model_opposition.stepwise_evaluate(
-                timestep=i)
-
+                timestep=i
+            )
 
         means_global_temp = datasets_base["global_temperature"].mean(axis=1)
         std_global_temp = datasets_base["global_temperature"].std(axis=1)
         self.global_temperature_projection1 = [means_global_temp, std_global_temp]
-        means_local_temp =  datasets_base["regional_temperature"].mean(axis=2)
-        std_local_temp =  datasets_base["regional_temperature"].std(axis=2)
+        means_local_temp = datasets_base["regional_temperature"].mean(axis=2)
+        std_local_temp = datasets_base["regional_temperature"].std(axis=2)
         self.local_temperature_projection1 = [means_local_temp, std_local_temp]
         self.local_consumption_per_capita1 = datasets_base["consumption"].mean(axis=2)
 
         means_global_temp = datasets_support["global_temperature"].mean(axis=1)
         std_global_temp = datasets_support["global_temperature"].std(axis=1)
         self.global_temperature_projection2 = [means_global_temp, std_global_temp]
-        means_local_temp =  datasets_support["regional_temperature"].mean(axis=2)
-        std_local_temp =  datasets_support["regional_temperature"].std(axis=2)
+        means_local_temp = datasets_support["regional_temperature"].mean(axis=2)
+        std_local_temp = datasets_support["regional_temperature"].std(axis=2)
         self.local_temperature_projection2 = [means_local_temp, std_local_temp]
-        self.local_consumption_per_capita2 = datasets_support["consumption"].mean(axis=2)
+        self.local_consumption_per_capita2 = datasets_support["consumption"].mean(
+            axis=2
+        )
 
         means_global_temp = datasets_opposition["global_temperature"].mean(axis=1)
         std_global_temp = datasets_opposition["global_temperature"].std(axis=1)
         self.global_temperature_projection3 = [means_global_temp, std_global_temp]
-        means_local_temp =  datasets_opposition["regional_temperature"].mean(axis=2)
-        std_local_temp =  datasets_opposition["regional_temperature"].std(axis=2)
+        means_local_temp = datasets_opposition["regional_temperature"].mean(axis=2)
+        std_local_temp = datasets_opposition["regional_temperature"].std(axis=2)
         self.local_temperature_projection3 = [means_local_temp, std_local_temp]
-        self.local_consumption_per_capita3 = datasets_opposition["consumption"].mean(axis=2)
-
+        self.local_consumption_per_capita3 = datasets_opposition["consumption"].mean(
+            axis=2
+        )
 
         print(
             "         L> PROJECTION DONE!",
@@ -252,14 +271,23 @@ class Information:
         print(self.local_consumption_per_capita.shape())
         return
 
-    def construct_flsi(self, time):
+    def construct_flsi(self, timestep):
         # Global
+        print(self.global_temperature_information[0].shape)
         for i in range(Household.N_CLIMATE_BELIEFS):
             year = Household.BELIEF_YEAR_OFFSET[i]
-            self.global_distrib_flsi[i] = Household.gaussian_distrib(
-                g_mean=self.global_temperature_information[0][year],
-                g_std=self.global_temperature_information[1][year],
-            )
+            if year != -1:
+                # Look at temperature elevation for "2015+year" year
+                self.global_distrib_flsi[i] = Household.gaussian_distrib(
+                    g_mean=self.global_temperature_information[0][year],
+                    g_std=self.global_temperature_information[1][year],
+                )
+            else:
+                # Look at the current temperature elevation
+                self.global_distrib_flsi[i] = Household.gaussian_distrib(
+                    g_mean=self.global_temperature_information[0][timestep],
+                    g_std=self.global_temperature_information[1][timestep],
+                )
             norm_coeff = np.sum(self.global_distrib_flsi[i], axis=0)
             self.global_distrib_flsi[i] = self.global_distrib_flsi[i] / norm_coeff
 
@@ -267,10 +295,16 @@ class Information:
         for r in range(57):
             for i in range(Household.N_CLIMATE_BELIEFS):
                 year = Household.BELIEF_YEAR_OFFSET[i]
-                self.regional_distrib_flsi[r][0][i] = Household.gaussian_distrib(
-                    g_mean=self.local_temperature_information[0][r][year],
-                    g_std=self.local_temperature_information[1][r][year],
-                )
+                if year != -1:
+                    self.regional_distrib_flsi[r][0][i] = Household.gaussian_distrib(
+                        g_mean=self.local_temperature_information[0][r][year],
+                        g_std=self.local_temperature_information[1][r][year],
+                    )
+                else:
+                    self.regional_distrib_flsi[r][0][i] = Household.gaussian_distrib(
+                        g_mean=self.local_temperature_information[0][r][timestep],
+                        g_std=self.local_temperature_information[1][r][timestep],
+                    )
                 norm_coeff = np.sum(self.regional_distrib_flsi[r][0][i], axis=0)
                 # TODO NOT SURE ABOUT THE COMPUTATION OF NORM COEFF HERE
                 self.regional_distrib_flsi[r][0][i] = (

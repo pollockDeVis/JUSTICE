@@ -7,6 +7,7 @@ Created on Tue Mar  5 10:17:02 2024
 import numpy as np
 import scipy
 
+from src.exploration.DataLoaderTwoLevelGame import XML_init_values
 from src.exploration.household import Household
 from src.exploration.negotiator import Negotiator
 
@@ -40,7 +41,6 @@ class Region:
         twolevelsgame_model,
         id,
         code,
-        N,
         timestep,
         dict_regions_distribution_income,
     ):
@@ -61,12 +61,12 @@ class Region:
         # print(np.sum(self.distribution_income))
 
         # Generating the N households (ie, constituency. N = 100 by default from Policy() )
-        self.n_households = N
+        self.n_households = XML_init_values.Region_n_households
         self.households = []
 
-        for i in range(N):
+        for i in range(self.n_households):
             # Initialisation of different households and their perspectives.
-            quintile = int(i / (0.2 * N))
+            quintile = int(i / (0.2 * self.n_households))
             self.households += [
                 Household(self, self.distribution_income.index[quintile], i)
             ]
@@ -74,15 +74,17 @@ class Region:
         # ------ Local Opinions Dynamics Parameters ------
         # TODO APN: All OD processes relies on same OD params. Could be interesting to have a specific class for OD defined with proper conf for each different considerations.
         # Also, another possibility is to combine all OD approaches (both kind of worries in one go), this is made possible by enlarging the Laplacian matrix...
-        self.opdyn_max_iter = 1
+        self.opdyn_max_iter = XML_init_values.Region_opdyn_max_iter
         # Only one iteration per step
-        self.opdyn_influence = 0.001
-        self.opdyn_learning = 0.01
-        self.opdyn_agreement = 0.001
-        self.opdyn_lambda_noise = 0
-        self.opdyn_threshold_close = 0.5
-        self.opdyn_threshold_far = 2
-        self.opdyn_external_worry_decay = 0.7
+        self.opdyn_influence = XML_init_values.Region_opdyn_influence
+        self.opdyn_learning = XML_init_values.Region_opdyn_learning
+        self.opdyn_agreement = XML_init_values.Region_opdyn_agreement
+        self.opdyn_lambda_noise = XML_init_values.Region_opdyn_lambda_noise
+        self.opdyn_threshold_close = XML_init_values.Region_opdyn_threshold_close
+        self.opdyn_threshold_far = XML_init_values.Region_opdyn_threshold_far
+        self.opdyn_external_worry_decay = (
+            XML_init_values.Region_opdyn_external_worry_decay
+        )
 
         # Negotiator, negotiation strategy depends on constituency
         self.negotiator = Negotiator(self)
@@ -91,10 +93,8 @@ class Region:
     def aggregate_households_opinions(self, timestep):
 
         self.twolevelsgame_model.f_household[1].writerow(
-                [timestep,
-                self.id]+
-                [hh.threshold_expected_temperature_elevation for hh in self.households],
-
+            [timestep, self.id]
+            + [hh.threshold_expected_temperature_elevation for hh in self.households],
         )
 
         array_utility = np.array([hh.assess_policy(timestep) for hh in self.households])
@@ -246,18 +246,16 @@ class Region:
             k += 1
             # Create the network
             L = (
-                np.abs(
-                    vect_thresholds @ v1.T - (v1 @ vect_thresholds.T))
-                    < self.opdyn_threshold_close
-                )                - I
+                np.abs(vect_thresholds @ v1.T - (v1 @ vect_thresholds.T))
+                < self.opdyn_threshold_close
+            ) - I
 
             Lclose = np.diag(np.sum(L, 1)) - L
 
             L = (
-                np.abs(
-                    vect_thresholds @ v1.T - (v1 @ vect_thresholds.T))
-                    > self.opdyn_threshold_far
-                )                - I
+                np.abs(vect_thresholds @ v1.T - (v1 @ vect_thresholds.T))
+                > self.opdyn_threshold_far
+            ) - I
 
             Lfar = np.diag(np.sum(L, 1)) - L
 
@@ -267,14 +265,17 @@ class Region:
             L = Lclose - Lfar  # + Lalea;
 
             # Update thresholds
-            vect_thresholds = np.clip((I - self.opdyn_influence * L) @ vect_thresholds, 0, 8)
+            #TODO: opdyn_influence could be computed to change depending on how close/far the values are from each other 
+            vect_thresholds = np.clip(
+                (I - self.opdyn_influence * L) @ vect_thresholds, 0, 8
+            )
 
             dispersion = np.max(np.abs(vect_thresholds @ v1.T - v1 @ vect_thresholds.T))
 
-        i=0
+        i = 0
         for hh in self.households:
-            hh.threshold_expected_temperature_elevation=vect_thresholds[i][0]
-            i = i+1
+            hh.threshold_expected_temperature_elevation = vect_thresholds[i][0]
+            i = i + 1
 
     def emission_control_rate(self):
         """PARAMETRIZED EMISSION POLICY
