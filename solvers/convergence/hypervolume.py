@@ -6,20 +6,28 @@ from deap.tools import _hypervolume
 import numpy as np
 import pandas as pd
 from functools import partial
-import itertools
 import multiprocessing
 import datetime
 from sklearn.preprocessing import MinMaxScaler
+from itertools import chain
+from solvers.convergence import pareto
+
+# Suppress warnings
+import warnings
 
 
 def calculate_hypervolume(maxima, generation):
     return _hypervolume.hv.hypervolume(generation, maxima)
 
 
-def transform_data(data, scaler):
+def transform_data(data, scaler, direction_of_optimization=[]):
 
     # scale data
     transformed_data = scaler.transform(data)
+    # Handle Directions # NOTE: This is not needed. The hypervolume calculation is already taking care of this
+    # for i, direction in enumerate(direction_of_optimization):
+    #     if direction == "max":
+    #         transformed_data[:, i] = 1 - transformed_data[:, i]
     return transformed_data
 
 
@@ -70,6 +78,132 @@ def load_archives(
     return archives, list_of_archives
 
 
+def load_archives_all_seeds(
+    list_of_objectives=[
+        "welfare",
+        "years_above_temperature_threshold",
+        "welfare_loss_damage",
+        "welfare_loss_abatement",
+    ],
+    data_path="data/optimized_rbf_weights/",
+    file_name=None,  # "UTILITARIAN_100000_1644652.tar.gz",
+    swf=[
+        "UTILITARIAN",
+    ],
+    nfe="100000",
+):
+    """
+
+    Returns
+    -------
+
+
+    """
+    # Assert if arguments are None
+    assert data_path is not None, "data_path is None"
+    # assert file_name is not None, "file_name is None"
+    # Assert if list_of_objectives is empty
+    assert list_of_objectives, "list_of_objectives is empty"
+
+    solutions = []
+    # Load all data file that starts with swf and nfe
+    print("Loading list of files")
+    seed_archive_dict = {}
+    for swf in swf:
+        print("Loading archives for ", swf)
+        for filename in os.listdir(data_path):
+            if filename.startswith(f"{swf}_{nfe}"):
+                file_name = filename
+                print(file_name)
+
+                archives = ArchiveLogger.load_archives(f"{data_path}/{file_name}")
+
+                number_of_objectives = len(list_of_objectives)
+                print("Loading archives for ", file_name)
+                # Get the maximum value in the archives keys
+                max_key = max(archives.keys())
+                print("Max key: ", max_key)
+
+                # Get the archive with maximum key
+                archive = archives[max_key]
+
+                # Only keep the last columns matching the length of list_of_objectives
+                archive = archive.iloc[:, -number_of_objectives:]
+
+                # Print the number of rows for the archive
+                print("Number of rows: ", archive.shape[0])
+
+                solutions.append(archive.values.tolist())
+
+                print("Archives loaded")
+            seed_archive_dict[swf] = list(chain.from_iterable(solutions))
+    return seed_archive_dict
+
+
+def get_global_reference_set(
+    list_of_objectives=[
+        "welfare",
+        "years_above_temperature_threshold",
+        "welfare_loss_damage",
+        "welfare_loss_abatement",
+    ],
+    data_path="data/optimized_rbf_weights/",
+    file_name=None,  # "UTILITARIAN_100000_1644652.tar.gz",
+    swf=[
+        "UTILITARIAN",
+        "PRIORITARIAN",
+    ],
+    nfe="100000",
+    epsilons=[
+        0.1,
+        0.25,
+        10,
+        10,
+    ],
+    direction_of_optimization=["min", "min", "max", "max"],
+    output_data_path="data/convergence_metrics",
+    saving=True,
+):
+    """
+    Get the global reference set
+    """
+    # Throw error if epsilon length is not equal to the number of objectives
+    assert len(epsilons) == len(
+        list_of_objectives
+    ), "Length of epsilons is not equal to the number of objectives"
+
+    seed_archive_dict = load_archives_all_seeds(
+        list_of_objectives=list_of_objectives, data_path=data_path, swf=swf, nfe=nfe
+    )
+
+    # This will convert the list of indices of the objectives. Needed for the pareto sorting library
+    list_of_objectives = list(range(len(list_of_objectives)))
+
+    # This will return the indices of the objectives that are to be maximized
+    max_indices = [
+        index for index, value in enumerate(direction_of_optimization) if value == "max"
+    ]
+
+    reference_sets = {}
+
+    for swf in seed_archive_dict:
+
+        nondominated = pareto.eps_sort(
+            [seed_archive_dict[swf]],
+            list_of_objectives,
+            epsilons,
+            maximize=max_indices,
+        )
+        reference_sets[swf] = nondominated
+        if saving:
+            output_file = f"{output_data_path}/{swf}_reference_set.csv"
+            # Save the nondominated in csv withouth the index
+            pd.DataFrame(nondominated).to_csv(output_file, index=False)
+            print(f"Reference set saved to {output_file}")
+
+    return reference_sets
+
+
 def calculate_hypervolume_from_archives(
     list_of_objectives=[
         "welfare",
@@ -77,10 +211,14 @@ def calculate_hypervolume_from_archives(
         "welfare_loss_damage",
         "welfare_loss_abatement",
     ],
+    direction_of_optimization=[],  # ["min", "min", "min", "min"],
     input_data_path="data/optimized_rbf_weights/200k",
     file_name="PRIORITARIAN_200000.tar.gz",
     output_data_path="data/convergence_metrics",
     saving=True,
+    global_reference_set=False,
+    global_reference_set_path=None,
+    global_reference_set_file=None,
 ):
 
     archives, list_of_archives = load_archives(
@@ -90,13 +228,40 @@ def calculate_hypervolume_from_archives(
     )
     list_of_archives = pd.concat(list_of_archives).values
 
+    # Temporary #TODO: Remove
+    print("list_of_archives: ", list_of_archives.shape)
+
     scaler = MinMaxScaler()
 
-    scaler.fit(list_of_archives)
+    if global_reference_set:
+        # Throw an error if the path and file are not provided
+        assert (
+            global_reference_set_path is not None
+        ), "global_reference_set_path is None"
+        assert (
+            global_reference_set_file is not None
+        ), "global_reference_set_file is None"
 
-    reference_set = transform_data(list_of_archives, scaler)  # .values
+        # load the global reference set
+        global_reference_set = pd.read_csv(
+            f"{global_reference_set_path}/{global_reference_set_file}"
+        )
+        # TODO: Check this. Need to scale ?
+        # reference_set = global_reference_set #.iloc[:, -len(list_of_objectives) :].values
+        scaler.fit(global_reference_set)
+        reference_set = transform_data(
+            global_reference_set, scaler, direction_of_optimization
+        )
+
+    else:
+        scaler.fit(list_of_archives)
+        reference_set = transform_data(
+            list_of_archives, scaler, direction_of_optimization
+        )  # .values
 
     print("reference_set", reference_set.shape)
+    # Print the type of reference_set
+    print("type of reference_set", type(reference_set))
 
     maxima = np.max(reference_set, axis=0)
 
@@ -108,20 +273,21 @@ def calculate_hypervolume_from_archives(
     print("nfes: \n", nfes)
     scores = []
     overall_starttime = datetime.datetime.now()
-    # TODO: Move multiprocessing to main
-    with multiprocessing.Pool() as pool:
-        # Enumerate through the keys of the archives
-        nfe_archives = [
-            transform_data(
-                ((archives[key]).iloc[:, -(len(list_of_objectives)) :]).values, scaler
-            )
-            for key in nfes
-            if key != 0
-        ]
-        print("Computing hypervolume for ", file_name)
-        hv_results = pool.map(partial(calculate_hypervolume, maxima), nfe_archives)
 
-        scores.append(pd.DataFrame.from_dict(dict(nfe=nfes, hypervolume=hv_results)))
+    # Enumerate through the keys of the archives
+    nfe_archives = [
+        transform_data(
+            ((archives[key]).iloc[:, -(len(list_of_objectives)) :]).values,
+            scaler,
+            # direction_of_optimization, # This is not needed. The hypervolume calculation is already taking care of this
+        )
+        for key in nfes
+        if key != 0
+    ]
+    print("Computing hypervolume for ", file_name)
+    hv_results = pool.map(partial(calculate_hypervolume, maxima), nfe_archives)
+
+    scores.append(pd.DataFrame.from_dict(dict(nfe=nfes, hypervolume=hv_results)))
 
     delta_time = datetime.datetime.now() - overall_starttime
     print(
@@ -138,24 +304,35 @@ def calculate_hypervolume_from_archives(
 
 
 if __name__ == "__main__":
+
+    # Suppress warnings
+    warnings.filterwarnings("ignore")
+
+    get_global_reference_set()
+
     filenames = [
-        "UTILITARIAN_100000.tar.gz",
-        "PRIORITARIAN_100000.tar.gz",
-        "EGALITARIAN_100000.tar.gz",
-        "SUFFICIENTARIAN_100000.tar.gz",
+        "UTILITARIAN_100000_1644652.tar.gz",
+        # "PRIORITARIAN_100000.tar.gz",
+        # "EGALITARIAN_100000.tar.gz",
+        # "SUFFICIENTARIAN_100000.tar.gz",
     ]
 
-    # Enumerate through the filenames
-    for filename in filenames:
-        scores = calculate_hypervolume_from_archives(
-            list_of_objectives=[
-                "welfare",
-                "years_above_temperature_threshold",
-                "welfare_loss_damage",
-                "welfare_loss_abatement",
-            ],
-            input_data_path="data/optimized_rbf_weights",
-            file_name=filename,
-            output_data_path="data/convergence_metrics",
-            saving=True,
-        )
+    with multiprocessing.Pool() as pool:
+        # Enumerate through the filenames
+        for filename in filenames:
+            scores = calculate_hypervolume_from_archives(
+                list_of_objectives=[
+                    "welfare",
+                    "years_above_temperature_threshold",
+                    "welfare_loss_damage",
+                    "welfare_loss_abatement",
+                ],
+                direction_of_optimization=["min", "min", "max", "max"],
+                input_data_path="data/optimized_rbf_weights",
+                file_name=filename,
+                output_data_path="data/convergence_metrics",
+                saving=True,
+                global_reference_set=True,
+                global_reference_set_path="data/convergence_metrics",
+                global_reference_set_file="UTILITARIAN_reference_set.csv",
+            )

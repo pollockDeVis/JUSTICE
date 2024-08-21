@@ -521,74 +521,74 @@ def get_best_performing_policies(
 
 
 if __name__ == "__main__":
-    # reevaluate_optimal_policy(
-    #     input_data=[
-    #         # "UTIL_100024_s1644652.csv",
-    #         # "PRIOR_101400_s1644652.csv",
-    #         "SUFF_100090_s9845531.csv",
-    #         "EGAL_100417_s1644652.csv",
-    #     ],  # "UTIL_100049.csv", "EGAL_101948.csv",
-    #     path_to_rbf_weights="data/optimized_rbf_weights/tradeoffs/",
-    #     path_to_output="data/reevaluation/",
-    #     objective_of_interest="welfare",
-    #     # direction_of_optimization=[
-    #     #     "min",
-    #     #     "min",
-    #     #     "max",
-    #     #     "max",
-    #     # ],
-    #     lowest_n_percent=0.51,
-    #     # list_of_objectives=[
-    #     #     "welfare",
-    #     #     "years_above_temperature_threshold",
-    #     #     "welfare_loss_damage",
-    #     #     "welfare_loss_abatement",
-    #     # ],
-    #     scenario_list=list(Scenario.__members__.keys()),
-    # )
+    reevaluate_optimal_policy(
+        input_data=[
+            "UTIL_100024_s1644652.csv",
+            # "PRIOR_101400_s1644652.csv",
+            # "SUFF_100090_s9845531.csv",
+            # "EGAL_100417_s1644652.csv",
+        ],  # "UTIL_100049.csv", "EGAL_101948.csv",
+        path_to_rbf_weights="data/optimized_rbf_weights/tradeoffs/",
+        path_to_output="data/reevaluation/",
+        objective_of_interest="welfare",
+        # direction_of_optimization=[
+        #     "min",
+        #     "min",
+        #     "max",
+        #     "max",
+        # ],
+        lowest_n_percent=0.51,
+        # list_of_objectives=[
+        #     "welfare",
+        #     "years_above_temperature_threshold",
+        #     "welfare_loss_damage",
+        #     "welfare_loss_abatement",
+        # ],
+        scenario_list=list(Scenario.__members__.keys()),
+    )
 
     ########################################################################
-    scenario_list = list(
-        Scenario.__members__.keys()
-    )  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
-    start_year = 2015
-    end_year = 2300
-    data_timestep = 5
-    timestep = 1
+    # scenario_list = list(
+    #     Scenario.__members__.keys()
+    # )  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
+    # start_year = 2015
+    # end_year = 2300
+    # data_timestep = 5
+    # timestep = 1
 
-    data_loader = DataLoader()
-    region_list = data_loader.REGION_LIST
+    # data_loader = DataLoader()
+    # region_list = data_loader.REGION_LIST
 
-    # Set the time horizon
-    time_horizon = TimeHorizon(
-        start_year=start_year,
-        end_year=end_year,
-        data_timestep=data_timestep,
-        timestep=timestep,
-    )
+    # # Set the time horizon
+    # time_horizon = TimeHorizon(
+    #     start_year=start_year,
+    #     end_year=end_year,
+    #     data_timestep=data_timestep,
+    #     timestep=timestep,
+    # )
 
-    list_of_years = time_horizon.model_time_horizon
-    columns = list_of_years
-    # net_economic_output consumption, emissions, economic_damage, global_temperature
-    reevaluated_optimal_policy_variable_extractor(
-        scenario_list=scenario_list,  # ['SSP245'],
-        region_list=region_list,
-        list_of_years=list_of_years,
-        path_to_data="data/reevaluation",
-        path_to_output="data/reevaluation",
-        variable_name="net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature",
-        data_shape=3,
-        no_of_ensembles=1001,
-        input_data=[
-            "UTIL_100024_s1644652_idx75.pkl",
-            "PRIOR_101400_s1644652_idx236.pkl",
-            "SUFF_100090_s9845531_idx86.pkl",
-            "EGAL_100417_s1644652_idx31.pkl",
-        ],
-        output_file_names=[
-            "Utilitarian",
-            "Prioritarian",
-            "Sufficientarian",
-            "Egalitarian",
-        ],
-    )
+    # list_of_years = time_horizon.model_time_horizon
+    # columns = list_of_years
+    # # net_economic_output consumption, emissions, economic_damage, global_temperature
+    # reevaluated_optimal_policy_variable_extractor(
+    #     scenario_list=scenario_list,  # ['SSP245'],
+    #     region_list=region_list,
+    #     list_of_years=list_of_years,
+    #     path_to_data="data/reevaluation",
+    #     path_to_output="data/reevaluation",
+    #     variable_name="net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature",
+    #     data_shape=3,
+    #     no_of_ensembles=1001,
+    #     input_data=[
+    #         "UTIL_100024_s1644652_idx75.pkl",
+    #         "PRIOR_101400_s1644652_idx236.pkl",
+    #         "SUFF_100090_s9845531_idx86.pkl",
+    #         "EGAL_100417_s1644652_idx31.pkl",
+    #     ],
+    #     output_file_names=[
+    #         "Utilitarian",
+    #         "Prioritarian",
+    #         "Sufficientarian",
+    #         "Egalitarian",
+    #     ],
+    # )
