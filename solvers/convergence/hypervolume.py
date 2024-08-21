@@ -151,6 +151,7 @@ def get_global_reference_set(
     file_name=None,  # "UTILITARIAN_100000_1644652.tar.gz",
     swf=[
         "UTILITARIAN",
+        "PRIORITARIAN",
     ],
     nfe="100000",
     epsilons=[
