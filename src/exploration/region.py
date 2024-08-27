@@ -8,6 +8,7 @@ import numpy as np
 import scipy
 
 from src.exploration.DataLoaderTwoLevelGame import XML_init_values
+from src.exploration.Opinions import Opinion
 from src.exploration.household import Household
 from src.exploration.negotiator import Negotiator
 
@@ -42,17 +43,28 @@ class Region:
         id,
         code,
         timestep,
-        dict_regions_distribution_income,
+        list_dicts,
     ):
         """
         policy_model the overarching policy class
         id a unique identifier for the region
         N the number of households for the opinion dynamics model of the region
+        list_dicts = [dict_regions_distribution_income,
+                    dict_regions_climate_worry,
+                    dict_regions_economic_impact,
+                    dict_regions_climate_awareness,
+                    dict_regions_threat_20_years,
+                    dict_regions_harm_future_gen,
+                    dict_regions_gov_priority,
+                    dict_regions_most_responsible,
+                    dict_regions_country_responsibility,
+                    dict_regions_climate_happening]
         """
 
         self.twolevelsgame_model = twolevelsgame_model
         self.id = id
         self.code = code
+        dict_regions_distribution_income = list_dicts[0]
         self.distribution_income = dict_regions_distribution_income[self.code] / 100
         self.distribution_cost_mitigation = []
         self.distribution_cost_damages = []
@@ -68,12 +80,10 @@ class Region:
             # Initialisation of different households and their perspectives.
             quintile = int(i / (0.2 * self.n_households))
             self.households += [
-                Household(self, self.distribution_income.index[quintile], i)
+                Household(self, self.distribution_income.index[quintile], i, list_dicts)
             ]
 
-        # ------ Local Opinions Dynamics Parameters ------
-        # TODO APN: All OD processes relies on same OD params. Could be interesting to have a specific class for OD defined with proper conf for each different considerations.
-        # Also, another possibility is to combine all OD approaches (both kind of worries in one go), this is made possible by enlarging the Laplacian matrix...
+        # ------ Opinions Dynamics Parameters For Temperature Threshold -----
         self.opdyn_max_iter = XML_init_values.Region_opdyn_max_iter
         # Only one iteration per step
         self.opdyn_influence = XML_init_values.Region_opdyn_influence
@@ -86,34 +96,58 @@ class Region:
             XML_init_values.Region_opdyn_external_worry_decay
         )
 
+        ###############################
+        ###### Emotions-Opinions ######
+        ###############################
+        self.opinion_climate_change = Opinion(
+            self.n_households, [hh.emotion_climate_change for hh in self.households],
+        )
+        self.opinion_economy = Opinion(
+            self.n_households, [hh.emotion_economy for hh in self.households]
+        )
+
         # Negotiator, negotiation strategy depends on constituency
         self.negotiator = Negotiator(self)
         self.update_state_policy_from_constituency(timestep)
 
     def aggregate_households_opinions(self, timestep):
 
-        self.twolevelsgame_model.f_household[1].writerow(
-            [timestep, self.id]
-            + [hh.threshold_expected_temperature_elevation for hh in self.households],
-        )
+        # 25 = 5 steps per year time 5 years for each mandate (Ypolicy)
+        for hh in self.households:
+            hh.update_emotion_opinion()
 
-        array_utility = np.array([hh.assess_policy(timestep) for hh in self.households])
+        for rounds in range(25):
+            self.opinion_climate_change.step()
+            self.opinion_economy.step()
+
+            self.twolevelsgame_model.log_files.f_household[1].writerow(
+                [timestep - 0.2 * (24 - rounds), self.id]
+                + [
+                    hh.threshold_expected_temperature_elevation
+                    for hh in self.households
+                ]
+                + [hh.emotion_climate_change.b0 for hh in self.households]
+                + [hh.emotion_climate_change.v for hh in self.households]
+                + [hh.emotion_climate_change.o for hh in self.households]
+                + [hh.emotion_economy.b0 for hh in self.households]
+                + [hh.emotion_economy.v for hh in self.households]
+                + [hh.emotion_economy.o for hh in self.households],
+            )
+
+        # hh.emotion_climate_change.o "Are we mitigating enough?": if yes (>0), then we want less (or equal) mitigation hence a negative coefficient
+        # hh.emotion_economy.o "Am I willing to pay for mitigation?": if yes (>0) then we can keep the same level or more mitigation, hence a positive coefficient
+        array_utility = np.array(
+            [
+                -hh.emotion_climate_change.o + hh.emotion_economy.o
+                for hh in self.households
+            ]
+        )
         array_support = array_utility > 0
         array_opposition = array_utility < 0
 
         share_support = np.count_nonzero(array_support) / self.n_households
         share_opposition = np.count_nonzero(array_opposition) / self.n_households
         share_neutral = 1 - (share_support + share_opposition)
-
-        """
-        # Is there more support or opposition?
-        if np.count_nonzero(array_support) / self.n_households > 0.5:
-            # More support, average positive support
-            return int(np.mean(array_utility[array_support]))
-        else:
-            # More opposition, average negative support
-            return int(np.mean(array_utility[np.logical_not(array_support)]))
-        """
 
         return [share_opposition, share_neutral, share_support]
 
@@ -135,6 +169,7 @@ class Region:
         # calling the rng: self.twolevelsgame_model.justice_model.rng
         # TODO Update the content of this function
         self.spreading_climate_threshold()
+
         # self.update_climate_distrib_beliefs_from_social()
         # self.spreading_climate_worries()  # TODO APN: Distinguish monetary vs non-monetary aspects
         # self.spreading_abatement_worries(self.twolevelsgame_model.justice_model.rng)
@@ -265,7 +300,7 @@ class Region:
             L = Lclose - Lfar  # + Lalea;
 
             # Update thresholds
-            #TODO: opdyn_influence could be computed to change depending on how close/far the values are from each other 
+            # TODO: opdyn_influence could be computed to change depending on how close/far the values are from each other
             vect_thresholds = np.clip(
                 (I - self.opdyn_influence * L) @ vect_thresholds, 0, 8
             )
@@ -316,74 +351,4 @@ class Region:
             self.twolevelsgame_model.justice_model.no_of_ensembles,
         )
 
-    def spreading_abatement_worries(self, rng):
-        # NOT USED ANYWHERE, KEEPING IT TO SAVE AN EXAMPLE
-        n = len(self.households)
-        I = np.eye(n)
-        k = 0
 
-        v1 = np.ones((n, 1))
-
-        vect_internal_worry = np.matrix(
-            [[hh.internal_abatement_worry] for hh in self.households]
-        )
-        # Agents' worries related to climate change
-        vect_external_worry = np.matrix(
-            [[hh.external_abatement_worry] for hh in self.households]
-        )
-        # Media/Extreme weather events generated worry related to climate change
-        vect_aggregated_worry = np.clip(
-            vect_internal_worry + vect_external_worry, -1, 1
-        )
-        # Resulting worries
-
-        dispersion = np.max(
-            np.abs(vect_aggregated_worry @ v1.T - vect_aggregated_worry @ v1.T)
-        )
-        while (dispersion > self.opdyn_agreement) & (k < self.opdyn_max_iter):
-            k += 1
-            # Create the network
-            L = (
-                np.abs(
-                    vect_aggregated_worry @ v1.T - (vect_aggregated_worry @ v1)
-                    < self.opdyn_threshold_close
-                )
-                - I
-            )
-            Lclose = np.diag(np.sum(L, 1)) - L
-
-            L = (
-                np.abs(
-                    vect_aggregated_worry @ v1.T - (vect_aggregated_worry @ v1)
-                    > self.opdyn_threshold_far
-                )
-                - I
-            )
-            Lfar = np.diag(np.sum(L, 1)) - L
-
-            # L = generateAdjacencyMatrix(n,'random', 1-lbd);
-            # Lalea = np.diag(np.sum(L,1))- L;
-
-            L = Lclose - Lfar  # + Lalea;
-
-            # Update "internal" worry
-            vect_internal_worry = (
-                I - self.opdyn_influence * L
-            ) @ vect_aggregated_worry - vect_external_worry
-
-            # Update "external" worry
-            vect_external_worry = np.clip(
-                vect_external_worry * self.opdyn_external_worry_decay
-                + rng.random() * 0.1,
-                -1,
-                1,
-            )
-
-            vect_aggregated_worry = np.clip(
-                vect_internal_worry + vect_external_worry, -1, 1
-            )
-            dispersion = np.max(
-                np.abs(vect_aggregated_worry @ v1.T - vect_aggregated_worry @ v1.T)
-            )
-
-        return

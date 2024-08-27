@@ -10,13 +10,12 @@ from scipy.interpolate import interp1d
 import copy
 
 from src.exploration.DataLoaderTwoLevelGame import XML_init_values
+from src.exploration.LogFiles import LogFiles
 from src.exploration.household import Household
 from src.exploration.region import Region
 import csv
 import json
-from datetime import datetime
 import pandas as pd
-
 
 
 class TwoLevelsGame:
@@ -38,175 +37,66 @@ class TwoLevelsGame:
         population_size_by_region refers to the number of households in each opinion dynamics model
         """
 
+        # Saving data
+        self.log_files = LogFiles()
 
-
-        # Saving data (TODO APN: Create a class for saving methods and structures)
-        # -> Create folder for current simulation
-        path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
-        os.makedirs(path, exist_ok=True)
-
-        # average net consumption, loss and damage per quintile, abatement costs per quintile, post-damage concumption per quintile, average of post damage concumption per quintile
-        f1 = open(path + "regions.csv", "w", newline="")
-        self.f_region = (
-            f1,
-            csv.writer(f1, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        # Loading Data to initialise the REGIONS AND THEIR HOUSEHOLDS
+        dict_regions_distribution_income = self.regions_distribution_income()
+        # Climate worry=>initial VALENCE of EMOTION relative to "Are we mitigating enough?"
+        dict_regions_climate_worry = self.regions_distribution_fromMetaOpinionSurvey(
+            "climate_worry"
         )
-        self.f_region[1].writerow(
-            [
-                "Timestep",
-                "Region ID",
-                "Region code",
-                "First 20%",
-                "Second 20%",
-                "Third 20%",
-                "Fourth 20%",
-                "Fifth 20%",
-                "JUSTICE net avg. cons.",
-                "JUSTICE dmg.",
-                "JUSTICE abt.",
-                "First dmg.",
-                "Second dmg.",
-                "Third dmg.",
-                "Fourth dmg.",
-                "Fifth dmg.",
-                "First abt.",
-                "Second abt.",
-                "Third abt.",
-                "Fourth abt.",
-                "Fifth abt.",
-                "First cons. pre",
-                "Second cons. pre",
-                "Third cons. pre",
-                "Fourth cons. pre",
-                "Fifth cons. pre",
-                "First cons. post",
-                "Second cons. post",
-                "Third cons. post",
-                "Fourth cons. post",
-                "Fifth cons. post",
-                "net avg. cons.",
-            ]
+        # Economic impact==>initial VALENCE of EMOTION relative to "Am I willing to pay for mitigation?"
+        dict_regions_economic_impact = self.regions_distribution_fromMetaOpinionSurvey(
+            "economic_impact"
+        )
+        # Temperature threshold==> (Climate awareness * 1.5 + 1/Threat at 20 years * 4) / (Climate awareness+Threat at 20 years)
+        dict_regions_climate_awareness = (
+            self.regions_distribution_fromMetaOpinionSurvey("climate_awareness")
+        )
+        dict_regions_threat_20_years = self.regions_distribution_fromMetaOpinionSurvey(
+            "threat_20_years"
+        )
+        # Temperature belief==> harm future generation : +0 --> +4    + Climate awareness for variance (from 0.01, i know a lot, to 4, I've never heard of it), don't know = +2 with 1*awareness variance
+        dict_regions_harm_future_gen = self.regions_distribution_fromMetaOpinionSurvey(
+            "harm_future_gen"
+        )
+        # Government priority==> For initial OPINION regarding 'Are we doing enough mitigation?"
+        dict_regions_gov_priority = self.regions_distribution_fromMetaOpinionSurvey(
+            "gov_priority"
+        )
+        # Most responsible==> For initial OPINION regarding 'Am I willing to pay for more mitigation?"
+        dict_regions_most_responsible = self.regions_distribution_fromMetaOpinionSurvey(
+            "most_responsible"
+        )
+        # Country responsibility==>  NOT USED YET, but could be interesting for INTERNATIONAL NEGOTIATIONS
+        dict_regions_country_responsibility = (
+            self.regions_distribution_fromMetaOpinionSurvey("country_responsibility")
+        )
+        # Climate happening ==> For TEMPERATURE BELIEF at present time
+        dict_regions_climate_happening = (
+            self.regions_distribution_fromMetaOpinionSurvey("climate_happening")
         )
 
-        # self.f_policy[1].writerow(['Region ID', 'Timestep', 'Policy Size', 'Range of Shift', 'Delta Shift', 'Policy goals', 'Policy Years', 'Support'])
-        f2 = open(path + "policy.csv", "w", newline="")
-        self.f_policy = (
-            f2,
-            csv.writer(f2, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
-        )
+        list_dicts = [
+            dict_regions_distribution_income,
+            dict_regions_climate_worry,
+            dict_regions_economic_impact,
+            dict_regions_climate_awareness,
+            dict_regions_threat_20_years,
+            dict_regions_harm_future_gen,
+            dict_regions_gov_priority,
+            dict_regions_most_responsible,
+            dict_regions_country_responsibility,
+            dict_regions_climate_happening,
+        ]
 
-        f3 = open(path + "negotiator.csv", "w", newline="")
-        self.f_negotiator = (
-            f3,
-            csv.writer(f3, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
-        )
-
-        f4 = open(path + "information.csv", "w", newline="")
-        self.f_information = (
-            f4,
-            csv.writer(f4, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
-        )
-
-        f5 = open(path + "household.csv", "w", newline="")
-        self.f_household = (
-            f5,
-            csv.writer(f5, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
-        )
-        self.f_household[1].writerow(
-            ["Timestep", "Region"]
-            + ["Household Threshold" for i in range(XML_init_values.Region_n_households)]
-        )
-
-        f5_beliefs = open(path + "household_beliefs.csv", "w", newline="")
-        self.f_household_beliefs = (
-            f5_beliefs,
-            csv.writer(
-                f5_beliefs, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
-            ),
-        )
-        self.f_household_beliefs[1].writerow(
-            ["Timestep", "Region", "Household ID"]
-            + [
-                "belief T(y+99)=" + str(i)
-                for i in np.arange(
-                    Household.DISTRIB_MIN_VALUE,
-                    Household.DISTRIB_MAX_VALUE,
-                    Household.DISTRIB_RESOLUTION,
-                )
-            ]
-        )
-        f_household_assessment = open(
-            path + "household_policy_assessment.csv", "w", newline=""
-        )
-        self.f_household_assessment = (
-            f_household_assessment,
-            csv.writer(
-                f_household_assessment, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
-            ),
-        )
-        self.f_household_assessment[1].writerow(
-            [
-                "Timestep",
-                "Region",
-                "Household ID",
-                "sensitivity to costs",
-                "loss_and_damages",
-                "mitigation_costs",
-                "experienced_economic_context",
-                "expected_loss_and_damages",
-                "expected_mitigation_costs",
-                "expected_economic_context",
-                "expected temperature",
-                "current policy level",
-                "Resulting Utility"
-            ]
-        )
-
-
-        # id region, emission control rate profile (historical + pledges)
-        f6 = open(path + "emissions.csv", "w", newline="")
-        self.f_emissions = (
-            f6,
-            csv.writer(f6, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
-        )
-
-        self.f_parameters = open(path + "parameters.txt", "w", newline="")
-
-        # Initialise Regions
-        df = pd.read_excel(
-            "data/input/inputs_ABM/Distribution_of_income_or_consumption.xlsx",
-            header=0,
-            index_col=0,
-            usecols="A,E:I",
-            engine="openpyxl",
-            skiprows=[0, 2, 3],
-            skipfooter=62,
-        )
-
-        dict_regions_distribution_income = {}
-        with open(
-            "data/input/inputs_ABM/rice50_region_names_to_world_bank.json"
-        ) as rice50_region_names_to_world_bank:
-            dict_regions_rows = json.load(rice50_region_names_to_world_bank)
-            for key in dict_regions_rows.keys():
-                if key != "_comment":
-                    dict_regions_distribution_income[key] = df.loc[
-                        dict_regions_rows[key]
-                    ].mean(axis=0)
-
+        # Instantiating and Initialising REGIONS and their HOUSEHOLDS
         self.justice_model = justice_model
         i = 0
         self.regions = []
         for code in self.justice_model.data_loader.REGION_LIST:
-            self.regions += [
-                Region(
-                    self,
-                    i,
-                    code,
-                    timestep,
-                    dict_regions_distribution_income,
-                )
-            ]
+            self.regions += [Region(self, i, code, timestep, list_dicts)]
             i += 1
         self.N_regions = i
 
@@ -224,7 +114,9 @@ class TwoLevelsGame:
         self.Y_nego = (
             XML_init_values.TwoLevelsGame_Y_nego  # How many years between a new set of international negotiation rounds
         )
-        self.Y_policy = XML_init_values.TwoLevelsGame_Y_policy  # How many years between a new set of regional policy update
+        self.Y_policy = (
+            XML_init_values.TwoLevelsGame_Y_policy
+        )  # How many years between a new set of regional policy update
 
     def step(self, timestep):
         """
@@ -327,7 +219,7 @@ class TwoLevelsGame:
                 - quintiles_abatement_costs
             )
 
-            (self.f_region)[1].writerow(
+            (self.log_files.f_region)[1].writerow(
                 [timestep, region.id, region.code]
                 + [d for d in region.distribution_income]
                 + [net_average_consumption[region.id]]
@@ -396,35 +288,6 @@ class TwoLevelsGame:
 
                 region.negotiator.policy[0, -1] = tentative_end_year_pledge
         return
-        # For now nothing happens
-
-        # """
-        # International negotiations as a simple (DeGroot) Opinion Dynamics model.
-        # """
-        # max_iter = 10;
-        # d_min = 1e-1;
-        # eps = 0.1;
-        # I = np.eye(self.N);
-        # iter = 0;
-        # #For each region, draw an international proposal
-        # proposal = np.zeros((self.N, max_iter));
-        # proposal[:,0] = np.array([p.negotiator.proposal() for p in self.regions]);
-
-        # #Adjacent matrix (ie. coalitions) to Laplacian
-        # L = np.diag(np.sum(self.coalitions, 0))-self.coalitions;
-        # d = np.max(np.abs(proposal[:,iter] @ np.ones((self.N, self.N)) - proposal[:,iter]))
-
-        # while (d > d_min) and (iter < max_iter-1):
-        #     iter += 1;
-        #     proposal[:,iter] = (I - eps*L)@proposal[:,iter-1];
-        #     d = np.max(np.abs(proposal[:,iter] @ np.ones((self.N, self.N)) - proposal[:,iter]))
-
-        # #Update target 0 emissions year in negotiators and at the local policy level
-        # for i in range(self.N):
-        #     self.regions[i].negotiator.zero_emissions_target_year = proposal[i,iter];
-        #     self.regions[i].policy[2] = proposal[i,iter];
-
-        return
 
     def update_emission_control_rate(self, timestep):
         """
@@ -437,7 +300,7 @@ class TwoLevelsGame:
                 timestep:, :
             ]
 
-            self.f_emissions[1].writerow(
+            self.log_files.f_emissions[1].writerow(
                 [a.id]
                 + [em for em in self.justice_model.emission_control_rate[a.id, :, 0]]
             )  # ECR are all the same for all ensemble, hence we onyl register the one for ensemble 0
@@ -445,11 +308,44 @@ class TwoLevelsGame:
             self.justice_model.emission_control_rate[:, timestep, :]
         )
 
-    def close_files(self):
-        self.f_policy[0].close()
-        self.f_region[0].close()
-        self.f_household[0].close()
-        self.f_negotiator[0].close()
-        self.f_information[0].close()
-        self.f_parameters.close()
-        return
+    def regions_distribution_income(self):
+        df = pd.read_excel(
+            "data/input/inputs_ABM/Distribution_of_income_or_consumption.xlsx",
+            header=0,
+            index_col=0,
+            usecols="A,E:I",
+            engine="openpyxl",
+            skiprows=[0, 2, 3],
+            skipfooter=62,
+        )
+
+        dict_regions_distribution_income = {}
+        with open(
+            "data/input/inputs_ABM/rice50_region_names_to_world_bank.json"
+        ) as rice50_region_names_to_world_bank:
+            dict_regions_rows = json.load(rice50_region_names_to_world_bank)
+            for key in dict_regions_rows.keys():
+                if key != "_comment":
+                    dict_regions_distribution_income[key] = df.loc[
+                        dict_regions_rows[key]
+                    ].mean(axis=0)
+        return dict_regions_distribution_income
+
+    def regions_distribution_fromMetaOpinionSurvey(self, sheetname):
+        df = pd.read_excel(
+            "data/input/inputs_ABM/climate_change_opinion_survey_2022_aggregated.xlsx",
+            header=0,
+            index_col=0,
+            engine="openpyxl",
+            sheet_name=sheetname,
+        )
+
+        dict = {}
+        with open(
+            "data/input/inputs_ABM/rice50_region_names_to_MetaSurvey.json"
+        ) as rice50_region_names_to_MetaSurvey:
+            dict_regions_cols = json.load(rice50_region_names_to_MetaSurvey)
+            for key in dict_regions_cols.keys():
+                if key != "_comment":
+                    dict[key] = df[dict_regions_cols[key]].mean(axis=1)
+        return dict

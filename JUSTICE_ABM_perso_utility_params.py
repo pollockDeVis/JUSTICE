@@ -22,9 +22,8 @@ from matplotlib import pyplot as plt
 from alive_progress import alive_bar
 from src.util.emission_control_constraint import EmissionControlConstraint
 
-import warnings
-
-# warnings.filterwarnings("error")
+#import warnings
+#warnings.filterwarnings("error")
 
 matplotlib.rcParams["figure.dpi"] = 300
 
