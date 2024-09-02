@@ -10,7 +10,7 @@ from scipy.interpolate import interp1d
 import copy
 
 from src.exploration.DataLoaderTwoLevelGame import XML_init_values
-from src.exploration.LogFiles import LogFiles
+from src.exploration.LogFiles import print_log
 from src.exploration.household import Household
 from src.exploration.region import Region
 import csv
@@ -27,6 +27,7 @@ class TwoLevelsGame:
 
     def __init__(
         self,
+        rng,
         justice_model,
         number_regions=57,
         timestep=0,
@@ -36,9 +37,7 @@ class TwoLevelsGame:
         number_of_region refers to the number of regions in the model
         population_size_by_region refers to the number of households in each opinion dynamics model
         """
-
-        # Saving data
-        self.log_files = LogFiles()
+        self.rng = rng
 
         # Loading Data to initialise the REGIONS AND THEIR HOUSEHOLDS
         dict_regions_distribution_income = self.regions_distribution_income()
@@ -78,6 +77,10 @@ class TwoLevelsGame:
             self.regions_distribution_fromMetaOpinionSurvey("climate_happening")
         )
 
+        dict_regions_freq_hear = (
+            self.regions_distribution_fromMetaOpinionSurvey("freq_hear")
+        )
+
         list_dicts = [
             dict_regions_distribution_income,
             dict_regions_climate_worry,
@@ -89,6 +92,7 @@ class TwoLevelsGame:
             dict_regions_most_responsible,
             dict_regions_country_responsibility,
             dict_regions_climate_happening,
+            dict_regions_freq_hear,
         ]
 
         # Instantiating and Initialising REGIONS and their HOUSEHOLDS
@@ -96,7 +100,7 @@ class TwoLevelsGame:
         i = 0
         self.regions = []
         for code in self.justice_model.data_loader.REGION_LIST:
-            self.regions += [Region(self, i, code, timestep, list_dicts)]
+            self.regions += [Region(rng, self, i, code, timestep, list_dicts)]
             i += 1
         self.N_regions = i
 
@@ -164,9 +168,6 @@ class TwoLevelsGame:
 
         for region in self.regions:
 
-            if region.code == "usa" and timestep == 58:
-                print("flag pour debug")
-
             # Size is 57*5: consumption (net of damages and mitigation costs) for regions and each quintiles
             test = 0
             disaggregated_predmg_consumption = (
@@ -219,7 +220,7 @@ class TwoLevelsGame:
                 - quintiles_abatement_costs
             )
 
-            (self.log_files.f_region)[1].writerow(
+            (print_log.f_region)[1].writerow(
                 [timestep, region.id, region.code]
                 + [d for d in region.distribution_income]
                 + [net_average_consumption[region.id]]
@@ -252,7 +253,7 @@ class TwoLevelsGame:
             avg_global_net_zero_year = avg_global_net_zero_year / len(self.regions)
 
             for region in self.regions:
-                # Take into account possible public opinion pressure to delay ECR=1 target
+                # Earliest achievable ECR=1 according to max_cutting_rate_gradient
                 regional_earliest_achievable_end_target = np.ceil(
                     (1 - region.negotiator.policy[1, 1])
                     / region.negotiator.max_cutting_rate_gradient
@@ -276,13 +277,13 @@ class TwoLevelsGame:
                         1 - coeff
                     ) * avg_global_net_zero_year
                 if tentative_end_year_pledge < regional_earliest_achievable_end_target:
-                    print(
-                        "For region ",
-                        region.id,
-                        " new pledge impossible because ",
-                        tentative_end_year_pledge,
-                        " < ",
-                        regional_earliest_achievable_end_target,
+                    print_log.write_log("twolevelsgame.py","international_negotiations",
+                        "For region "+
+                        str(region.id)+
+                        " new pledge impossible because (tentative) "+
+                        str(tentative_end_year_pledge)+
+                        " < "+
+                        str(regional_earliest_achievable_end_target) + " (earliest possible considering max_ecr)"
                     )
                     tentative_end_year_pledge = regional_earliest_achievable_end_target
 
@@ -300,7 +301,7 @@ class TwoLevelsGame:
                 timestep:, :
             ]
 
-            self.log_files.f_emissions[1].writerow(
+            print_log.f_emissions[1].writerow(
                 [a.id]
                 + [em for em in self.justice_model.emission_control_rate[a.id, :, 0]]
             )  # ECR are all the same for all ensemble, hence we onyl register the one for ensemble 0
@@ -338,7 +339,8 @@ class TwoLevelsGame:
             index_col=0,
             engine="openpyxl",
             sheet_name=sheetname,
-        )
+            converters={"":0}
+        ).fillna(0)
 
         dict = {}
         with open(

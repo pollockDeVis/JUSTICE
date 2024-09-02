@@ -116,8 +116,8 @@ class Emotion_opinion:
     def update_o(self, h, v_mean):
         if self.o * self.v < 0:
             self.count_o_opposed_v = self.count_o_opposed_v + 1
-            self.o = self.o * (1 - 0.01)
-            self.alpha3 = self.alpha3 * (1 + self.count_o_opposed_v * 0.01)
+            self.o = self.o * (1 - np.abs(self.v)*0.01)
+            self.alpha3 = self.alpha3 * (1 + self.count_o_opposed_v * np.abs(self.v)*0.01)
         else:
             self.count_o_opposed_v = 0
             self.alpha3 = -3

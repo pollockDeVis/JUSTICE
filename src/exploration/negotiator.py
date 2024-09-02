@@ -11,6 +11,7 @@ from src.exploration.DataLoaderTwoLevelGame import (
     DataLoaderTwoLevelGame,
     XML_init_values,
 )
+from src.exploration.LogFiles import print_log
 
 
 class Negotiator:
@@ -20,6 +21,7 @@ class Negotiator:
     ):
         self.region_model = region
         self.policy_start_year = XML_init_values.Negotiator_policy_start_year
+        self.ecr_start_year = XML_init_values.Negotiator_ecr_start_year
         self.policy_period = XML_init_values.Negotiator_policy_period
         self.policy = np.array(
             [
@@ -96,7 +98,7 @@ class Negotiator:
             # TODO APN: Forbid carbon capture for now (look @ AR6 database later)
             self.policy[1, 1] = min(delta_shift + self.policy[1, 1], 1)
 
-            (self.region_model.twolevelsgame_model.f_policy)[1].writerow(
+            (print_log.f_policy)[1].writerow(
                 [
                     self.region_model.id,
                     current_time,
@@ -126,13 +128,12 @@ class Negotiator:
         # The time it will take from policy goal in policy[:,1] to reach target ecr=1 given track record
         # Plus the time assigned for goal in policy[:,1]
         # Reminder that policy[0,:] = years and policy[1,:] = ecr targets
-        if (self.policy[1, 1] - self.policy[1, 0]) != 0:
-            return np.ceil(
-                (1.0 - self.policy[1, 1])
-                * (self.policy[0, 1] - self.policy[0, 0])
-                / (self.policy[1, 1] - self.policy[1, 0])
-                + self.policy[0, 1]
-            )
+
+        p1 = (self.policy[1, 1]-self.ecr_start_year)/(self.policy[0, 1]-self.policy_start_year)
+        p2 = (self.policy[1, 0]-self.policy[1, 1])/(self.policy[0, 0]-self.policy[0, 1])
+        p = (p1+p2)/2
+        if p!=0:
+            return np.ceil((1-self.policy[1, 1])/p+self.policy[0, 1])
         else:
             return self.policy[0, -1]
 

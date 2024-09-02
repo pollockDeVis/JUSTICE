@@ -8,6 +8,7 @@ import numpy as np
 import scipy
 
 from src.exploration.DataLoaderTwoLevelGame import XML_init_values
+from src.exploration.LogFiles import print_log
 from src.exploration.Opinions import Opinion
 from src.exploration.household import Household
 from src.exploration.negotiator import Negotiator
@@ -39,6 +40,7 @@ class Region:
 
     def __init__(
         self,
+        rng,
         twolevelsgame_model,
         id,
         code,
@@ -58,9 +60,10 @@ class Region:
                     dict_regions_gov_priority,
                     dict_regions_most_responsible,
                     dict_regions_country_responsibility,
-                    dict_regions_climate_happening]
+                    dict_regions_climate_happening,
+                    dict_regions_freq_hear]
         """
-
+        self.rng = rng
         self.twolevelsgame_model = twolevelsgame_model
         self.id = id
         self.code = code
@@ -76,31 +79,34 @@ class Region:
         self.n_households = XML_init_values.Region_n_households
         self.households = []
 
+        # ------ Opinions Dynamics Parameters For Temperature Threshold -----
+        self.opdyn_max_iter = XML_init_values.Region_opdyn_max_iter
+        # Only one iteration per step
+        self.opdyn_influence_close = XML_init_values.Region_opdyn_influence_close
+        self.opdyn_influence_far = XML_init_values.Region_opdyn_influence_far
+        self.opdyn_agreement = XML_init_values.Region_opdyn_agreement
+        self.opdyn_threshold_close = XML_init_values.Region_opdyn_threshold_close
+        self.opdyn_threshold_far = XML_init_values.Region_opdyn_threshold_far
+
         for i in range(self.n_households):
             # Initialisation of different households and their perspectives.
             quintile = int(i / (0.2 * self.n_households))
             self.households += [
-                Household(self, self.distribution_income.index[quintile], i, list_dicts)
+                Household(
+                    self.rng,
+                    self,
+                    self.distribution_income.index[quintile],
+                    i,
+                    list_dicts,
+                )
             ]
-
-        # ------ Opinions Dynamics Parameters For Temperature Threshold -----
-        self.opdyn_max_iter = XML_init_values.Region_opdyn_max_iter
-        # Only one iteration per step
-        self.opdyn_influence = XML_init_values.Region_opdyn_influence
-        self.opdyn_learning = XML_init_values.Region_opdyn_learning
-        self.opdyn_agreement = XML_init_values.Region_opdyn_agreement
-        self.opdyn_lambda_noise = XML_init_values.Region_opdyn_lambda_noise
-        self.opdyn_threshold_close = XML_init_values.Region_opdyn_threshold_close
-        self.opdyn_threshold_far = XML_init_values.Region_opdyn_threshold_far
-        self.opdyn_external_worry_decay = (
-            XML_init_values.Region_opdyn_external_worry_decay
-        )
 
         ###############################
         ###### Emotions-Opinions ######
         ###############################
         self.opinion_climate_change = Opinion(
-            self.n_households, [hh.emotion_climate_change for hh in self.households],
+            self.n_households,
+            [hh.emotion_climate_change for hh in self.households],
         )
         self.opinion_economy = Opinion(
             self.n_households, [hh.emotion_economy for hh in self.households]
@@ -117,10 +123,11 @@ class Region:
             hh.update_emotion_opinion()
 
         for rounds in range(25):
+            self.spreading_climate_threshold()
             self.opinion_climate_change.step()
             self.opinion_economy.step()
 
-            self.twolevelsgame_model.log_files.f_household[1].writerow(
+            print_log.f_household[1].writerow(
                 [timestep - 0.2 * (24 - rounds), self.id]
                 + [
                     hh.threshold_expected_temperature_elevation
@@ -142,12 +149,16 @@ class Region:
                 for hh in self.households
             ]
         )
-        array_support = array_utility > 0
-        array_opposition = array_utility < 0
+        array_support = array_utility > 0.1
+        array_opposition = array_utility < -0.1
 
         share_support = np.count_nonzero(array_support) / self.n_households
         share_opposition = np.count_nonzero(array_opposition) / self.n_households
         share_neutral = 1 - (share_support + share_opposition)
+
+        print_log.f_share_opinions[1].writerow(
+            [timestep, self.id, share_opposition, share_neutral, share_support]
+        )
 
         return [share_opposition, share_neutral, share_support]
 
@@ -155,107 +166,14 @@ class Region:
         # Update on observations (uses FaIR-Perspectives ==> Understanding)
         self.update_from_information(timestep)
 
-        # Update on opinions (==> Social learning)
-        self.update_from_social_network()
-
     def update_from_information(self, timestep):
         for hh in self.households:
-            hh.update_climate_distrib_beliefs(
-                self.twolevelsgame_model.justice_model.rng, timestep
-            )
-        return
-
-    def update_from_social_network(self):
-        # calling the rng: self.twolevelsgame_model.justice_model.rng
-        # TODO Update the content of this function
-        self.spreading_climate_threshold()
-
-        # self.update_climate_distrib_beliefs_from_social()
-        # self.spreading_climate_worries()  # TODO APN: Distinguish monetary vs non-monetary aspects
-        # self.spreading_abatement_worries(self.twolevelsgame_model.justice_model.rng)
+            hh.update_climate_distrib_beliefs(timestep)
         return
 
     def update_state_policy_from_constituency(self, timestep):
         self.negotiator.shifting_policy(timestep)
         return
-
-    """
-    This function is used to update the households distribution of expected future temperature elevation on interactions between the households.
-    I have commented it, because it is a bit complicated process and most likely not that necessary. Instead, it seems more interesting to have different weights 
-    on the expected dmgs due to climate change
-    
-    def update_climate_distrib_beliefs_from_social(self):
-        
-        #Update the means of the beliefs upon future local temperatures for agents.
-        
-        n = len(self.households)
-        I = np.eye(n) != np.eye(n)
-        k = 0
-
-        v1 = np.ones((1, 1, 10))
-
-        mat_mean_temperature = np.zeros(
-            [self.n_households, Household.N_CLIMATE_BELIEFS]
-        )
-        # A table with all the beliefs distributions about temperature elevation from all households
-        beliefs_table = np.zeros(
-            [
-                self.n_households,
-                Household.N_CLIMATE_BELIEFS,
-                int(len(Household.DISTRIB_X_AXIS)),
-            ]
-        )
-        i = 0
-        for hh in self.households:
-            beliefs_table[i, :, :] = hh.climate_old_distrib_beliefs
-            # Get expected mean temperatures for each households
-            mat_mean_temperature[i, :] = np.array(
-                [
-                    Household.mean_distribution(hh.climate_old_distrib_beliefs[i])
-                    for i in range(Household.N_CLIMATE_BELIEFS)
-                ]
-            )
-            i += 1
-
-        # Create a network structure for closest individuals expectations (they are 0.5C difference at most)
-        tensor_mean_temperature = np.kron(mat_mean_temperature, v1.T)
-        for i in range(Household.N_CLIMATE_BELIEFS):
-            L = (
-                abs(
-                    tensor_mean_temperature[:, :, i]
-                    - tensor_mean_temperature[:, :, i].T
-                )
-                < 2
-            ) * I
-
-            for ih in range(self.n_households):
-                # Take beliefs distributions of all neighbors and sum them
-                nb_neighbors = np.sum(L[ih, :])
-                if nb_neighbors != 0:
-                    mean_distrib_beliefs = np.sum(
-                        beliefs_table[L[ih, :], i, :]
-                    ) / np.sum(L[ih, :])
-
-                    # Update current beliefs with summed beliefs from neighbors
-                    self.households[ih].climate_distrib_beliefs = (
-                        self.households[ih].climate_distrib_beliefs
-                        * mean_distrib_beliefs
-                    )
-
-            # Ensure normalization and update the old distribution of beliefs
-            for ih in range(self.n_households):
-                norm_coeff = np.sum(self.households[ih].climate_distrib_beliefs, axis=1)
-                self.households[ih].climate_distrib_beliefs = np.array(
-                    [
-                        self.households[ih].climate_distrib_beliefs[i, :]
-                        / norm_coeff[i]
-                        for i in range(Household.N_CLIMATE_BELIEFS)
-                    ]
-                )
-                self.households[ih].climate_old_distrib_beliefs = self.households[
-                    ih
-                ].climate_distrib_beliefs.copy()
-    """
 
     def spreading_climate_threshold(self):
         """
@@ -263,7 +181,7 @@ class Region:
         that the household thinks can be handled. This climate threshold has an effect on the policy support, as it translate into more or less strong worry level for the
         households.
         """
-        n = len(self.households)
+        n = len(self.households) + 1
         I = np.eye(n)
         k = 0
 
@@ -274,6 +192,18 @@ class Region:
             [[hh.threshold_expected_temperature_elevation] for hh in self.households]
         )
 
+        vect_p_consider_information = np.array(
+            [[hh.p_consider_information] for hh in self.households]
+        )
+
+        # Adding the information agent
+        # 1.5C threshold
+        vect_thresholds = np.concatenate((vect_thresholds, [[1.5]]), axis=0)
+        # Filling to match size
+        vect_p_consider_information = np.concatenate(
+            (vect_p_consider_information, [[0]]), axis=0
+        )
+
         # Resulting dipersion
         dispersion = np.max(np.abs(vect_thresholds @ v1.T - v1 @ vect_thresholds.T))
 
@@ -282,10 +212,20 @@ class Region:
             # Create the network
             L = (
                 np.abs(vect_thresholds @ v1.T - (v1 @ vect_thresholds.T))
-                < self.opdyn_threshold_close
+                <= self.opdyn_threshold_close
             ) - I
 
+            #The coefficient in front of self.n_households represents the trust in scientific information
+            #The parameter vect_p_consider_information represents the probability to be exposed to the scientific information
+            L[:, -1:] = 1/2*self.n_households*(
+                    vect_p_consider_information
+                    > self.rng.random((self.n_households + 1, 1))
+                )
+
             Lclose = np.diag(np.sum(L, 1)) - L
+
+            # Forcing information agent to be close to all, according to information access
+            # ==> Adding it at the end column of each row
 
             L = (
                 np.abs(vect_thresholds @ v1.T - (v1 @ vect_thresholds.T))
@@ -295,14 +235,22 @@ class Region:
             Lfar = np.diag(np.sum(L, 1)) - L
 
             # L = generateAdjacencyMatrix(n,'random', 1-lbd);
-            # Lalea = np.diag(np.sum(L,1))- L;
+            # Lalea_info = np.diag(np.sum(L,1))- L;
 
             L = Lclose - Lfar  # + Lalea;
 
             # Update thresholds
-            # TODO: opdyn_influence could be computed to change depending on how close/far the values are from each other
             vect_thresholds = np.clip(
-                (I - self.opdyn_influence * L) @ vect_thresholds, 0, 8
+                (
+                    (
+                        I
+                        - self.opdyn_influence_close * Lclose
+                        + self.opdyn_influence_far * Lfar
+                    )
+                    @ vect_thresholds
+                ),
+                0,
+                4,
             )
 
             dispersion = np.max(np.abs(vect_thresholds @ v1.T - v1 @ vect_thresholds.T))
@@ -350,5 +298,3 @@ class Region:
             np.matrix(np.clip(ecr_projection, 0, 1)).T,
             self.twolevelsgame_model.justice_model.no_of_ensembles,
         )
-
-

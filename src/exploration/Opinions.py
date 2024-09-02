@@ -13,7 +13,7 @@ class Opinion:
         self.N_plus = 0
         # Social impact factor (identical for each agent, but could vary by agent, then h_minus and h_plus become vectors)
         # value is 0.1 (2010) or 0.6 (2020)
-        self.s = 0.1
+        self.s = 0.1*100/self.n_agents
         # Influence from news and medias (identical for each agent, but could vary by agent, then h_minus and h_plus become vectors)
         # Not used in Schweitzer, Frank; Krivachy, Tamas; Garcia, David 2020, not used here either
         self.I_minus = 0
@@ -41,8 +41,8 @@ class Opinion:
         return self.h_plus - self.h_minus
 
     def update_N(self, agents):
-        self.N_minus = sum([a.s < 0 for a in self.agents])*100/self.n_agents
-        self.N_plus = sum([a.s > 0 for a in self.agents])*100/self.n_agents
+        self.N_minus = sum([a.s < 0 for a in self.agents])
+        self.N_plus = sum([a.s > 0 for a in self.agents])
 
     def compute_v_mean(self, agents):
         v_mean = 0

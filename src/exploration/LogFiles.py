@@ -10,12 +10,20 @@ from src.exploration.household import Household
 
 class LogFiles:
     def __init__(self):
+        """
+        !!! WARNING: When adding a file for logs or to save some data, DO NOT FORGET to also add
+        the corresponding line to CLOSE THE FILE at the end of the simulation!
+        """
         # -> Create folder for current simulation
-        path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
-        os.makedirs(path, exist_ok=True)
+        self.path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
+        os.makedirs(self.path, exist_ok=True)
+
+        # general logs
+        self.log = open(self.path + "log.txt", "w", newline="")
+        self.f_parameters = open(self.path + "parameters.txt", "w", newline="")
 
         # average net consumption, loss and damage per quintile, abatement costs per quintile, post-damage concumption per quintile, average of post damage concumption per quintile
-        f1 = open(path + "regions.csv", "w", newline="")
+        f1 = open(self.path + "regions.csv", "w", newline="")
         self.f_region = (
             f1,
             csv.writer(f1, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
@@ -58,25 +66,25 @@ class LogFiles:
         )
 
         # self.f_policy[1].writerow(['Region ID', 'Timestep', 'Policy Size', 'Range of Shift', 'Delta Shift', 'Policy goals', 'Policy Years', 'Support'])
-        f2 = open(path + "policy.csv", "w", newline="")
+        f2 = open(self.path + "policy.csv", "w", newline="")
         self.f_policy = (
             f2,
             csv.writer(f2, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
 
-        f3 = open(path + "negotiator.csv", "w", newline="")
+        f3 = open(self.path + "negotiator.csv", "w", newline="")
         self.f_negotiator = (
             f3,
             csv.writer(f3, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
 
-        f4 = open(path + "information.csv", "w", newline="")
+        f4 = open(self.path + "information.csv", "w", newline="")
         self.f_information = (
             f4,
             csv.writer(f4, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
 
-        f5 = open(path + "household.csv", "w", newline="")
+        f5 = open(self.path + "household.csv", "w", newline="")
         self.f_household = (
             f5,
             csv.writer(f5, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
@@ -101,7 +109,7 @@ class LogFiles:
             + ["Opinion Economy" for i in range(XML_init_values.Region_n_households)]
         )
 
-        f5_beliefs = open(path + "household_beliefs.csv", "w", newline="")
+        f5_beliefs = open(self.path + "household_beliefs.csv", "w", newline="")
         self.f_household_beliefs = (
             f5_beliefs,
             csv.writer(
@@ -120,7 +128,7 @@ class LogFiles:
             ]
         )
         f_household_assessment = open(
-            path + "household_policy_assessment.csv", "w", newline=""
+            self.path + "household_policy_assessment.csv", "w", newline=""
         )
         self.f_household_assessment = (
             f_household_assessment,
@@ -150,13 +158,26 @@ class LogFiles:
         )
 
         # id region, emission control rate profile (historical + pledges)
-        f6 = open(path + "emissions.csv", "w", newline="")
+        f6 = open(self.path + "emissions.csv", "w", newline="")
         self.f_emissions = (
             f6,
             csv.writer(f6, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
 
-        self.f_parameters = open(path + "parameters.txt", "w", newline="")
+        #  timestep, id region, share opposed, share neutral, share support
+        f7 = open(self.path + "share_opinions.csv", "w", newline="")
+        self.f_share_opinions = (
+            f7,
+            csv.writer(f7, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        self.f_share_opinions[1].writerow([
+                "Timestep",
+                "Region",
+            "share opposed",
+            "share neutral",
+            "share support"
+            ])
+
 
     def close_files(self):
         self.f_policy[0].close()
@@ -167,4 +188,22 @@ class LogFiles:
         self.f_household_assessment[0].close()
         self.f_household_beliefs[0].close()
         self.f_parameters.close()
+        self.f_share_opinions[0].close()
+        self.log.close()
         return
+
+    def write_log(self, file_name, function_name, text):
+        self.log.write(
+            "["
+            + datetime.now().strftime("%H%M%S.%f")
+            + "] "
+            + file_name
+            + " :: "
+            + function_name
+            + " :: "
+            + text
+            + "\n"
+        )
+
+
+print_log = LogFiles()

@@ -212,14 +212,9 @@ class Information:
         )
         datasets = (
             information_model.evaluate()
-        )  # Might be useful to just create an evaluation function for the relevant informations only
+        )  # Might be useful to just create an evaluation function for the relevant information only
         self.generate_climate_information(
             datasets["global_temperature"], datasets["regional_temperature"]
-        )
-        print(
-            "         L> INFORMATION DONE! (2300 mean temperature :",
-            self.global_temperature_information[0][-1],
-            "C!)",
         )
 
         # print(datasets["consumption_per_capita"])
@@ -273,14 +268,18 @@ class Information:
 
     def construct_flsi(self, timestep):
         # Global
-        print(self.global_temperature_information[0].shape)
         for i in range(Household.N_CLIMATE_BELIEFS):
             year = Household.BELIEF_YEAR_OFFSET[i]
-            if year != -1:
-                # Look at temperature elevation for "2015+year" year
+            if year != -1 and year > timestep:
+                # Look at maximum temperature elevation from "2015+current" to 2015+year
+                i_max_temp = np.argmax(
+                    self.global_temperature_information[0][timestep:year]
+                )
                 self.global_distrib_flsi[i] = Household.gaussian_distrib(
-                    g_mean=self.global_temperature_information[0][year],
-                    g_std=self.global_temperature_information[1][year],
+                    g_mean=np.argmax(
+                        self.global_temperature_information[0][i_max_temp]
+                    ),
+                    g_std=self.global_temperature_information[1][i_max_temp],
                 )
             else:
                 # Look at the current temperature elevation
@@ -295,10 +294,13 @@ class Information:
         for r in range(57):
             for i in range(Household.N_CLIMATE_BELIEFS):
                 year = Household.BELIEF_YEAR_OFFSET[i]
-                if year != -1:
+                if year != -1 and year > timestep:
+                    i_max_temp = np.argmax(
+                        self.local_temperature_information[0][r][timestep:year]
+                    )
                     self.regional_distrib_flsi[r][0][i] = Household.gaussian_distrib(
-                        g_mean=self.local_temperature_information[0][r][year],
-                        g_std=self.local_temperature_information[1][r][year],
+                        g_mean=self.local_temperature_information[0][r][i_max_temp],
+                        g_std=self.local_temperature_information[1][r][i_max_temp],
                     )
                 else:
                     self.regional_distrib_flsi[r][0][i] = Household.gaussian_distrib(

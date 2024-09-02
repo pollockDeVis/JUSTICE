@@ -82,8 +82,8 @@ df = pd.read_excel(
     header=0,
     index_col=0,
     engine="openpyxl",
-    sheet_name='threat_20_years'
-)
+    sheet_name='threat_20_years',
+).fillna(0)
 
 dict_regions_threat_20_years = {}
 with open(
@@ -96,6 +96,7 @@ with open(
                 dict_regions_cols[key]
             ].mean(axis=1)
 
+print(dict_regions_threat_20_years['aut'])
 
 
 # Temperature belief==> harm future generation : +0 --> +4    + Climate awareness for variance (from 0.01, i know a lot, to 4, I've never heard of it), don't know = +2 with 1*awareness variance

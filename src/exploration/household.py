@@ -35,7 +35,7 @@ class Household:
     # global_distrib_flsi = [[] for i in range(N_CLIMATE_BELIEFS)]; get from the information module
     # regional_distrib_flsi = [[[]] for r in range(56)] get from the information module
 
-    def __init__(self, region, quintile, id, list_dicts):
+    def __init__(self, rng, region, quintile, id, list_dicts):
         """
         region::class Region::a reference to the parent of the household
         quintile::int::income quintile of the household
@@ -49,21 +49,40 @@ class Household:
                                 dict_regions_gov_priority,
                                 dict_regions_most_responsible,
                                 dict_regions_country_responsibility,
-                                dict_regions_climate_happening]
+                                dict_regions_climate_happening,
+                                dict_regions_freq_hear]
 
         """
         self.model_region = region
         self.id = id
+        self.rng = rng
+
+        ### Assimilating/Considering information (regional) ###
+        # freq_hear: Never, At most once a year, Several times a year, At least once a month, At least once a week, Don't know, Refused
+        # Here I associate Never, Don't know and Refused with a probability of considering information = 0
+        self.p_consider_information = (
+            1
+            / 100
+            * (
+                0.3 * list_dicts[10][region.code]['Once a year or less often']
+                + 0.5 * list_dicts[10][region.code]['Several times a year']
+                + 0.7 * list_dicts[10][region.code]['At least once a month']
+                + 0.9 * list_dicts[10][region.code]['At least once a week']
+            )
+        )
+        #self.opdyn_threshold_sensitivity = self.p_consider_information * self.model_region.opdyn_influence_close + self.model_region.opdyn_influence_far
 
         ### Initialising climate intuition ###
         # -> Temperature increase now, and in 2200
-        choices = [
-            1.3,
-            0,
-            0.9,
-            0.9,
-        ]  # Climate change is happening: "Yes, No, Don't know, refused"
-        mean_now = np.random.Generator.choice(choices, p=list_dicts[9][region.code][:-1] / 100)
+        choices = np.array(
+            [
+                1.3,
+                0,
+                0.9,
+                0.9,
+            ]
+        )  # Climate change is happening: "Yes, No, Don't know, refused"
+        mean_now = rng.choice(choices, p=list_dicts[9][region.code][:-1] / 100)
 
         means_2200 = [
             4,
@@ -73,29 +92,30 @@ class Household:
             4,
             4,
         ]
-        vars_2200 = [
+        variance = [
             0.2,
             0.3,
             0.4,
             0.2,
             2,
-            2
-        ]# harm future generation: "A great deal, A moderate amount, Only a little, Not at all, Don't know, refused"
-        choice = np.random.Generator.choice([0,1,2,3,4,5], p=list_dicts[5][region.code][:-1] / 100)
+            2,
+        ]
+        # harm future generation: "A great deal, A moderate amount, Only a little, Not at all, Don't know, refused"
+        choice = rng.choice([0, 1, 2, 3, 4, 5], p=list_dicts[5][region.code][:-1] / 100)
         mean_2200 = means_2200[choice]
-        var_2200 = vars_2200[choice]
+        variance = variance[choice]
 
         self.climate_init_mean_beliefs = np.array(
             [
-                mean_now+var_2200*(np.random.random()-0.5)*2,
-                mean_2200+var_2200*(np.random.random()-0.5)*2
+                mean_now + variance * (np.random.random() - 0.5) * 2,
+                mean_2200 + variance * (np.random.random() - 0.5) * 2,
             ]
         )
         # -> Confidence in the expectation
         self.climate_init_var_beliefs = np.array(
             [
                 XML_init_values.Household_climate_init_var_beliefs_current,
-                var_2200,
+                variance,
             ]
         )
 
@@ -140,10 +160,10 @@ class Household:
             2,
             2,
         ]  # Threat at 20y: "Very Serious, Somewhat Serious, Not a threat, Don't know, Refused"
-        choice = np.random.Generator.choice(choices, p=list_dicts[4][region.code][:-1] / 100)
+        choice = rng.choice(choices, p=list_dicts[4][region.code][:-1] / 100)
         self.threshold_expected_temperature_elevation = choice + (
             choice == 2
-        ) * np.random.Generator.beta(a=2, b=5, size=1)
+        ) * rng.beta(a=2, b=5)
         # >Between -1 and 1
         self.elasticity_expected_mitigation_distribution = 0
         self.elasticity_expected_loss_damages_distribution = 0
@@ -158,15 +178,15 @@ class Household:
         ######################
         # Opinion on: "Are we mitigating enough?"
         choices = [
-            -1,
             -0.5,
+            -0.2,
+            0.2,
             0.5,
-            1,
             0,
         ]  # "Very worried, Somewhat worried, Not very worried, Not at all woried, Refused"
-        choice = np.random.Generator.choice(choices, p=list_dicts[1][region.code][:-1] / 100)
-        valence = choice + np.random.normal(0, 0.01, 1)[0]
-        opinion = 0
+        choice = rng.choice(choices, p=list_dicts[1][region.code][:-1] / 100)
+        valence = choice + rng.normal(0, 0.01, 1)[0]
+        opinion = choice + rng.normal(0, 0.01, 1)[0] #0
         self.emotion_climate_change = Emotion_opinion(valence, opinion)
         # Opinion on: "Am I willing to pay for mitigation?"
         choices = [
@@ -175,9 +195,9 @@ class Household:
             0,
             0,
         ]  # "Taking action will improve economy, will damage economy, will not have any effect, Refused"
-        choice = np.random.Generator.choice(choices, p=list_dicts[2][region.code][:-1] / 100)
-        valence = choice + np.random.normal(0, 0.1, 1)[0]
-        opinion = 0
+        choice = rng.choice(choices, p=list_dicts[2][region.code][:-1] / 100)
+        valence = choice + rng.normal(0, 0.1, 1)[0]
+        opinion = choice + rng.normal(0, 0.1, 1)[0] #0
         self.emotion_economy = Emotion_opinion(valence, opinion)
 
     def expected_climate_damages(self):
@@ -209,7 +229,7 @@ class Household:
             self.model_region.twolevelsgame_model.justice_model.information_model.global_distrib_flsi
         )
 
-    def update_climate_distrib_beliefs(self, rng, timestep):
+    def update_climate_distrib_beliefs(self, timestep):
         """
         Updating the climate beliefs distributions for an agent based on available information
 
@@ -218,19 +238,21 @@ class Household:
         None.
 
         """
-        p = rng.random()
+        p = self.rng.random()
 
-        if p < self.P_INFORMATION:
+        if p < self.p_consider_information:
             # Updating from information module: Expectation about temperature elevation
             self.climate_distrib_beliefs = (
                 self.climate_distrib_beliefs * self.filtered_climate_information()
             )
-            # Objective temperature threshold
+
+
+            """#Using a global treshold:
             self.threshold_expected_temperature_elevation = (
                 (1 - self.sensitivity_to_threshold_information)
                 * self.threshold_expected_temperature_elevation
                 + self.sensitivity_to_threshold_information * 1.5
-            )
+            )"""
         # TODO ADP: In case of no information (ELSE case) we can have a memory effect, or biases taking place
         # But for now, I let it all empty
 
@@ -247,84 +269,11 @@ class Household:
         except Warning:
             print(norm_coeff)
 
-        self.model_region.twolevelsgame_model.log_files.f_household_beliefs[1].writerow(
+        # VVV This save file is extremely heavy, so I'm commenting it out for now
+        """self.model_region.twolevelsgame_model.log_files.f_household_beliefs[1].writerow(
             [timestep, self.model_region.id, self.id]
             + self.climate_distrib_beliefs[-1].tolist()
-        )
-
-    """def assess_policy(self, timestep):
-        
-        #Compute the Utility equivalent of the current policy. If U is positive, then the agent is pushing for more stringent emission reductions;
-        #Else, the agent if pushing for less stringent policy.
-
-        #Returns
-        
-        #U : TYPE
-        #     DESCRIPTION.
-
-        
-        # TODO APN: self.utility_parameters[0] = -1\coeff * np.log(GDP/Capita)   [See Peter Andre 2023, "representative evidence on the actual and perceived support for climate action"]
-
-        # Expected temperature elevation (worry)
-        temp = Household.mean_distribution(self.climate_distrib_beliefs[-1])
-        expected_temperature_elevation = 1 + (
-            temp - self.threshold_expected_temperature_elevation
-        )
-
-        # Experienced climate change with shifting baeline OR extreme weather events
-        # TODO: find database of extreme weather events
-
-        # FIXME: Put real values down below
-        # Experienced climate damages
-        loss_and_damages = self.model_region.distribution_cost_damages[self.quintile]
-        # Experienced mitigation costs
-        mitigation_costs = self.model_region.distribution_cost_mitigation[self.quintile]
-        # Experienced Economic Context
-        if mitigation_costs > loss_and_damages:
-            experienced_economic_context = -1  # opposition
-        else:
-            experienced_economic_context = 1  # support
-
-        # FIXME: Put real values down below
-        # Expected climate damages
-        expected_loss_and_damages = 0  # self.expected_climate_damages #+*-/...
-        # Expected mitigation costs
-        expected_mitigation_costs = 0
-        # Expected Economic Context
-        if expected_mitigation_costs > expected_loss_and_damages:
-            expected_economic_context = -1  # opposition
-        else:
-            expected_economic_context = 1  # support
-
-        # FIXME: delete next line when real values are use for expectation of costs
-        expected_economic_context = 0
-
-        U = (
-            self.sensitivity_to_costs
-            * (expected_economic_context + experienced_economic_context)
-            + expected_temperature_elevation
-            - self.model_region.negotiator.policy[1, 0]
-        )
-
-        self.model_region.twolevelsgame_model.f_household_assessment[1].writerow(
-            [
-                timestep,
-                self.model_region.id,
-                self.id,
-                self.sensitivity_to_costs,
-                loss_and_damages,
-                mitigation_costs,
-                experienced_economic_context,
-                expected_loss_and_damages,
-                expected_mitigation_costs,
-                expected_economic_context,
-                expected_temperature_elevation,
-                self.model_region.negotiator.policy[1, 0],
-                U,
-            ]
-        )
-
-        return U"""
+        )"""
 
     def update_emotion_opinion(self):
         """
@@ -383,6 +332,7 @@ class Household:
     ###########################################################################
     ###                                 UTILS
     ###########################################################################
+    @staticmethod
     def gaussian_distrib(
         g_mean=0,
         g_std=1,
@@ -412,12 +362,8 @@ class Household:
 
         # TODO APN It is not normal if we have to enter th following... I have seen some weird values for the local temperatures (18C???)
         if g_mean > Household.DISTRIB_MAX_VALUE:
-            print(
-                "WARNING: Gaussian distribution as a mean of :",
-                g_mean,
-                "which is above the maximum possible value of ",
-                Household.DISTRIB_MAX_VALUE,
-            )
+            # We get there in the case of the local temperature elevation distribution (but I don't why yet)
+            # It does not matter (28/08/2024) as I do not use the local temperature information yet
             g_mean = Household.DISTRIB_MAX_VALUE
 
         possible_values = np.arange(min_val, max_val, step)
@@ -427,6 +373,7 @@ class Household:
             )
         )
 
+    @staticmethod
     def mean_distribution(
         distribution,
         min_val=DISTRIB_MIN_VALUE,

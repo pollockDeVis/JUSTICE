@@ -1,3 +1,4 @@
+from src.exploration.LogFiles import print_log
 from src.model import JUSTICE
 from src.exploration.information import Information
 from src.exploration.twolevelsgame import TwoLevelsGame
@@ -40,7 +41,7 @@ class AbmJustice(JUSTICE):
         # INSTANTIATE POLICY MODULE
         print("   -> Instantiation of policy module")
         self.two_levels_game = TwoLevelsGame(
-            self, timestep=timestep
+            self.rng, self,timestep=timestep
         )
         print("      OK")
 
@@ -82,4 +83,4 @@ class AbmJustice(JUSTICE):
         self.two_levels_game.step(timestep)
 
     def close_files(self):
-        self.two_levels_game.close_files()
+        print_log.close_files()

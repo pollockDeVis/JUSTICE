@@ -7,13 +7,11 @@
     <Class name="Region">
         <Attribute name="n_households" type="int">100</Attribute>
         <Attribute name="opdyn_max_iter" type="float">1</Attribute>
-        <Attribute name="opdyn_influence" type="float">.001</Attribute>
-		<Attribute name="opdyn_learning" type="float">.01</Attribute>
         <Attribute name="opdyn_agreement" type="float">.001</Attribute>
-        <Attribute name="opdyn_lambda_noise" type="float">0</Attribute>
-        <Attribute name="opdyn_threshold_close" type="float">.5</Attribute>
-		<Attribute name="opdyn_threshold_far" type="float">1.</Attribute>
-        <Attribute name="opdyn_external_worry_decay" type="float">.7</Attribute>
+        <Attribute name="opdyn_threshold_close" type="float">0.5</Attribute>
+		<Attribute name="opdyn_influence_close" type="float">0.001</Attribute>
+		<Attribute name="opdyn_threshold_far" type="float">1</Attribute>
+		<Attribute name="opdyn_influence_far" type="float">0.0005</Attribute>
 
     </Class>
     <Class name="Negotiator">
