@@ -1090,7 +1090,7 @@ def plot_hypervolume(
                 go.Scatter(
                     x=data["nfe"],
                     y=data["hypervolume"],
-                    fill="tozeroy",
+                    fill="none",
                     mode="lines",  #'none',
                     line=dict(color=colour_palette[idx], width=linewidth),
                     showlegend=False,

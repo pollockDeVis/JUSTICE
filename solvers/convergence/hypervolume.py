@@ -315,50 +315,46 @@ if __name__ == "__main__":
         "welfare_loss_abatement",
     ]
 
-    get_global_reference_set(
-        list_of_objectives=list_of_objectives,
-        data_path="data/optimized_rbf_weights/",
-        file_name=None,  # "UTILITARIAN_100000_1644652.tar.gz",
-        swf=[
-            "PRIORITARIAN",
-        ],
-        nfe="150000",
-        epsilons=[
-            0.1,
-            0.25,
-            10,
-            10,
-        ],
-        direction_of_optimization=["min", "min", "max", "max"],
-        output_data_path="data/convergence_metrics",
-        saving=True,
-    )
+    direction_of_optimization = ["min", "min", "max", "max"]
 
-    get_global_reference_set()
+    # get_global_reference_set(
+    #     list_of_objectives=list_of_objectives,
+    #     data_path="data/optimized_rbf_weights/150k/",
+    #     file_name=None,  # "UTILITARIAN_100000_1644652.tar.gz",
+    #     swf=[
+    #         "PRIORITARIAN",
+    #     ],
+    #     nfe="150000",
+    #     epsilons=[
+    #         0.1,
+    #         0.25,
+    #         10,
+    #         10,
+    #     ],
+    #     direction_of_optimization=direction_of_optimization,
+    #     output_data_path="data/convergence_metrics",
+    #     saving=True,
+    # )
 
     filenames = [
-        "UTILITARIAN_100000_1644652.tar.gz",
-        # "PRIORITARIAN_100000.tar.gz",
-        # "EGALITARIAN_100000.tar.gz",
-        # "SUFFICIENTARIAN_100000.tar.gz",
+        "PRIORITARIAN_150000_521475.tar.gz",
+        "PRIORITARIAN_150000_1644652.tar.gz",
+        "PRIORITARIAN_150000_3569126.tar.gz",
+        "PRIORITARIAN_150000_6075612.tar.gz",
+        "PRIORITARIAN_150000_9845531.tar.gz",
     ]
 
     with multiprocessing.Pool() as pool:
         # Enumerate through the filenames
         for filename in filenames:
             scores = calculate_hypervolume_from_archives(
-                list_of_objectives=[
-                    "welfare",
-                    "years_above_temperature_threshold",
-                    "welfare_loss_damage",
-                    "welfare_loss_abatement",
-                ],
-                direction_of_optimization=["min", "min", "max", "max"],
-                input_data_path="data/optimized_rbf_weights",
+                list_of_objectives=list_of_objectives,
+                direction_of_optimization=direction_of_optimization,
+                input_data_path="data/optimized_rbf_weights/150k/",
                 file_name=filename,
                 output_data_path="data/convergence_metrics",
                 saving=True,
                 global_reference_set=True,
                 global_reference_set_path="data/convergence_metrics",
-                global_reference_set_file="UTILITARIAN_reference_set.csv",
+                global_reference_set_file="PRIORITARIAN_reference_set.csv",
             )
