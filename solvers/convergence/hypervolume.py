@@ -153,7 +153,7 @@ def get_global_reference_set(
         "UTILITARIAN",
         "PRIORITARIAN",
     ],
-    nfe="100000",
+    nfe="150000",
     epsilons=[
         0.1,
         0.25,
@@ -307,6 +307,32 @@ if __name__ == "__main__":
 
     # Suppress warnings
     warnings.filterwarnings("ignore")
+
+    list_of_objectives = [
+        "welfare",
+        "years_above_temperature_threshold",
+        "welfare_loss_damage",
+        "welfare_loss_abatement",
+    ]
+
+    get_global_reference_set(
+        list_of_objectives=list_of_objectives,
+        data_path="data/optimized_rbf_weights/",
+        file_name=None,  # "UTILITARIAN_100000_1644652.tar.gz",
+        swf=[
+            "PRIORITARIAN",
+        ],
+        nfe="150000",
+        epsilons=[
+            0.1,
+            0.25,
+            10,
+            10,
+        ],
+        direction_of_optimization=["min", "min", "max", "max"],
+        output_data_path="data/convergence_metrics",
+        saving=True,
+    )
 
     get_global_reference_set()
 
