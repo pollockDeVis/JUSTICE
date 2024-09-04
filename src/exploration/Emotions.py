@@ -30,7 +30,7 @@ class Emotion_opinion:
         self.d1 = 0.5
         self.d2 = 0.1
         self.gamma_a = 0.9
-        self.gamma_v = 0
+        self.gamma_v = 0 #previously 0
         self.randcoeff_a = 0.3
         self.randcoeff_v = 0.3
         # tau min = 0.1 and tau max = 1.1
@@ -39,6 +39,7 @@ class Emotion_opinion:
 
         # Opinion parameters
         self.c0 = 0.1
+        self.c1_bis = 2.5 #Rescale opinion to ensure stable points are around 0.9
         self.c1 = 1
         # self.alpha0 = 0 using an explicit expression depending on emotions
         # self.alpha1 = 0 using an explicit expression depending on emotions
@@ -63,7 +64,7 @@ class Emotion_opinion:
 
     def g_valence(self, h_plus, h_minus):
         # b0 decay
-        self.b0 = 0.95 * self.b0
+        self.b0 = 0.975 * self.b0
         if self.v >= 0:
             return (
                 1
@@ -116,8 +117,8 @@ class Emotion_opinion:
     def update_o(self, h, v_mean):
         if self.o * self.v < 0:
             self.count_o_opposed_v = self.count_o_opposed_v + 1
-            self.o = self.o * (1 - np.abs(self.v)*0.01)
-            self.alpha3 = self.alpha3 * (1 + self.count_o_opposed_v * np.abs(self.v)*0.01)
+            self.o = self.o * (1 - np.abs(self.v)*0.02)
+            self.alpha3 = self.alpha3 * (1 + self.count_o_opposed_v * np.abs(self.v)*0.005)
         else:
             self.count_o_opposed_v = 0
             self.alpha3 = -3
@@ -127,11 +128,11 @@ class Emotion_opinion:
             + self.dt
             * (
                 -self.c0**2 * h * -1 * (v_mean + self.v) / 2
-                + self.c1 * (h - self.h_base) * self.o
+                + self.c1 * (h - self.h_base) * self.o *  self.c1_bis
                 + self.alpha2 * self.o**2
                 + self.alpha3 * self.o**3
                 # + self.randcoeff_o * np.random.normal(0, 0.3, 1)[0]
             ),
-            -2,
-            2,
+            -1,
+            1,
         )

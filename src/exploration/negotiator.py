@@ -22,7 +22,7 @@ class Negotiator:
         self.region_model = region
         self.policy_start_year = XML_init_values.Negotiator_policy_start_year
         self.ecr_start_year = XML_init_values.Negotiator_ecr_start_year
-        self.policy_period = XML_init_values.Negotiator_policy_period
+        self.policy_period = self.region_model.twolevelsgame_model.Y_policy
         self.policy = np.array(
             [
                 [
@@ -82,15 +82,22 @@ class Negotiator:
             # get the shift
             support = self.region_model.aggregate_households_opinions(
                 timestep
-            )  # support = share of opposition, neutral and support
+            )  # support = share of opposition, neutral and support, and mean_utility
 
             range_of_shift = self.delta_shift_range()
+            if support[3] > 0:
+                delta_shift = range_of_shift * support[3]
+            else:
+                delta_shift = (-self.policy[1, 0] + self.policy[1, 1]) * support[3]
+
+            """
             if support[2] > support[0]:
                 delta_shift = range_of_shift * support[2]
             elif support[2] <= support[0]:
                 delta_shift = (self.policy[1, 0] - self.policy[1, 1]) * support[0]
             else:
                 delta_shift = 0
+            """
 
             max_cutting_rate_gradient = self.max_cutting_rate_gradient
 

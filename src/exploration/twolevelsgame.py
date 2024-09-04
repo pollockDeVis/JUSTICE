@@ -39,6 +39,14 @@ class TwoLevelsGame:
         """
         self.rng = rng
 
+        # Parameters for international negotiations
+        self.Y_nego = (
+            XML_init_values.TwoLevelsGame_Y_nego  # How many years between a new set of international negotiation rounds
+        )
+        self.Y_policy = (
+            XML_init_values.TwoLevelsGame_Y_policy
+        )  # How many years between a new set of regional policy update
+
         # Loading Data to initialise the REGIONS AND THEIR HOUSEHOLDS
         dict_regions_distribution_income = self.regions_distribution_income()
         # Climate worry=>initial VALENCE of EMOTION relative to "Are we mitigating enough?"
@@ -77,8 +85,8 @@ class TwoLevelsGame:
             self.regions_distribution_fromMetaOpinionSurvey("climate_happening")
         )
 
-        dict_regions_freq_hear = (
-            self.regions_distribution_fromMetaOpinionSurvey("freq_hear")
+        dict_regions_freq_hear = self.regions_distribution_fromMetaOpinionSurvey(
+            "freq_hear"
         )
 
         list_dicts = [
@@ -103,24 +111,6 @@ class TwoLevelsGame:
             self.regions += [Region(rng, self, i, code, timestep, list_dicts)]
             i += 1
         self.N_regions = i
-
-        # Coalitions (ad hoc, now a cycle graph)
-        """ Coalitions could appear in the context of international agreement. They would result from a change in the 
-        structure of the network graph linking all regions together. By default the graph is a connected graph of
-        valency 2 (eg. a cycle graph).
-        This is not used yet. """
-        edges = np.array([[i, (i + 1) % self.N_regions] for i in range(self.N_regions)])
-        self.coalitions = np.zeros((edges.max() + 1, edges.max() + 1))
-        self.coalitions[edges[:, 0], edges[:, 1]] = 1
-        self.coalitions[edges[:, 1], edges[:, 0]] = 1
-
-        # Parameters for international negotiations
-        self.Y_nego = (
-            XML_init_values.TwoLevelsGame_Y_nego  # How many years between a new set of international negotiation rounds
-        )
-        self.Y_policy = (
-            XML_init_values.TwoLevelsGame_Y_policy
-        )  # How many years between a new set of regional policy update
 
     def step(self, timestep):
         """
@@ -170,11 +160,12 @@ class TwoLevelsGame:
 
             # Size is 57*5: consumption (net of damages and mitigation costs) for regions and each quintiles
             test = 0
+            coeff_abatement = 0  # Put to 0 to ignore abatement (hence the quintiles only get the loss and damages)
             disaggregated_predmg_consumption = (
                 5
                 * net_average_consumption[region.id]
                 * (1 + average_damages[region.id])
-                / (1 - 0 * average_abatement[region.id])
+                / (1 - coeff_abatement * average_abatement[region.id])
                 * region.distribution_income
             )
 
@@ -187,7 +178,7 @@ class TwoLevelsGame:
                 * 1
                 / np.sum(np.power(region.distribution_income, xi_damage))
             )
-            abatement_share = (
+            abatement_share = coeff_abatement * (
                 np.power(region.distribution_income, xi_abatement)
                 * 1
                 / np.sum(np.power(region.distribution_income, xi_abatement))
@@ -218,6 +209,10 @@ class TwoLevelsGame:
                 disaggregated_predmg_consumption
                 - quintiles_damage_costs
                 - quintiles_abatement_costs
+            )
+
+            region.disaggregated_post_costs_consumption = (
+                disaggregated_post_costs_consumption
             )
 
             (print_log.f_region)[1].writerow(
@@ -277,13 +272,16 @@ class TwoLevelsGame:
                         1 - coeff
                     ) * avg_global_net_zero_year
                 if tentative_end_year_pledge < regional_earliest_achievable_end_target:
-                    print_log.write_log("twolevelsgame.py","international_negotiations",
-                        "For region "+
-                        str(region.id)+
-                        " new pledge impossible because (tentative) "+
-                        str(tentative_end_year_pledge)+
-                        " < "+
-                        str(regional_earliest_achievable_end_target) + " (earliest possible considering max_ecr)"
+                    print_log.write_log(
+                        "twolevelsgame.py",
+                        "international_negotiations",
+                        "For region "
+                        + str(region.id)
+                        + " new pledge impossible because (tentative) "
+                        + str(tentative_end_year_pledge)
+                        + " < "
+                        + str(regional_earliest_achievable_end_target)
+                        + " (earliest possible considering max_ecr)",
                     )
                     tentative_end_year_pledge = regional_earliest_achievable_end_target
 
@@ -339,7 +337,7 @@ class TwoLevelsGame:
             index_col=0,
             engine="openpyxl",
             sheet_name=sheetname,
-            converters={"":0}
+            converters={"": 0},
         ).fillna(0)
 
         dict = {}

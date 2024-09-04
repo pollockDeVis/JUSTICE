@@ -71,6 +71,7 @@ class Region:
         self.distribution_income = dict_regions_distribution_income[self.code] / 100
         self.distribution_cost_mitigation = []
         self.distribution_cost_damages = []
+        self.disaggregated_post_costs_consumption = []
         # print("=======V " + self.code + " V========")
         # print(self.distribution_income)
         # print(np.sum(self.distribution_income))
@@ -138,7 +139,8 @@ class Region:
                 + [hh.emotion_climate_change.o for hh in self.households]
                 + [hh.emotion_economy.b0 for hh in self.households]
                 + [hh.emotion_economy.v for hh in self.households]
-                + [hh.emotion_economy.o for hh in self.households],
+                + [hh.emotion_economy.o for hh in self.households]
+                + [self.opinion_climate_change.h, self.opinion_economy.h],
             )
 
         # hh.emotion_climate_change.o "Are we mitigating enough?": if yes (>0), then we want less (or equal) mitigation hence a negative coefficient
@@ -151,16 +153,25 @@ class Region:
         )
         array_support = array_utility > 0.1
         array_opposition = array_utility < -0.1
+        # Dividing by two because each opinion comprised between -1 and 1 so difference is between -2 and 2
+        mean_utility = np.mean(array_utility) / 2
 
         share_support = np.count_nonzero(array_support) / self.n_households
         share_opposition = np.count_nonzero(array_opposition) / self.n_households
         share_neutral = 1 - (share_support + share_opposition)
 
         print_log.f_share_opinions[1].writerow(
-            [timestep, self.id, share_opposition, share_neutral, share_support]
+            [
+                timestep,
+                self.id,
+                share_opposition,
+                share_neutral,
+                share_support,
+                mean_utility,
+            ]
         )
 
-        return [share_opposition, share_neutral, share_support]
+        return [share_opposition, share_neutral, share_support, mean_utility]
 
     def update_regional_opinion(self, timestep):
         # Update on observations (uses FaIR-Perspectives ==> Understanding)
@@ -215,12 +226,17 @@ class Region:
                 <= self.opdyn_threshold_close
             ) - I
 
-            #The coefficient in front of self.n_households represents the trust in scientific information
-            #The parameter vect_p_consider_information represents the probability to be exposed to the scientific information
-            L[:, -1:] = 1/2*self.n_households*(
+            # The coefficient in front of self.n_households represents the trust in scientific information
+            # The parameter vect_p_consider_information represents the probability to be exposed to the scientific information
+            L[:, -1:] = (
+                1
+                / 2
+                * self.n_households
+                * (
                     vect_p_consider_information
                     > self.rng.random((self.n_households + 1, 1))
                 )
+            )
 
             Lclose = np.diag(np.sum(L, 1)) - L
 

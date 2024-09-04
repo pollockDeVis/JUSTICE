@@ -107,6 +107,7 @@ class LogFiles:
             + ["B0 Economy" for i in range(XML_init_values.Region_n_households)]
             + ["Emotion Economy" for i in range(XML_init_values.Region_n_households)]
             + ["Opinion Economy" for i in range(XML_init_values.Region_n_households)]
+            + ["H Climate","H Economy"]
         )
 
         f5_beliefs = open(self.path + "household_beliefs.csv", "w", newline="")
@@ -170,14 +171,16 @@ class LogFiles:
             f7,
             csv.writer(f7, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
-        self.f_share_opinions[1].writerow([
+        self.f_share_opinions[1].writerow(
+            [
                 "Timestep",
                 "Region",
-            "share opposed",
-            "share neutral",
-            "share support"
-            ])
-
+                "share opposed",
+                "share neutral",
+                "share support",
+                "mean utility",
+            ]
+        )
 
     def close_files(self):
         self.f_policy[0].close()

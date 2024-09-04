@@ -17,7 +17,6 @@
     <Class name="Negotiator">
         <Attribute name="policy_start_year" type="float">2015.</Attribute>
         <Attribute name="policy_end_year" type="float">2100.</Attribute>
-        <Attribute name="policy_period" type="float">5</Attribute>
 		<Attribute name="ecr_start_year" type="float">0</Attribute>
 		<Attribute name="ecr_first_term" type="float">0</Attribute>
 		<Attribute name="ecr_end_year" type="float">1</Attribute>

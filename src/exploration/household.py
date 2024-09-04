@@ -148,10 +148,6 @@ class Household:
         ###################################################
         ################## Sensitivities ##################
         ###################################################
-        # between 0 and 1
-        self.sensitivity_to_threshold_information = 0.2
-        # > Between 0 and 2
-        self.sensitivity_to_costs = 1
         # > temperature Threshold: Between 0C and 8C (compared to baseline)
         choices = [
             1.5,
@@ -164,9 +160,7 @@ class Household:
         self.threshold_expected_temperature_elevation = choice + (
             choice == 2
         ) * rng.beta(a=2, b=5)
-        # >Between -1 and 1
-        self.elasticity_expected_mitigation_distribution = 0
-        self.elasticity_expected_loss_damages_distribution = 0
+
         # Coefficient for climate damage evaluation (see RICE2013R: psi_2)
         self.psi_2 = 2.67 * 10**-3
 
@@ -301,7 +295,7 @@ class Household:
         ):
             # Disatisfied, no we are not mitigating enough
             self.emotion_climate_change.b0 = max(
-                self.emotion_climate_change.b0 - 0.5, -1
+                self.emotion_climate_change.b0 - 0.1, -0.5
             )
 
         elif (
@@ -310,20 +304,21 @@ class Household:
         ):
             # Satisfied, yes we are mitigating enough
             self.emotion_climate_change.b0 = min(
-                self.emotion_climate_change.b0 + 0.5, 1
+                self.emotion_climate_change.b0 + 0.1, 0.5
             )
 
         # >>> INFLUENCES ON SATISFACTION RELATIVE TO THE ECONOMY, Do I wish to pay for mitigation?
         # -> Experienced climate damages and mitigation costs
         loss_and_damages = self.model_region.distribution_cost_damages[self.quintile]
         mitigation_costs = self.model_region.distribution_cost_mitigation[self.quintile]
-        if loss_and_damages > mitigation_costs:
-            # Damages from climate change exceed mitigation costs in my quintile, I will pay
-            self.emotion_economy.b0 = min(self.emotion_economy.b0 + 0.5, 1)
+        consumption = self.model_region.disaggregated_post_costs_consumption[self.quintile]
+        if loss_and_damages/consumption > 0.1:
+            # Damages from climate change exceed 10% of the final consumption in my quintile, I will pay
+            self.emotion_economy.b0 = min(self.emotion_economy.b0 + 0.1, 0.5)
 
-        elif loss_and_damages < mitigation_costs:
-            # Mitigation costs in my quintile exceed damages from climate change, I will NOT pay
-            self.emotion_economy.b0 = max(self.emotion_economy.b0 - 0.5, -1)
+        else:
+            # Loss and damages do not exceed 10% of my quintile consumption, I will NOT pay
+            self.emotion_economy.b0 = max(self.emotion_economy.b0 - 0.1, -0.5)
 
         #######################################
         ### EXTERNAL INFLUENCES ON OPINIONS ###

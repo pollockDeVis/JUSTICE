@@ -126,6 +126,10 @@ def visualize_policy(directory, region):
         )
         plt.legend(loc="upper left")
 
+        plt.figure()
+        plt.plot(df["Timestep"] + 2015, df["mean utility"])
+        plt.legend(["Mean opinion"])
+
     plt.show()
 
 

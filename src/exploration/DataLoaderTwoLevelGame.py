@@ -41,9 +41,6 @@ class DataLoaderTwoLevelGame:
         self.Negotiator_policy_end_year = self.get_value(
             'Class/[@name="Negotiator"]/Attribute/[@name="policy_end_year"]'
         )
-        self.Negotiator_policy_period = self.get_value(
-            'Class/[@name="Negotiator"]/Attribute/[@name="policy_period"]'
-        )
         self.Negotiator_ecr_start_year = self.get_value(
             'Class/[@name="Negotiator"]/Attribute/[@name="ecr_start_year"]'
         )

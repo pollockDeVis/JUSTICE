@@ -29,6 +29,9 @@ class EmotionOpinions:
         self.gamma_plus = 0.7
         self.gamma_minus = 0.7
 
+        #test
+        self.decay_arousal = 1
+
         # Agents
         self.agents = [Agents() for i in range(n_agents)]
 
@@ -36,11 +39,13 @@ class EmotionOpinions:
         self.h_minus = self.h_minus + dt * (
             -self.gamma_minus * self.h_minus + self.s * self.N_minus + self.I_minus
         )
+        self.I_minus = 0.95 * self.I_minus
 
     def update_h_plus(self):
         self.h_plus = self.h_plus + dt * (
             -self.gamma_plus * self.h_plus + self.s * self.N_plus + self.I_plus
         )
+        self.I_plus = 0.95 * self.I_plus
 
     def update_h(self):
         self.h = self.h_minus + self.h_plus
@@ -90,11 +95,13 @@ class EmotionOpinions:
                 v_mean[1],
                 v_mean[2],
                 self.compute_delta_h(),
+                self.decay_arousal,
             )
         self.update_N()
         self.update_h_minus()
         self.update_h_plus()
         self.update_h()
+
 
 
 class Agents:
@@ -121,7 +128,7 @@ class Agents:
         self.d1 = 0.5
         self.d2 = 0.1
         self.gamma_a = 0.9
-        self.gamma_v = 0
+        self.gamma_v = 0.5
         self.randcoeff_a = 0.3
         self.randcoeff_v = 0.3
         # tau min = 0.1 and tau max = 1.1
@@ -139,13 +146,15 @@ class Agents:
         self.randcoeff_o = 0.05
         self.h_base = 0.1
 
-    def step(self, h, h_plus, h_minus, v_mean_plus, v_mean_minus, v_mean):
+    def step(
+        self, h, h_plus, h_minus, v_mean_plus, v_mean_minus, v_mean, decay_arousal
+    ):
         # On peut faire lentement progresser alpha2 au cours de la simulation
         self.step_opinion(h, h_plus, h_minus, v_mean_plus, v_mean_minus, v_mean)
-        self.step_emotion(h, h_plus, h_minus)
+        self.step_emotion(h, h_plus, h_minus, decay_arousal)
 
-    def step_emotion(self, h, h_plus, h_minus):
-        self.update_a(h)
+    def step_emotion(self, h, h_plus, h_minus, decay_arousal):
+        self.update_a(h, decay_arousal)
         self.update_v(h_plus, h_minus)
         self.update_s()
 
@@ -166,6 +175,16 @@ class Agents:
                     + self.b2 * self.v**2
                     + self.b0
                 )
+            ) + (
+                1
+                / 4
+                * (-h_minus)
+                * (
+                    self.b1 * self.v
+                    + self.b3 * self.v**3
+                    + self.b2 * self.v**2
+                    - self.b0
+                )
             )
         else:
             return (
@@ -178,18 +197,29 @@ class Agents:
                     + self.b2 * self.v**2
                     - self.b0
                 )
+            ) + (
+                1
+                / 4
+                * (h_plus)
+                * (
+                    self.b1 * self.v
+                    + self.b3 * self.v**3
+                    + self.b2 * self.v**2
+                    + self.b0
+                )
             )
 
     def g_arousal(self, h):
         return h * (self.d0 + self.d1 * self.a + self.d2 * self.a**2)
 
-    def update_a(self, h):
+    def update_a(self, h, decay_arousal):
         if self.tau - self.a >= 0:
             self.a = self.a + dt * (
                 -self.gamma_a * self.a
                 + self.g_arousal(h)
-                + self.randcoeff_a * np.random.normal(0, 6, 1)[0]
+                + self.randcoeff_a * np.random.normal(0, 6)
             )
+            self.a = self.a * decay_arousal
         else:
             self.a = 0
             self.alpha3 = -3
@@ -198,7 +228,7 @@ class Agents:
         self.v = self.v + dt * (
             -self.gamma_v * self.v
             + self.g_valence(h_plus, h_minus)
-            # + self.randcoeff_v * np.random.normal(0, 0.5, 1)[0]
+            + np.random.normal(0, 0.01)
         )
 
     def update_s(self):
@@ -223,8 +253,8 @@ class Agents:
                 + self.alpha3 * self.o**3
                 # + self.randcoeff_o * np.random.normal(0, 0.3, 1)[0]
             ),
-            -2,
-            2,
+            -1,
+            1,
         )
 
 
@@ -267,16 +297,18 @@ if 0:
 model = EmotionOpinions(n_agents)
 for i in range(n_iter):
 
-    # Evenement soudain avec influence positive (emotion)
+    #model.decay_arousal = np.abs(np.sin(i/10.))
+
     if (i + 1) % 100 == 0:
         for a in model.agents:
-            if np.random.random() < 0:
+            a.alpha2 = a.alpha2 + 1
+            if np.random.random() < 0.0:
                 # a.alpha2 = 1  # affects opinion directly (biased the whole opinion spectrum up or down0
-                a.b0 += 1  # affects the valence directly
+                a.b0 += 0  # affects the valence directly
                 # a.alpha3 = min(-3, 3 * (a.o - 1))  # affects the nature of the polarization
-            if np.random.random() > 0.7:
+            if np.random.random() > 0.5:
                 # a.alpha2 = 1  # affects opinion directly (biased the whole opinion spectrum up or down0
-                a.b0 += -1  # affects the valence directly
+                a.b0 += 0  # affects the valence directly
                 # a.alpha3 = min(-3, 3 * (a.o - 1))  # affects the nature of the polarization
 
     """elif (i) % 100 == 0:
