@@ -5,21 +5,35 @@ import json
 import pandas as pd
 import numpy as np
 from src.exploration.DataLoaderTwoLevelGame import XML_init_values
-from src.exploration.household import Household
 
 
 class LogFiles:
+    MASKLOG_EmotionOpinion = 0x00000001
+    MASKLOG_Information = 0x00000002
+    MASKLOG_Household = 0x00000004
+    MASKLOG_region = 0x00000008
+    MASKLOG_twolevelsgame = 0x00000010
+    MASKLOG_WARNING = 0x10000000
+    MASKLOG_ERROR = 0x20000000
+    # etc... 32 possible masks. Masks 0x00000000 hides all logs
+    # Define MASKLOG in __init__ as the sum of the MASKLOGS you want to print out
+
     def __init__(self):
         """
         !!! WARNING: When adding a file for logs or to save some data, DO NOT FORGET to also add
         the corresponding line to CLOSE THE FILE at the end of the simulation!
         """
+        self.MASKLOG = (
+            0x00000000
+            + LogFiles.MASKLOG_WARNING
+            + LogFiles.MASKLOG_ERROR
+        )
         # -> Create folder for current simulation
         self.path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
         os.makedirs(self.path, exist_ok=True)
 
         # general logs
-        self.log = open(self.path + "log.txt", "w", newline="")
+        self.log = open(self.path + "log.log", "w", newline="")
         self.f_parameters = open(self.path + "parameters.txt", "w", newline="")
 
         # average net consumption, loss and damage per quintile, abatement costs per quintile, post-damage concumption per quintile, average of post damage concumption per quintile
@@ -107,7 +121,7 @@ class LogFiles:
             + ["B0 Economy" for i in range(XML_init_values.Region_n_households)]
             + ["Emotion Economy" for i in range(XML_init_values.Region_n_households)]
             + ["Opinion Economy" for i in range(XML_init_values.Region_n_households)]
-            + ["H Climate","H Economy"]
+            + ["H Climate", "H Economy"]
         )
 
         f5_beliefs = open(self.path + "household_beliefs.csv", "w", newline="")
@@ -120,11 +134,11 @@ class LogFiles:
         self.f_household_beliefs[1].writerow(
             ["Timestep", "Region", "Household ID"]
             + [
-                "belief T(y+99)=" + str(i)
+                "belief T=" + str(i)
                 for i in np.arange(
-                    Household.DISTRIB_MIN_VALUE,
-                    Household.DISTRIB_MAX_VALUE,
-                    Household.DISTRIB_RESOLUTION,
+                    XML_init_values.Household_DISTRIB_MIN_VALUE,
+                    XML_init_values.Household_DISTRIB_MAX_VALUE,
+                    XML_init_values.Household_DISTRIB_RESOLUTION,
                 )
             ]
         )
@@ -178,7 +192,9 @@ class LogFiles:
                 "share opposed",
                 "share neutral",
                 "share support",
+                "strength opposition",
                 "mean utility",
+                "strength support",
             ]
         )
 
@@ -195,18 +211,15 @@ class LogFiles:
         self.log.close()
         return
 
-    def write_log(self, file_name, function_name, text):
-        self.log.write(
-            "["
-            + datetime.now().strftime("%H%M%S.%f")
-            + "] "
-            + file_name
-            + " :: "
-            + function_name
-            + " :: "
-            + text
-            + "\n"
-        )
+    def write_log(self, MASK, file_name, function_name, text):
+        if MASK & self.MASKLOG == MASK:
+            str_base = "["+datetime.now().strftime("%H%M%S.%f")+"] "+file_name+" :: "+function_name+" :: "
+            if MASK == LogFiles.MASKLOG_ERROR:
+                str_base += "[ERROR] "
+            elif MASK == LogFiles.MASKLOG_WARNING:
+                str_base += "[WARNING] "
+
+            self.log.write(str_base + text + "\n")
 
 
 print_log = LogFiles()

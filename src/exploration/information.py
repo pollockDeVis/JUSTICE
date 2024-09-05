@@ -10,6 +10,7 @@ import pandas as pd
 from typing import Any
 import copy
 
+from src.exploration.LogFiles import LogFiles, print_log
 from src.util.data_loader import DataLoader
 from src.util.enumerations import Economy, DamageFunction, Abatement, WelfareFunction
 from src.util.model_time import TimeHorizon
@@ -276,10 +277,19 @@ class Information:
                     self.global_temperature_information[0][timestep:year]
                 )
                 self.global_distrib_flsi[i] = Household.gaussian_distrib(
-                    g_mean=np.argmax(
-                        self.global_temperature_information[0][i_max_temp]
-                    ),
+                    g_mean=self.global_temperature_information[0][i_max_temp],
                     g_std=self.global_temperature_information[1][i_max_temp],
+                )
+                print_log.write_log(
+                    LogFiles.MASKLOG_Information,
+                    "information.py",
+                    "construct_flsi",
+                    f"""Maximum mean temperature increase is \
+{self.global_temperature_information[0][i_max_temp]:0.2f} \
+at year \
+{2015+i_max_temp} \
+with std \
+{self.global_temperature_information[1][i_max_temp]}""",
                 )
             else:
                 # Look at the current temperature elevation
@@ -289,6 +299,12 @@ class Information:
                 )
             norm_coeff = np.sum(self.global_distrib_flsi[i], axis=0)
             self.global_distrib_flsi[i] = self.global_distrib_flsi[i] / norm_coeff
+            print_log.write_log(
+                LogFiles.MASKLOG_Information,
+                "information.py",
+                "construct_flsi",
+                f"normalization coefficient for distribution = {norm_coeff:0.3f}",
+            )
 
         # Local
         for r in range(57):

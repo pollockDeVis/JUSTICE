@@ -82,13 +82,14 @@ class Negotiator:
             # get the shift
             support = self.region_model.aggregate_households_opinions(
                 timestep
-            )  # support = share of opposition, neutral and support, and mean_utility
+            )  # support = share of opposition, neutral and support, mean_utility, strength_support, strength_opposition
 
+            i = np.argmax(support[:3])
             range_of_shift = self.delta_shift_range()
-            if support[3] > 0:
-                delta_shift = range_of_shift * support[3]
+            if support[i+3] > 0:
+                delta_shift = range_of_shift * support[i+3]
             else:
-                delta_shift = (-self.policy[1, 0] + self.policy[1, 1]) * support[3]
+                delta_shift = (-self.policy[1, 0] + self.policy[1, 1]) * support[i+3]
 
             """
             if support[2] > support[0]:
@@ -102,7 +103,6 @@ class Negotiator:
             max_cutting_rate_gradient = self.max_cutting_rate_gradient
 
             # Shifting policy target
-            # TODO APN: Forbid carbon capture for now (look @ AR6 database later)
             self.policy[1, 1] = min(delta_shift + self.policy[1, 1], 1)
 
             (print_log.f_policy)[1].writerow(

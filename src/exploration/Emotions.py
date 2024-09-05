@@ -1,4 +1,5 @@
 import numpy as np
+from src.exploration.LogFiles import print_log, LogFiles
 
 
 class Emotion_opinion:
@@ -9,7 +10,8 @@ class Emotion_opinion:
         opinion::float::opinion regarding the specific issue
         """
         # Emotions dynamics (valence, arousal, sharing)
-        self.v = valence; #Random init: 0.3 * np.random.normal(0, 0.5, 1)[0]
+        self.v = valence
+        # Random init: 0.3 * np.random.normal(0, 0.5, 1)[0]
         self.a = 0
         self.s = 0
         self.dt = 0.2  # !!! dt is also defined again in OPINIONS.py (ensure it is the same value)
@@ -30,7 +32,7 @@ class Emotion_opinion:
         self.d1 = 0.5
         self.d2 = 0.1
         self.gamma_a = 0.9
-        self.gamma_v = 0 #previously 0
+        self.gamma_v = 0.02  # previously 0
         self.randcoeff_a = 0.3
         self.randcoeff_v = 0.3
         # tau min = 0.1 and tau max = 1.1
@@ -39,7 +41,7 @@ class Emotion_opinion:
 
         # Opinion parameters
         self.c0 = 0.1
-        self.c1_bis = 2.5 #Rescale opinion to ensure stable points are around 0.9
+        self.c1_bis = 2.5  # Rescale opinion to ensure stable points are around 0.9
         self.c1 = 1
         # self.alpha0 = 0 using an explicit expression depending on emotions
         # self.alpha1 = 0 using an explicit expression depending on emotions
@@ -60,11 +62,24 @@ class Emotion_opinion:
         self.update_s()
 
     def step_opinion(self, h, v_mean):
-        self.update_o(h, v_mean)
+        self.o = self.v
+        # self.update_o(h, v_mean)
 
     def g_valence(self, h_plus, h_minus):
         # b0 decay
-        self.b0 = 0.975 * self.b0
+        # self.b0 = 0.975 * self.b0
+        self.b0 = (
+            0.975 + 0.8 * 0.025 * np.exp(-10 * (np.abs(self.b0) - 0.5) ** 2)
+        ) * self.b0
+
+        if self.v > 1:
+            print_log.write_log(
+                LogFiles.MASKLOG_EmotionOpinion,
+                "Emotions.py",
+                "g_valence",
+                f"b0, v, h+, h- = {self.b0:.2f} | {self.v:.2f} | {h_plus:.2f} | {h_minus:.2f}",
+            )
+
         if self.v >= 0:
             return (
                 1
@@ -76,18 +91,28 @@ class Emotion_opinion:
                     + self.b2 * self.v**2
                     + self.b0
                 )
+            ) + (
+                1
+                / 6
+                * (-h_minus)
+                * (self.b1 * self.v + self.b3 * self.v**3 + self.b2 * self.v**2)
             )
         else:
             return (
                 1
                 / 3
-                * (-h_minus)
+                * (h_minus)
                 * (
                     self.b1 * self.v
                     + self.b3 * self.v**3
                     + self.b2 * self.v**2
-                    - self.b0
+                    + self.b0
                 )
+            ) + (
+                1
+                / 6
+                * (-h_plus)
+                * (self.b1 * self.v + self.b3 * self.v**3 + self.b2 * self.v**2)
             )
 
     def g_arousal(self, h):
@@ -105,10 +130,16 @@ class Emotion_opinion:
             self.alpha3 = -3
 
     def update_v(self, h_plus, h_minus):
-        self.v = self.v + self.dt * (
-            -self.gamma_v * self.v
-            + self.g_valence(h_plus, h_minus)
-            # + self.randcoeff_v * np.random.normal(0, 0.5, 1)[0]
+        self.v = np.clip(
+            self.v
+            + self.dt
+            * (
+                -self.gamma_v * self.v
+                + self.g_valence(h_plus, h_minus)
+                # + self.randcoeff_v * np.random.normal(0, 0.5, 1)[0]
+            ),
+            -1,
+            1,
         )
 
     def update_s(self):
@@ -117,8 +148,10 @@ class Emotion_opinion:
     def update_o(self, h, v_mean):
         if self.o * self.v < 0:
             self.count_o_opposed_v = self.count_o_opposed_v + 1
-            self.o = self.o * (1 - np.abs(self.v)*0.02)
-            self.alpha3 = self.alpha3 * (1 + self.count_o_opposed_v * np.abs(self.v)*0.005)
+            self.o = self.o * (1 - np.abs(self.v) * 0.02)
+            self.alpha3 = self.alpha3 * (
+                1 + self.count_o_opposed_v * np.abs(self.v) * 0.005
+            )
         else:
             self.count_o_opposed_v = 0
             self.alpha3 = -3
@@ -128,7 +161,7 @@ class Emotion_opinion:
             + self.dt
             * (
                 -self.c0**2 * h * -1 * (v_mean + self.v) / 2
-                + self.c1 * (h - self.h_base) * self.o *  self.c1_bis
+                + self.c1 * (h - self.h_base) * self.o * self.c1_bis
                 + self.alpha2 * self.o**2
                 + self.alpha3 * self.o**3
                 # + self.randcoeff_o * np.random.normal(0, 0.3, 1)[0]

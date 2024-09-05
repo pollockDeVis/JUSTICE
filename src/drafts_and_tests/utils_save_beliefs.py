@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 # "../../data/output/SAVE_2024_03_13_2004/"
-path_list = glob.glob("../../data/output/SAVE_2024_08_28_1240")
+path_list = glob.glob("../../data/output/SAVE_2024_09_05_1411")
 # print(path_list)
 for save_path in path_list:
     print(save_path)
@@ -14,14 +14,14 @@ for save_path in path_list:
     print("\t" + f.read())
     df = pd.read_csv(save_path + "\household_beliefs.csv", header=0, dtype="float64")
 
-    region = 50
+    region = 32
     # household = 1
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    for household in range(10):
+    region_mask = df["Region"] == region
+    df_region = df[region_mask]
+    for household in range(20):
 
-        region_mask = df["Region"] == region
-        df_region = df[region_mask]
         household_mask = df_region["Household ID"] == household
         df_region_hh = df_region[household_mask]
 
@@ -37,7 +37,7 @@ for save_path in path_list:
 
         # Plot the surface
         surf = ax.pcolor(
-            X,
+            X+2015,
             Y,
             beliefs_array.transpose(),
             cmap=cm.viridis,

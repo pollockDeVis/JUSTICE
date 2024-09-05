@@ -29,7 +29,7 @@ class EmotionOpinions:
         self.gamma_plus = 0.7
         self.gamma_minus = 0.7
 
-        #test
+        # test
         self.decay_arousal = 1
 
         # Agents
@@ -39,13 +39,11 @@ class EmotionOpinions:
         self.h_minus = self.h_minus + dt * (
             -self.gamma_minus * self.h_minus + self.s * self.N_minus + self.I_minus
         )
-        self.I_minus = 0.95 * self.I_minus
 
     def update_h_plus(self):
         self.h_plus = self.h_plus + dt * (
             -self.gamma_plus * self.h_plus + self.s * self.N_plus + self.I_plus
         )
-        self.I_plus = 0.95 * self.I_plus
 
     def update_h(self):
         self.h = self.h_minus + self.h_plus
@@ -103,7 +101,6 @@ class EmotionOpinions:
         self.update_h()
 
 
-
 class Agents:
     def __init__(self):
         # Emotions dynamics (valence, arousal, sharing)
@@ -128,7 +125,7 @@ class Agents:
         self.d1 = 0.5
         self.d2 = 0.1
         self.gamma_a = 0.9
-        self.gamma_v = 0.5
+        self.gamma_v = 0
         self.randcoeff_a = 0.3
         self.randcoeff_v = 0.3
         # tau min = 0.1 and tau max = 1.1
@@ -159,11 +156,13 @@ class Agents:
         self.update_s()
 
     def step_opinion(self, h, h_plus, h_minus, v_mean_plus, v_mean_minus, v_mean):
-        self.update_o(h, h_plus, h_minus, v_mean_plus, v_mean_minus, v_mean)
+        self.o = self.v
+        # self.update_o(h, h_plus, h_minus, v_mean_plus, v_mean_minus, v_mean)
 
     def g_valence(self, h_plus, h_minus):
         # b0 decay
-        self.b0 = 0.95 * self.b0
+        self.b0 = 0.975 * self.b0
+        self.b2 = 0.99 * self.b2
         if self.v >= 0:
             return (
                 1
@@ -177,36 +176,26 @@ class Agents:
                 )
             ) + (
                 1
-                / 4
+                / 6
                 * (-h_minus)
-                * (
-                    self.b1 * self.v
-                    + self.b3 * self.v**3
-                    + self.b2 * self.v**2
-                    - self.b0
-                )
+                * (self.b1 * self.v + self.b3 * self.v**3 + self.b2 * self.v**2)
             )
         else:
             return (
                 1
                 / 3
-                * (-h_minus)
-                * (
-                    self.b1 * self.v
-                    + self.b3 * self.v**3
-                    + self.b2 * self.v**2
-                    - self.b0
-                )
-            ) + (
-                1
-                / 4
-                * (h_plus)
+                * (h_minus)
                 * (
                     self.b1 * self.v
                     + self.b3 * self.v**3
                     + self.b2 * self.v**2
                     + self.b0
                 )
+            ) + (
+                1
+                / 6
+                * (-h_plus)
+                * (self.b1 * self.v + self.b3 * self.v**3 + self.b2 * self.v**2)
             )
 
     def g_arousal(self, h):
@@ -228,7 +217,7 @@ class Agents:
         self.v = self.v + dt * (
             -self.gamma_v * self.v
             + self.g_valence(h_plus, h_minus)
-            + np.random.normal(0, 0.01)
+            + 0*np.random.normal(0, 0.01)
         )
 
     def update_s(self):
@@ -297,14 +286,14 @@ if 0:
 model = EmotionOpinions(n_agents)
 for i in range(n_iter):
 
-    #model.decay_arousal = np.abs(np.sin(i/10.))
+    # model.decay_arousal = np.abs(np.sin(i/10.))
 
     if (i + 1) % 100 == 0:
         for a in model.agents:
-            a.alpha2 = a.alpha2 + 1
-            if np.random.random() < 0.0:
+            # a.alpha2 = a.alpha2 + 1
+            if np.random.random() < 0.5:
                 # a.alpha2 = 1  # affects opinion directly (biased the whole opinion spectrum up or down0
-                a.b0 += 0  # affects the valence directly
+                a.b0 += 1  # affects the valence directly
                 # a.alpha3 = min(-3, 3 * (a.o - 1))  # affects the nature of the polarization
             if np.random.random() > 0.5:
                 # a.alpha2 = 1  # affects opinion directly (biased the whole opinion spectrum up or down0

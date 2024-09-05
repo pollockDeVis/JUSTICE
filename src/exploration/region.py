@@ -8,7 +8,7 @@ import numpy as np
 import scipy
 
 from src.exploration.DataLoaderTwoLevelGame import XML_init_values
-from src.exploration.LogFiles import print_log
+from src.exploration.LogFiles import print_log, LogFiles
 from src.exploration.Opinions import Opinion
 from src.exploration.household import Household
 from src.exploration.negotiator import Negotiator
@@ -119,12 +119,84 @@ class Region:
 
     def aggregate_households_opinions(self, timestep):
 
-        # 25 = 5 steps per year time 5 years for each mandate (Ypolicy)
-        for hh in self.households:
-            hh.update_emotion_opinion()
+        # hh.emotion_climate_change.o "Are we mitigating enough?": if yes (>0), then we want less (or equal) mitigation hence a negative coefficient
+        # hh.emotion_economy.o "Am I willing to pay for mitigation?": if yes (>0) then we can keep the same level or more mitigation, hence a positive coefficient
+        array_utility = np.array(
+            [
+                -hh.emotion_climate_change.o + hh.emotion_economy.o
+                for hh in self.households
+            ]
+        )
+        array_support = array_utility > 0.05
+        array_opposition = array_utility < -0.05
+        # Dividing by two because each opinion comprised between -1 and 1 so difference is between -2 and 2
+        mean_utility = np.mean(array_utility) / 2
 
-        for rounds in range(25):
-            self.spreading_climate_threshold()
+        share_support = np.count_nonzero(array_support) / self.n_households
+        temp = array_utility[array_support]
+        if len(temp) == 0:
+            strength_support = 0
+        else:
+            strength_support = np.mean(temp)
+
+        share_opposition = np.count_nonzero(array_opposition) / self.n_households
+        temp = array_utility[array_opposition]
+        if len(temp) == 0:
+            strength_opposition = 0
+        else:
+            strength_opposition = np.mean(temp)
+        share_neutral = 1 - (share_support + share_opposition)
+
+        print_log.f_share_opinions[1].writerow(
+            [
+                timestep,
+                self.id,
+                share_opposition,
+                share_neutral,
+                share_support,
+                strength_opposition,
+                mean_utility,
+                strength_support,
+            ]
+        )
+
+        return [
+            share_opposition,
+            share_neutral,
+            share_support,
+            strength_opposition,
+            mean_utility,
+            strength_support,
+        ]
+
+    def update_regional_opinion(self, timestep):
+        # Update on observations (uses FaIR-Perspectives ==> Understanding)
+        self.update_from_information(timestep)
+        self.update_from_interactions(timestep)
+
+    def update_from_interactions(self, timestep):
+        print_log.write_log(
+            LogFiles.MASKLOG_region,
+            "Region.py",
+            "update_from_interactions",
+            "region " + self.code + " (" + str(self.id) + ")",
+        )
+        # 5 steps per year (Ypolicy)
+        if timestep % self.twolevelsgame_model.Y_policy == 0:
+            for hh in self.households:
+                hh.update_emotion_opinion()
+
+        for rounds in range(5):
+            print_log.write_log(
+                LogFiles.MASKLOG_region,
+                "Region.py",
+                "update_from_interactions",
+                f"----- round {rounds} -----",
+            )
+
+            # self.spreading_climate_threshold()  #with interactions between agents
+            for hh in self.households:
+                hh.update_temperature_threshold()  # without interactions between agents (only convergence towards information)
             self.opinion_climate_change.step()
             self.opinion_economy.step()
 
@@ -142,40 +214,6 @@ class Region:
                 + [hh.emotion_economy.o for hh in self.households]
                 + [self.opinion_climate_change.h, self.opinion_economy.h],
             )
-
-        # hh.emotion_climate_change.o "Are we mitigating enough?": if yes (>0), then we want less (or equal) mitigation hence a negative coefficient
-        # hh.emotion_economy.o "Am I willing to pay for mitigation?": if yes (>0) then we can keep the same level or more mitigation, hence a positive coefficient
-        array_utility = np.array(
-            [
-                -hh.emotion_climate_change.o + hh.emotion_economy.o
-                for hh in self.households
-            ]
-        )
-        array_support = array_utility > 0.1
-        array_opposition = array_utility < -0.1
-        # Dividing by two because each opinion comprised between -1 and 1 so difference is between -2 and 2
-        mean_utility = np.mean(array_utility) / 2
-
-        share_support = np.count_nonzero(array_support) / self.n_households
-        share_opposition = np.count_nonzero(array_opposition) / self.n_households
-        share_neutral = 1 - (share_support + share_opposition)
-
-        print_log.f_share_opinions[1].writerow(
-            [
-                timestep,
-                self.id,
-                share_opposition,
-                share_neutral,
-                share_support,
-                mean_utility,
-            ]
-        )
-
-        return [share_opposition, share_neutral, share_support, mean_utility]
-
-    def update_regional_opinion(self, timestep):
-        # Update on observations (uses FaIR-Perspectives ==> Understanding)
-        self.update_from_information(timestep)
 
     def update_from_information(self, timestep):
         for hh in self.households:
@@ -209,7 +247,7 @@ class Region:
 
         # Adding the information agent
         # 1.5C threshold
-        vect_thresholds = np.concatenate((vect_thresholds, [[1.5]]), axis=0)
+        vect_thresholds = np.concatenate((vect_thresholds, [[3]]), axis=0)
         # Filling to match size
         vect_p_consider_information = np.concatenate(
             (vect_p_consider_information, [[0]]), axis=0
@@ -266,7 +304,7 @@ class Region:
                     @ vect_thresholds
                 ),
                 0,
-                4,
+                8,
             )
 
             dispersion = np.max(np.abs(vect_thresholds @ v1.T - v1 @ vect_thresholds.T))

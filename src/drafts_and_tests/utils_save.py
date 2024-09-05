@@ -73,10 +73,12 @@ def visualize_policy(directory, region):
         cmap = plt.get_cmap("rainbow", 57)
         for r in range(57):
             mask = df[0] == r
-            plt.scatter(df[1][mask], years_colums[10][mask], color=cmap(r))
+            plt.plot(df[1][mask], years_colums[10][mask], color=cmap(r))
+        plt.xlabel("Negotiations year")
+        plt.ylabel("Pledged year for ECR 100%")
 
         time.sleep(1)
-        plt.figure()
+
         df = pd.read_csv(save_path + "\emissions.csv", header=None, sep=",")
 
         region_mask = df[0] == region
@@ -88,23 +90,24 @@ def visualize_policy(directory, region):
         alpha_space = np.geomspace(0.1, 1, count_rows)
         alpha_count = 0
         last_i = 0
+
+        # plt.figure()
         for i in range(emissions_colums.shape[0]):
             if region_mask[i]:
-                plt.plot(
+                """plt.plot(
                     years_colums[:80],
                     emissions_colums.iloc[i][:80],
                     alpha=alpha_space[alpha_count],
-                )
+                )"""
                 last_i = i
                 alpha_count += 1
-        plt.title("ACTUAL CONTROL RATE region " + str(region) + "(" + save_path + ")")
-        plt.xlabel("years")
-        plt.ylabel("emission control rate")
+        # plt.title("ACTUAL CONTROL RATE region " + str(region) + "(" + save_path + ")")
+        # plt.xlabel("years")
+        # plt.ylabel("emission control rate")
 
         plt.figure()
-        plt.plot(policy[0, :], policy[1, :], "k:")
         plt.plot(years_colums, emissions_colums.iloc[last_i])
-        plt.legend(["Last policy", "Actual emission cutting rate pathway"])
+        plt.legend(["Actual emission cutting rate pathway"])
         plt.title(
             "LAST POLICY vs FULL RUN region " + str(region) + "(" + save_path + ")"
         )
@@ -127,8 +130,10 @@ def visualize_policy(directory, region):
         plt.legend(loc="upper left")
 
         plt.figure()
+        plt.plot(df["Timestep"] + 2015, df["strength opposition"])
         plt.plot(df["Timestep"] + 2015, df["mean utility"])
-        plt.legend(["Mean opinion"])
+        plt.plot(df["Timestep"] + 2015, df["strength support"])
+        plt.legend(["Strength Opposition","Strength All", "Strength Support"])
 
     plt.show()
 

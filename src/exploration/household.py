@@ -8,6 +8,7 @@ import numpy as np
 
 from src.exploration.DataLoaderTwoLevelGame import XML_init_values
 from src.exploration.Emotions import Emotion_opinion
+from src.exploration.LogFiles import print_log, LogFiles
 
 
 class Household:
@@ -64,17 +65,17 @@ class Household:
             1
             / 100
             * (
-                0.3 * list_dicts[10][region.code]['Once a year or less often']
-                + 0.5 * list_dicts[10][region.code]['Several times a year']
-                + 0.7 * list_dicts[10][region.code]['At least once a month']
-                + 0.9 * list_dicts[10][region.code]['At least once a week']
+                0.3 * list_dicts[10][region.code]["Once a year or less often"]
+                + 0.5 * list_dicts[10][region.code]["Several times a year"]
+                + 0.7 * list_dicts[10][region.code]["At least once a month"]
+                + 0.9 * list_dicts[10][region.code]["At least once a week"]
             )
         )
-        #self.opdyn_threshold_sensitivity = self.p_consider_information * self.model_region.opdyn_influence_close + self.model_region.opdyn_influence_far
+        # self.opdyn_threshold_sensitivity = self.p_consider_information * self.model_region.opdyn_influence_close + self.model_region.opdyn_influence_far
 
         ### Initialising climate intuition ###
         # -> Temperature increase now, and in 2200
-        choices = np.array(
+        means_now = np.array(
             [
                 1.3,
                 0,
@@ -82,28 +83,24 @@ class Household:
                 0.9,
             ]
         )  # Climate change is happening: "Yes, No, Don't know, refused"
-        mean_now = rng.choice(choices, p=list_dicts[9][region.code][:-1] / 100)
-
         means_2200 = [
-            4,
-            3,
-            2,
+            2.5,
             1,
-            4,
-            4,
-        ]
-        variance = [
-            0.2,
-            0.3,
-            0.4,
-            0.2,
-            2,
-            2,
-        ]
-        # harm future generation: "A great deal, A moderate amount, Only a little, Not at all, Don't know, refused"
-        choice = rng.choice([0, 1, 2, 3, 4, 5], p=list_dicts[5][region.code][:-1] / 100)
-        mean_2200 = means_2200[choice]
-        variance = variance[choice]
+            1.5,
+            1.5,
+        ]  # Climate change is happening: "Yes, No, Don't know, refused"
+        variances = [
+            0.5,
+            0.001,
+            1,
+            1,
+        ]  # Climate change is happening: "Yes, No, Don't know, refused"
+        choice_cc_happening = rng.choice(
+            [0, 1, 2, 3], p=list_dicts[9][region.code][:-1] / 100
+        )
+        mean_now = means_now[choice_cc_happening]
+        mean_2200 = means_2200[choice_cc_happening]
+        variance = variances[choice_cc_happening]
 
         self.climate_init_mean_beliefs = np.array(
             [
@@ -150,16 +147,18 @@ class Household:
         ###################################################
         # > temperature Threshold: Between 0C and 8C (compared to baseline)
         choices = [
-            1.5,
+            1,
             2,
-            3,
-            2,
-            2,
-        ]  # Threat at 20y: "Very Serious, Somewhat Serious, Not a threat, Don't know, Refused"
-        choice = rng.choice(choices, p=list_dicts[4][region.code][:-1] / 100)
-        self.threshold_expected_temperature_elevation = choice + (
-            choice == 2
-        ) * rng.beta(a=2, b=5)
+            4,
+            2.5,
+            2.5,
+        ]  # "Very worried, Somewhat worried, Not very worried, Not at all woried, Refused"
+        choice = rng.choice(choices, p=list_dicts[1][region.code][:-1] / 100)
+        # choice_cc_happening == 1 indicate an household not believing that climate change is real.
+        # they have low temperature increase belief (T increase = 0) with high confidence (var = 0.01), but their threshold temperature is normal
+        self.threshold_expected_temperature_elevation = (
+            choice_cc_happening != 1
+        ) * choice + (choice_cc_happening == 1) * 1.5
 
         # Coefficient for climate damage evaluation (see RICE2013R: psi_2)
         self.psi_2 = 2.67 * 10**-3
@@ -172,15 +171,18 @@ class Household:
         ######################
         # Opinion on: "Are we mitigating enough?"
         choices = [
-            -0.5,
+            -0.8,
+            -0.4,
             -0.2,
-            0.2,
-            0.5,
             0,
+            0.2,
         ]  # "Very worried, Somewhat worried, Not very worried, Not at all woried, Refused"
-        choice = rng.choice(choices, p=list_dicts[1][region.code][:-1] / 100)
+        # choice_cc_happening == 1 indicate an household not believing that climate change is real.
+        choice = (choice_cc_happening != 1) * rng.choice(
+            choices, p=list_dicts[1][region.code][:-1] / 100
+        ) + (choice_cc_happening == 1) * 0.8
         valence = choice + rng.normal(0, 0.01, 1)[0]
-        opinion = choice + rng.normal(0, 0.01, 1)[0] #0
+        opinion = choice + rng.normal(0, 0.01, 1)[0]  # 0
         self.emotion_climate_change = Emotion_opinion(valence, opinion)
         # Opinion on: "Am I willing to pay for mitigation?"
         choices = [
@@ -189,9 +191,10 @@ class Household:
             0,
             0,
         ]  # "Taking action will improve economy, will damage economy, will not have any effect, Refused"
-        choice = rng.choice(choices, p=list_dicts[2][region.code][:-1] / 100)
+        # choice_cc_happening == 1 indicate an household not believing that climate change is real.
+        choice =(choice_cc_happening != 1) *  rng.choice(choices, p=list_dicts[2][region.code][:-1] / 100)
         valence = choice + rng.normal(0, 0.1, 1)[0]
-        opinion = choice + rng.normal(0, 0.1, 1)[0] #0
+        opinion = choice + rng.normal(0, 0.1, 1)[0]  # 0
         self.emotion_economy = Emotion_opinion(valence, opinion)
 
     def expected_climate_damages(self):
@@ -226,6 +229,7 @@ class Household:
     def update_climate_distrib_beliefs(self, timestep):
         """
         Updating the climate beliefs distributions for an agent based on available information
+        Gets called once every 5 year
 
         Returns
         -------
@@ -240,39 +244,61 @@ class Household:
                 self.climate_distrib_beliefs * self.filtered_climate_information()
             )
 
-
-            """#Using a global treshold:
-            self.threshold_expected_temperature_elevation = (
-                (1 - self.sensitivity_to_threshold_information)
-                * self.threshold_expected_temperature_elevation
-                + self.sensitivity_to_threshold_information * 1.5
-            )"""
-        # TODO ADP: In case of no information (ELSE case) we can have a memory effect, or biases taking place
-        # But for now, I let it all empty
+            val_for_log = self.mean_distribution(
+                self.filtered_climate_information(),
+                min_val=self.DISTRIB_MIN_VALUE,
+                max_val=self.DISTRIB_MAX_VALUE,
+                step=self.DISTRIB_RESOLUTION,
+            )
+            print_log.write_log(
+                LogFiles.MASKLOG_Information,
+                "information.py",
+                "construct_flsi",
+                f"Mean temperature from information is (current year, and +185): {val_for_log[0]:0.2f}, {val_for_log[1]:0.2f} ",
+            )
 
         norm_coeff = np.sum(self.climate_distrib_beliefs, axis=1)
-        # print(norm_coeff)
+        self.climate_distrib_beliefs = np.array(
+            [
+                self.climate_distrib_beliefs[i, :] / norm_coeff[i]
+                for i in range(self.N_CLIMATE_BELIEFS)
+            ]
+        )
 
-        try:
-            self.climate_distrib_beliefs = np.array(
-                [
-                    self.climate_distrib_beliefs[i, :] / norm_coeff[i]
-                    for i in range(self.N_CLIMATE_BELIEFS)
-                ]
+        # VVV This save file can be extremely heavy if too many regions are taken into account
+        if self.model_region.id in [32, 54, 16, 56, 8]:
+            print_log.f_household_beliefs[1].writerow(
+                [timestep, self.model_region.id, self.id]
+                + self.climate_distrib_beliefs[-1].tolist()
             )
-        except Warning:
-            print(norm_coeff)
 
-        # VVV This save file is extremely heavy, so I'm commenting it out for now
-        """self.model_region.twolevelsgame_model.log_files.f_household_beliefs[1].writerow(
-            [timestep, self.model_region.id, self.id]
-            + self.climate_distrib_beliefs[-1].tolist()
-        )"""
+    def update_temperature_threshold(self):
+        # Gets called 5 time a year
+        p = self.rng.random()
+        if p < self.p_consider_information:
+            self.threshold_expected_temperature_elevation = (
+                (
+                    1
+                    - 1
+                    / 5
+                    * 1
+                    / (
+                        1
+                        + np.exp(
+                            abs(self.threshold_expected_temperature_elevation - 1.5)
+                        )
+                    )
+                )
+                * self.threshold_expected_temperature_elevation
+            ) + 1 / 5 * 1 / (
+                1 + np.exp(abs(self.threshold_expected_temperature_elevation - 1.5))
+            ) * 1.5
 
     def update_emotion_opinion(self):
         """
         Compute the Utility equivalent of the current policy. If U is positive, then the agent is pushing for more stringent emission reductions;
         Else, the agent if pushing for less stringent policy.
+        Gets called once every Y_policy years (see attribute value in XML_init_values)
 
         Returns
         -------
@@ -291,7 +317,7 @@ class Household:
         )
         if (
             expected_temp_elevation_2200
-            >= self.threshold_expected_temperature_elevation
+            >= self.threshold_expected_temperature_elevation + 1
         ):
             # Disatisfied, no we are not mitigating enough
             self.emotion_climate_change.b0 = max(
@@ -300,7 +326,7 @@ class Household:
 
         elif (
             expected_temp_elevation_2200
-            <= 0.5 * self.threshold_expected_temperature_elevation
+            <= self.threshold_expected_temperature_elevation - 0.5
         ):
             # Satisfied, yes we are mitigating enough
             self.emotion_climate_change.b0 = min(
@@ -311,8 +337,10 @@ class Household:
         # -> Experienced climate damages and mitigation costs
         loss_and_damages = self.model_region.distribution_cost_damages[self.quintile]
         mitigation_costs = self.model_region.distribution_cost_mitigation[self.quintile]
-        consumption = self.model_region.disaggregated_post_costs_consumption[self.quintile]
-        if loss_and_damages/consumption > 0.1:
+        consumption = self.model_region.disaggregated_post_costs_consumption[
+            self.quintile
+        ]
+        if loss_and_damages / consumption > 0.01:
             # Damages from climate change exceed 10% of the final consumption in my quintile, I will pay
             self.emotion_economy.b0 = min(self.emotion_economy.b0 + 0.1, 0.5)
 

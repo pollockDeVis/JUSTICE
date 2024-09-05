@@ -9,8 +9,8 @@ import numpy as np
 from scipy.interpolate import interp1d
 import copy
 
+from src.exploration.LogFiles import print_log, LogFiles
 from src.exploration.DataLoaderTwoLevelGame import XML_init_values
-from src.exploration.LogFiles import print_log
 from src.exploration.household import Household
 from src.exploration.region import Region
 import csv
@@ -273,6 +273,7 @@ class TwoLevelsGame:
                     ) * avg_global_net_zero_year
                 if tentative_end_year_pledge < regional_earliest_achievable_end_target:
                     print_log.write_log(
+                        LogFiles.MASKLOG_twolevelsgame,
                         "twolevelsgame.py",
                         "international_negotiations",
                         "For region "

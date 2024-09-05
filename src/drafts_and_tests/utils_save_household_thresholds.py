@@ -25,7 +25,7 @@ def visualize_household_thresholds(directory, region):
         emotion_Economy_hh = df_region.filter(like="Emotion Economy")
         opinion_Economy_hh = df_region.filter(like="Opinion Economy")
         h_Economy_hh = df_region.filter(like="H Economy")
-        h_Climate_hh = df_region.filter(like="H Climate Change")
+        h_Climate_hh = df_region.filter(like="H Climate")
         timesteps_hh = 2015 + df_region[df_region.columns[0]]
 
         beliefs_array = thresholds_hh.values
@@ -100,6 +100,7 @@ def visualize_household_thresholds(directory, region):
 
         ##############################################
         # Plot the surface
+        """
         plt.figure()
         ax = plt.gca()
         surf = plt.plot(
@@ -113,6 +114,7 @@ def visualize_household_thresholds(directory, region):
         ax.set_title("Household H for 'Are we mitigating enough?'")
         ax.set_ylabel("H")
         ax.set_xlabel("Timesteps")
+        """
 
         ##############################################
         # Plot the surface
@@ -132,6 +134,7 @@ def visualize_household_thresholds(directory, region):
 
         ##############################################
         # Plot the surface
+        """
         plt.figure()
         ax = plt.gca()
         surf = plt.plot(
@@ -145,9 +148,11 @@ def visualize_household_thresholds(directory, region):
         ax.set_title("Household H for 'Am I willing to pay?'")
         ax.set_ylabel("H")
         ax.set_xlabel("Timesteps")
+        """
 
         ##############################################
         # Plot the surface
+        """
         plt.figure()
         ax = plt.gca()
         surf = plt.plot(
@@ -161,9 +166,11 @@ def visualize_household_thresholds(directory, region):
         ax.set_title("Household Opinion for 'Are we mitigating enough?'")
         ax.set_ylabel("Opinion")
         ax.set_xlabel("Timesteps")
+        """
 
         ##############################################
         # Plot the surface
+        """
         plt.figure()
         ax = plt.gca()
         surf = ax.plot(
@@ -177,6 +184,7 @@ def visualize_household_thresholds(directory, region):
         ax.set_title("Household Opinion for 'Am I willing to pay?'")
         ax.set_ylabel("Opinion")
         ax.set_xlabel("Timesteps")
+        """
 
     plt.show()
 
