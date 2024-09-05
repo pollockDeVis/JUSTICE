@@ -120,20 +120,94 @@ def visualize_policy(directory, region):
         df = pd.read_csv(save_path + "\share_opinions.csv", header=0, sep=",")
         df = df[df["Region"] == region]
 
-        plt.stackplot(
+        """plt.stackplot(
             df["Timestep"] + 2015,
             df["share opposed"],
             df["share neutral"],
             df["share support"],
             labels=["Opposition", "Neutral", "Support"],
+        )"""
+
+        ig, ax = plt.subplots(figsize=(12, 3))
+        polygon_opposed = ax.fill_between(
+            df["Timestep"] + 2015, 0, df["share opposed"], lw=0, color="none"
         )
+        polygon_neutral = ax.fill_between(
+            df["Timestep"] + 2015,
+            df["share opposed"],
+            df["share opposed"] + df["share neutral"],
+            lw=0,
+            color="none",
+        )
+        polygon_support = ax.fill_between(
+            df["Timestep"] + 2015,
+            df["share opposed"] + df["share neutral"],
+            df["share opposed"] + df["share neutral"] + df["share support"],
+            lw=0,
+            color="none",
+        )
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        verts = np.vstack([p.vertices for p in polygon_opposed.get_paths()])
+        filling = ax.imshow(
+            np.abs(df["strength opposition"].to_numpy().reshape(1, -1)),
+            cmap="Reds",
+            vmax=1,
+            vmin=0,
+            aspect=100,
+            extent=[
+                verts[:, 0].min(),
+                verts[:, 0].max(),
+                verts[:, 1].min(),
+                verts[:, 1].max(),
+            ],
+        )
+        filling.set_clip_path(polygon_opposed.get_paths()[0], transform=ax.transData)
+
+        verts = np.vstack([p.vertices for p in polygon_neutral.get_paths()])
+        filling = ax.imshow(
+            df["mean utility"].to_numpy().reshape(1, -1),
+            cmap="RdYlGn",
+            vmax=1,
+            vmin=-1,
+            aspect="auto",
+            extent=[
+                verts[:, 0].min(),
+                verts[:, 0].max(),
+                verts[:, 1].min(),
+                verts[:, 1].max(),
+            ],
+        )
+        filling.set_clip_path(polygon_neutral.get_paths()[0], transform=ax.transData)
+
+        verts = np.vstack([p.vertices for p in polygon_support.get_paths()])
+        filling = ax.imshow(
+            df["strength support"].to_numpy().reshape(1, -1),
+            cmap="Greens",
+            vmax=1,
+            vmin=0,
+            aspect="auto",
+            extent=[
+                verts[:, 0].min(),
+                verts[:, 0].max(),
+                verts[:, 1].min(),
+                verts[:, 1].max(),
+            ],
+        )
+        filling.set_clip_path(polygon_support.get_paths()[0], transform=ax.transData)
+
+        ax.set_xlim(
+            xlim
+        )  # the limits need to be set again because imshow sets zero margins
+        ax.set_ylim(ylim)
+
         plt.legend(loc="upper left")
 
         plt.figure()
         plt.plot(df["Timestep"] + 2015, df["strength opposition"])
         plt.plot(df["Timestep"] + 2015, df["mean utility"])
         plt.plot(df["Timestep"] + 2015, df["strength support"])
-        plt.legend(["Strength Opposition","Strength All", "Strength Support"])
+        plt.legend(["Strength Opposition", "Strength All", "Strength Support"])
 
     plt.show()
 

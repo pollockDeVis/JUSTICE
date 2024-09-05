@@ -5,8 +5,8 @@ from src.drafts_and_tests.utils_save_household_thresholds import (
     visualize_household_thresholds,
 )
 
-path = "../../data/output/SAVE_2024_09_05_1655/"
-region_list = [16]
+path = "../../data/output/SAVE_2024_09_05_1704/"
+region_list = [8]
 print("--> Visualizing results for regions: ", region_list)
 print("   -> Save directory is: ", path)
 for region in region_list:
