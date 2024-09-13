@@ -304,12 +304,12 @@ class JUSTICE:
             "spatially_aggregated_welfare": np.zeros(
                 (len(self.time_horizon.model_time_horizon),)
             ),
-            # "welfare_regional_temporal": np.zeros(
-            #     (
-            #         len(self.data_loader.REGION_LIST),
-            #         len(self.time_horizon.model_time_horizon),
-            #     )
-            # ),
+            "stepwise_marl_reward": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                )
+            ),
             # "welfare_regional": np.zeros((len(self.data_loader.REGION_LIST),)),
             "temporally_disaggregated_welfare": np.zeros(
                 (len(self.time_horizon.model_time_horizon),)
@@ -674,13 +674,12 @@ class JUSTICE:
         # TODO: Return step by step individual data/observations
         # TODO: For RL, we have to separate obeservation and rewards
 
-        self.data["spatially_aggregated_welfare"][timestep] = (
-            self.welfare_function.calculate_stepwise_welfare(
-                consumption_per_capita=self.data["consumption_per_capita"][
-                    :, timestep, :
-                ],
-                timestep=timestep,
-            )
+        (
+            self.data["spatially_aggregated_welfare"][timestep],
+            self.data["stepwise_marl_reward"][:, timestep],
+        ) = self.welfare_function.calculate_stepwise_welfare(
+            consumption_per_capita=self.data["consumption_per_capita"][:, timestep, :],
+            timestep=timestep,
         )
 
         # Last timestep. Welfare_utilitarian_regional and welfare_utilitarian are calculated only for the last timestep

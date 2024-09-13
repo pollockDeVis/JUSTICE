@@ -115,6 +115,13 @@ class SocialWelfareFunction:
             self.risk_aversion,
         )
 
+        # Reward of individual agents - MARL
+        # Applying declining marginal utility to states aggregated welfare
+        stepwise_marl_reward = self.utility_function(
+            states_aggregated_consumption_per_capita,
+            self.elasticity_of_marginal_utility_of_consumption,
+        )
+
         spatially_aggregated_welfare = self.spatial_aggregator(
             states_aggregated_consumption_per_capita,
             self.population_ratio[:, timestep],
@@ -126,7 +133,7 @@ class SocialWelfareFunction:
 
         # No Temporal aggregation in Stepwise calculation
 
-        return spatially_aggregated_welfare
+        return spatially_aggregated_welfare, stepwise_marl_reward
 
     @classmethod
     def utility_function(self, data, parameter):

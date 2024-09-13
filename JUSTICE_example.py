@@ -314,15 +314,15 @@ def setup_RBF_for_emission_control(
 
 
 if __name__ == "__main__":
-    datasets = JUSTICE_run(
-        scenarios=2,
-        social_welfare_function=WelfareFunction.PRIORITARIAN,
-    )
-    # datasets = JUSTICE_stepwise_run(
+    # datasets = JUSTICE_run(
     #     scenarios=2,
     #     social_welfare_function=WelfareFunction.UTILITARIAN,
-    #     rbf_policy_index=500,
-    #     path_to_rbf_weights="data/optimized_rbf_weights/UTIL_100k/100049.csv",
     # )
+    datasets = JUSTICE_stepwise_run(
+        scenarios=2,
+        social_welfare_function=WelfareFunction.UTILITARIAN,
+        rbf_policy_index=500,
+        path_to_rbf_weights="data/optimized_rbf_weights/100k/UTIL_100k/100049.csv",
+    )
     # Print the keys of the datasets
     print(datasets["welfare"])
