@@ -1055,7 +1055,7 @@ def plot_stacked_area_chart(
 def plot_hypervolume(
     path_to_data="data/convergence_metrics",
     path_to_output="./data/plots/convergence_plots",
-    input_data=[],  # Provide the list of input data files with extension
+    input_data={},  # Dictionary with input data types as keys and lists of seed files as values
     xaxis_title="Number of Function Evaluations",
     yaxis_title="Hypervolume",
     linewidth=3,
@@ -1068,35 +1068,36 @@ def plot_hypervolume(
     fontsize=15,
     saving=False,
 ):
-    # Assert if input_data list is empty
+    # Assert if input_data dictionary is empty
     assert input_data, "No input data provided for visualization."
 
-    # Loop through the input data list and load the data
-    for idx, file in enumerate(input_data):
-        data = pd.read_csv(path_to_data + "/" + file)
-        # Keep only nfe and hypervolume columns
-        data = data[["nfe", "hypervolume"]]
-        data = data.sort_values(by="nfe")
+    # Loop through the input data dictionary
+    for idx, (data_type, seed_files) in enumerate(input_data.items()):
+        fig = go.Figure()
 
-        # Find the max nfe value
-        nfe_max = data["nfe"].max()
-        # Get title text from filename
-        titletext = file.split("_")[0]
-        # Convert the titletext from all uppercase to title case
-        titletext = titletext.title()
+        for seed_idx, file in enumerate(seed_files):
+            data = pd.read_csv(path_to_data + "/" + file)
+            # Keep only nfe and hypervolume columns
+            data = data[["nfe", "hypervolume"]]
+            data = data.sort_values(by="nfe")
 
-        fig = go.Figure(
-            data=[
+            # Add the seed data to the plot
+            fig.add_trace(
                 go.Scatter(
                     x=data["nfe"],
                     y=data["hypervolume"],
                     fill="none",
-                    mode="lines",  #'none',
-                    line=dict(color=colour_palette[idx], width=linewidth),
-                    showlegend=False,
+                    mode="lines",
+                    line=dict(
+                        color=colour_palette[seed_idx % len(colour_palette)],
+                        width=linewidth,
+                    ),
+                    name=f"Seed {seed_idx + 1}",
                 )
-            ]
-        )
+            )
+
+        # Convert the data_type from all uppercase to title case
+        titletext = data_type.title()
 
         # Set the chart title and axis labels
         fig.update_layout(
@@ -1119,10 +1120,83 @@ def plot_hypervolume(
             os.makedirs(path_to_output)
 
         if saving:
-            output_file_name = f"{titletext}_{nfe_max}_hypervolume_plot"
+            output_file_name = f"{titletext}_hypervolume_plot"
             fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     return fig
+
+
+# def plot_hypervolume(
+#     path_to_data="data/convergence_metrics",
+#     path_to_output="./data/plots/convergence_plots",
+#     input_data=[],  # Provide the list of input data files with extension
+#     xaxis_title="Number of Function Evaluations",
+#     yaxis_title="Hypervolume",
+#     linewidth=3,
+#     colour_palette=px.colors.qualitative.Dark24,
+#     template="plotly_white",
+#     yaxis_upper_limit=0.7,
+#     title_x=0.5,
+#     width=1000,
+#     height=800,
+#     fontsize=15,
+#     saving=False,
+# ):
+#     # Assert if input_data list is empty
+#     assert input_data, "No input data provided for visualization."
+
+#     # Loop through the input data list and load the data
+#     for idx, file in enumerate(input_data):
+#         data = pd.read_csv(path_to_data + "/" + file)
+#         # Keep only nfe and hypervolume columns
+#         data = data[["nfe", "hypervolume"]]
+#         data = data.sort_values(by="nfe")
+
+#         # Find the max nfe value
+#         nfe_max = data["nfe"].max()
+#         # Get title text from filename
+#         titletext = file.split("_")[0]
+#         # Convert the titletext from all uppercase to title case
+#         titletext = titletext.title()
+
+#         fig = go.Figure(
+#             data=[
+#                 go.Scatter(
+#                     x=data["nfe"],
+#                     y=data["hypervolume"],
+#                     fill="none",
+#                     mode="lines",  #'none',
+#                     line=dict(color=colour_palette[idx], width=linewidth),
+#                     showlegend=False,
+#                 )
+#             ]
+#         )
+
+#         # Set the chart title and axis labels
+#         fig.update_layout(
+#             title=dict(text=titletext),
+#             xaxis_title=xaxis_title,
+#             yaxis_title=yaxis_title,
+#             width=width,
+#             height=height,
+#             template=template,
+#             yaxis_range=[0, yaxis_upper_limit],
+#             title_x=title_x,
+#             font=dict(size=fontsize),
+#         )
+
+#         # Avoid zero tick in the y-axis - minor cosmetic change
+#         fig.update_yaxes(tickvals=(np.arange(0, yaxis_upper_limit, 0.1))[1:])
+
+#         # Save the figure
+#         if not os.path.exists(path_to_output):
+#             os.makedirs(path_to_output)
+
+#         if saving:
+#             output_file_name = f"{titletext}_{nfe_max}_hypervolume_plot"
+#             fig.write_image(path_to_output + "/" + output_file_name + ".png")
+
+#     return fig
 
 
 if __name__ == "__main__":
