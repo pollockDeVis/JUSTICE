@@ -314,15 +314,19 @@ if __name__ == "__main__":
         "welfare_loss_damage",
         "welfare_loss_abatement",
     ]
+    data_path = "data/optimized_rbf_weights/150k/SUFF"  # NOTE: Change this according to the PF folder name
 
     direction_of_optimization = ["min", "min", "max", "max"]
 
     # get_global_reference_set(
     #     list_of_objectives=list_of_objectives,
-    #     data_path="data/optimized_rbf_weights/150k/",
-    #     file_name=None,  # "UTILITARIAN_100000_1644652.tar.gz",
+    #     data_path=data_path,
+    #     file_name=None,
     #     swf=[
-    #         "PRIORITARIAN",
+    #         # "UTILITARIAN",
+    #         # "PRIORITARIAN",
+    #         # "EGALITARIAN",
+    #         "SUFFICIENTARIAN",
     #     ],
     #     nfe="150000",
     #     epsilons=[
@@ -337,11 +341,26 @@ if __name__ == "__main__":
     # )
 
     filenames = [
-        "PRIORITARIAN_150000_521475.tar.gz",
-        "PRIORITARIAN_150000_1644652.tar.gz",
-        "PRIORITARIAN_150000_3569126.tar.gz",
-        "PRIORITARIAN_150000_6075612.tar.gz",
-        "PRIORITARIAN_150000_9845531.tar.gz",
+        # "PRIORITARIAN_150000_521475.tar.gz",
+        # "PRIORITARIAN_150000_1644652.tar.gz",
+        # "PRIORITARIAN_150000_3569126.tar.gz",
+        # "PRIORITARIAN_150000_6075612.tar.gz",
+        # "PRIORITARIAN_150000_9845531.tar.gz",
+        # "UTILITARIAN_150000_521475.tar.gz",
+        # "UTILITARIAN_150000_1644652.tar.gz",
+        # "UTILITARIAN_150000_3569126.tar.gz",
+        # "UTILITARIAN_150000_6075612.tar.gz",
+        # "UTILITARIAN_150000_9845531.tar.gz",
+        # "EGALITARIAN_150000_521475.tar.gz",
+        # "EGALITARIAN_150000_1644652.tar.gz",
+        # "EGALITARIAN_150000_3569126.tar.gz",
+        # "EGALITARIAN_150000_6075612.tar.gz",
+        # "EGALITARIAN_150000_9845531.tar.gz",
+        "SUFFICIENTARIAN_150000_521475.tar.gz",
+        "SUFFICIENTARIAN_150000_1644652.tar.gz",
+        "SUFFICIENTARIAN_150000_3569126.tar.gz",
+        "SUFFICIENTARIAN_150000_6075612.tar.gz",
+        "SUFFICIENTARIAN_150000_9845531.tar.gz",
     ]
 
     with multiprocessing.Pool() as pool:
@@ -350,11 +369,11 @@ if __name__ == "__main__":
             scores = calculate_hypervolume_from_archives(
                 list_of_objectives=list_of_objectives,
                 direction_of_optimization=direction_of_optimization,
-                input_data_path="data/optimized_rbf_weights/150k/",
+                input_data_path=data_path,
                 file_name=filename,
                 output_data_path="data/convergence_metrics",
                 saving=True,
                 global_reference_set=True,
                 global_reference_set_path="data/convergence_metrics",
-                global_reference_set_file="PRIORITARIAN_reference_set.csv",
+                global_reference_set_file="SUFFICIENTARIAN_reference_set.csv",  # NOTE: Change this according to the PF refset
             )

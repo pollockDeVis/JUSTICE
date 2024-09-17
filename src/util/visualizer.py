@@ -1081,6 +1081,7 @@ def plot_hypervolume(
             data = data[["nfe", "hypervolume"]]
             data = data.sort_values(by="nfe")
 
+            seed_number = file.split("_")[-2].split(".")[0]
             # Add the seed data to the plot
             fig.add_trace(
                 go.Scatter(
@@ -1092,7 +1093,7 @@ def plot_hypervolume(
                         color=colour_palette[seed_idx % len(colour_palette)],
                         width=linewidth,
                     ),
-                    name=f"Seed {seed_idx + 1}",
+                    name=f"Seed {seed_idx + 1} ({seed_number})",
                 )
             )
 
