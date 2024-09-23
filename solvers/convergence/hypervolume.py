@@ -118,8 +118,8 @@ def load_archives_all_seeds(
 
                 archives = ArchiveLogger.load_archives(f"{data_path}/{file_name}")
 
-                number_of_objectives = len(list_of_objectives)
                 print("Loading archives for ", file_name)
+
                 # Get the maximum value in the archives keys
                 max_key = max(archives.keys())
                 print("Max key: ", max_key)
@@ -127,16 +127,15 @@ def load_archives_all_seeds(
                 # Get the archive with maximum key
                 archive = archives[max_key]
 
-                # Only keep the last columns matching the length of list_of_objectives
-                archive = archive.iloc[:, -number_of_objectives:]
-
                 # Print the number of rows for the archive
                 print("Number of rows: ", archive.shape[0])
 
-                solutions.append(archive.values.tolist())
+                solutions.append(archive)
 
                 print("Archives loaded")
-            seed_archive_dict[swf] = list(chain.from_iterable(solutions))
+
+            seed_archive_dict[swf] = pd.concat(solutions, ignore_index=True)
+
     return seed_archive_dict
 
 
@@ -188,17 +187,41 @@ def get_global_reference_set(
 
     for swf in seed_archive_dict:
 
+        # TODO: Temp
+        archive = seed_archive_dict[swf]
+
+        # Add index column to the archive
+        archive = archive.reset_index(drop=True)
+
+        # only select the objective columns
+        objective_data = archive.iloc[:, -len(list_of_objectives) :]
+        objective_data = objective_data.values.tolist()
+
         nondominated = pareto.eps_sort(
-            [seed_archive_dict[swf]],
+            objective_data,
             list_of_objectives,
             epsilons,
             maximize=max_indices,
         )
-        reference_sets[swf] = nondominated
+
+        nondominated_list = [tuple(row) for row in nondominated]
+
+        # Convert the objective data array to a list of tuples
+        objective_data_list = [tuple(row) for row in objective_data]
+
+        # Find indices in the original data that match the nondominated solutions
+
+        nondominated_indices = [
+            index
+            for index, row in enumerate(objective_data_list)
+            if row in nondominated_list
+        ]
+        reference_sets[swf] = archive.iloc[nondominated_indices]
+
         if saving:
             output_file = f"{output_data_path}/{swf}_reference_set.csv"
             # Save the nondominated in csv withouth the index
-            pd.DataFrame(nondominated).to_csv(output_file, index=False)
+            pd.DataFrame(reference_sets[swf]).to_csv(output_file, index=False)
             print(f"Reference set saved to {output_file}")
 
     return reference_sets
@@ -246,8 +269,11 @@ def calculate_hypervolume_from_archives(
         global_reference_set = pd.read_csv(
             f"{global_reference_set_path}/{global_reference_set_file}"
         )
-        # TODO: Check this. Need to scale ?
-        # reference_set = global_reference_set #.iloc[:, -len(list_of_objectives) :].values
+        # TODO: Check this.
+        global_reference_set = global_reference_set.iloc[
+            :, -len(list_of_objectives) :
+        ].values
+
         scaler.fit(global_reference_set)
         reference_set = transform_data(
             global_reference_set, scaler, direction_of_optimization
@@ -314,31 +340,31 @@ if __name__ == "__main__":
         "welfare_loss_damage",
         "welfare_loss_abatement",
     ]
-    data_path = "data/optimized_rbf_weights/150k/SUFF"  # NOTE: Change this according to the PF folder name
+    data_path = "data/optimized_rbf_weights/150k/UTIL"  # NOTE: Change this according to the PF folder name
 
     direction_of_optimization = ["min", "min", "max", "max"]
 
-    # get_global_reference_set(
-    #     list_of_objectives=list_of_objectives,
-    #     data_path=data_path,
-    #     file_name=None,
-    #     swf=[
-    #         # "UTILITARIAN",
-    #         # "PRIORITARIAN",
-    #         # "EGALITARIAN",
-    #         "SUFFICIENTARIAN",
-    #     ],
-    #     nfe="150000",
-    #     epsilons=[
-    #         0.1,
-    #         0.25,
-    #         10,
-    #         10,
-    #     ],
-    #     direction_of_optimization=direction_of_optimization,
-    #     output_data_path="data/convergence_metrics",
-    #     saving=True,
-    # )
+    get_global_reference_set(
+        list_of_objectives=list_of_objectives,
+        data_path=data_path,
+        file_name=None,
+        swf=[
+            "UTILITARIAN",
+            # "PRIORITARIAN",
+            # "EGALITARIAN",
+            # "SUFFICIENTARIAN",
+        ],
+        nfe="150000",
+        epsilons=[
+            0.1,
+            0.25,
+            10,
+            10,
+        ],
+        direction_of_optimization=direction_of_optimization,
+        output_data_path="data/convergence_metrics",
+        saving=True,
+    )
 
     filenames = [
         # "PRIORITARIAN_150000_521475.tar.gz",
@@ -346,21 +372,21 @@ if __name__ == "__main__":
         # "PRIORITARIAN_150000_3569126.tar.gz",
         # "PRIORITARIAN_150000_6075612.tar.gz",
         # "PRIORITARIAN_150000_9845531.tar.gz",
-        # "UTILITARIAN_150000_521475.tar.gz",
-        # "UTILITARIAN_150000_1644652.tar.gz",
-        # "UTILITARIAN_150000_3569126.tar.gz",
-        # "UTILITARIAN_150000_6075612.tar.gz",
-        # "UTILITARIAN_150000_9845531.tar.gz",
+        "UTILITARIAN_150000_521475.tar.gz",
+        "UTILITARIAN_150000_1644652.tar.gz",
+        "UTILITARIAN_150000_3569126.tar.gz",
+        "UTILITARIAN_150000_6075612.tar.gz",
+        "UTILITARIAN_150000_9845531.tar.gz",
         # "EGALITARIAN_150000_521475.tar.gz",
         # "EGALITARIAN_150000_1644652.tar.gz",
         # "EGALITARIAN_150000_3569126.tar.gz",
         # "EGALITARIAN_150000_6075612.tar.gz",
         # "EGALITARIAN_150000_9845531.tar.gz",
-        "SUFFICIENTARIAN_150000_521475.tar.gz",
-        "SUFFICIENTARIAN_150000_1644652.tar.gz",
-        "SUFFICIENTARIAN_150000_3569126.tar.gz",
-        "SUFFICIENTARIAN_150000_6075612.tar.gz",
-        "SUFFICIENTARIAN_150000_9845531.tar.gz",
+        # "SUFFICIENTARIAN_150000_521475.tar.gz",
+        # "SUFFICIENTARIAN_150000_1644652.tar.gz",
+        # "SUFFICIENTARIAN_150000_3569126.tar.gz",
+        # "SUFFICIENTARIAN_150000_6075612.tar.gz",
+        # "SUFFICIENTARIAN_150000_9845531.tar.gz",
     ]
 
     with multiprocessing.Pool() as pool:
@@ -375,5 +401,5 @@ if __name__ == "__main__":
                 saving=True,
                 global_reference_set=True,
                 global_reference_set_path="data/convergence_metrics",
-                global_reference_set_file="SUFFICIENTARIAN_reference_set.csv",  # NOTE: Change this according to the PF refset
+                global_reference_set_file="UTILITARIAN_reference_set.csv",  # NOTE: Change this according to the PF refset
             )
