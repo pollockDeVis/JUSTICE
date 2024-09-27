@@ -1,3 +1,4 @@
+from src.exploration.DataLoaderTwoLevelGame import XML_init_values
 from src.exploration.LogFiles import print_log
 from src.model import JUSTICE
 from src.exploration.information import Information
@@ -21,6 +22,12 @@ class AbmJustice(JUSTICE):
         seed=None,
         **kwargs,
     ):
+
+        # Save simulation parameters
+        print_log.f_parameters.write("scenario: "+str(scenario)+"\n")
+        for s in [a.get("name") +": "+a.text  for a in XML_init_values.root.findall('Class/Attribute')]:
+            print_log.f_parameters.write(f"{s}\n")
+
         # INSTANTIATE JUSTICE MODULE
         print("--> Initialisation of ABM-JUSTICE model")
         self.rng = np.random.default_rng(seed=seed)
@@ -40,9 +47,7 @@ class AbmJustice(JUSTICE):
         print("      OK")
         # INSTANTIATE POLICY MODULE
         print("   -> Instantiation of policy module")
-        self.two_levels_game = TwoLevelsGame(
-            self.rng, self,timestep=timestep
-        )
+        self.two_levels_game = TwoLevelsGame(self.rng, self, timestep=timestep)
         print("      OK")
 
         # INSTANTIATE INFORMATION MODULE
@@ -78,9 +83,25 @@ class AbmJustice(JUSTICE):
             savings_rate=savings_rate,
             endogenous_savings_rate=endogenous_savings_rate,
         )
-
+        print_log.f_output_fair[1].writerow(
+            [timestep] + self.data["global_temperature"][(timestep), :].tolist()
+        )
         self.information_model.step(timestep)
         self.two_levels_game.step(timestep)
+
+    def full_run(self, max_time_steps=85):
+        print("Step-by-step run:")
+        for timestep in range(max_time_steps):
+
+            self.abm_stepwise_run(
+                timestep=timestep, endogenous_savings_rate=True
+            )  # savings_rate = fixed_savings_rate[:, timestep],
+            # datasets = self.stepwise_evaluate(timestep=timestep)
+            if timestep % 5 == 0:
+                print("      >>> ", timestep, "of ", max_time_steps)
+
+        self.close_files()
+        print("DONE! :D")
 
     def close_files(self):
         print_log.close_files()

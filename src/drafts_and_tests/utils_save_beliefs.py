@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 # "../../data/output/SAVE_2024_03_13_2004/"
-path_list = glob.glob("../../data/output/SAVE_2024_09_05_1411")
+path_list = glob.glob("../../data/output/SAVE_2024_09_08_2016")
 # print(path_list)
 for save_path in path_list:
     print(save_path)
@@ -20,7 +20,7 @@ for save_path in path_list:
     ax = fig.add_subplot(111)
     region_mask = df["Region"] == region
     df_region = df[region_mask]
-    for household in range(20):
+    for household in range(100):
 
         household_mask = df_region["Household ID"] == household
         df_region_hh = df_region[household_mask]
@@ -37,18 +37,21 @@ for save_path in path_list:
 
         # Plot the surface
         surf = ax.pcolor(
-            X+2015,
+            X + 2015,
             Y,
             beliefs_array.transpose(),
             cmap=cm.viridis,
             alpha=beliefs_array.transpose(),
         )
 
+    rect = lambda color: plt.Rectangle((0, 0), 1, 1, color=color)
+    legend = ax.legend([rect(cm.viridis(1000)), rect(cm.viridis(0))], ["high confidence", "low confidence"])
+
     # Set labels and title
 
-    ax.set_title("Household Beliefs")
-    ax.set_ylabel("Temperature Increase")
-    ax.set_xlabel("Timesteps")
+    ax.set_title("Superposed Beliefs on Maximum Temperature Increase\n(region "+str(region)+"; 100 households)")
+    ax.set_ylabel("Expected Temperature Increase")
+    ax.set_xlabel("Years")
 
     # Add a color bar
     fig.colorbar(surf, shrink=0.5, aspect=5)

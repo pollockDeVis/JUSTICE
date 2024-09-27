@@ -123,7 +123,7 @@ class Region:
         # hh.emotion_economy.o "Am I willing to pay for mitigation?": if yes (>0) then we can keep the same level or more mitigation, hence a positive coefficient
         array_utility = np.array(
             [
-                -hh.emotion_climate_change.o + hh.emotion_economy.o
+                hh.emotion_climate_change.o + hh.emotion_economy.o
                 for hh in self.households
             ]
         )
@@ -208,10 +208,9 @@ class Region:
                 ]
                 + [hh.emotion_climate_change.b0 for hh in self.households]
                 + [hh.emotion_climate_change.v for hh in self.households]
-                + [hh.emotion_climate_change.o for hh in self.households]
+                + [hh.emotion_climate_change.a for hh in self.households]
                 + [hh.emotion_economy.b0 for hh in self.households]
                 + [hh.emotion_economy.v for hh in self.households]
-                + [hh.emotion_economy.o for hh in self.households]
                 + [self.opinion_climate_change.h, self.opinion_economy.h],
             )
 

@@ -40,51 +40,27 @@ for idx, scenarios in enumerate(list(Scenario.__members__.keys())):
 
 
 # np.seterr(invalid='warn')
-
 scenarios = 7
-max_time_steps = 100
+model = AbmJustice(
+    start_year=2015,  # Model is only tested for start year 2015
+    end_year=2300,  # Model is only tested for end year 2300
+    timestep=1,  # Model is only tested for timestep 1
+    scenario=scenarios,
+    economy_type=Economy.NEOCLASSICAL,
+    damage_function_type=DamageFunction.KALKUHL,
+    abatement_type=Abatement.ENERDATA,
+    social_welfare_function=WelfareFunction.UTILITARIAN,
+    # climate_ensembles=570, # This is to select a specific climate ensemble
+    # Declaring for endogenous fixed savings rate
+    elasticity_of_marginal_utility_of_consumption=1.45,
+    pure_rate_of_social_time_preference=0.015,
+    seed=XML_init_values.seed,
+)
 
-
-for i in range(1):
-    rng = np.random.default_rng()
-    print(i, " out of 20")
-    utility_params_conf = [
-        -1 * rng.random(),
-        -1 * rng.random(),
-        +1 * rng.random(),
-        +1 * rng.random(),
-    ]
-    model = AbmJustice(
-        start_year=2015,  # Model is only tested for start year 2015
-        end_year=2300,  # Model is only tested for end year 2300
-        timestep=1,  # Model is only tested for timestep 1
-        scenario=scenarios,
-        economy_type=Economy.NEOCLASSICAL,
-        damage_function_type=DamageFunction.KALKUHL,
-        abatement_type=Abatement.ENERDATA,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
-        # climate_ensembles=570, # This is to select a specific climate ensemble
-        # Declaring for endogenous fixed savings rate
-        elasticity_of_marginal_utility_of_consumption=1.45,
-        pure_rate_of_social_time_preference=0.015,
-        seed=None,
-    )
-
-    ###############################################################################
-    #####################       Step-by-Step Run        ###########################
-    ###############################################################################
-    print("Step-by-step run:")
-    for timestep in range(max_time_steps):
-
-        model.abm_stepwise_run(
-            timestep=timestep, endogenous_savings_rate=True
-        )  # savings_rate = fixed_savings_rate[:, timestep],
-        datasets = model.stepwise_evaluate(timestep=timestep)
-        if timestep % 5 == 0:
-            print("      >>> ", timestep, "of ", max_time_steps)
-
-    model.close_files()
-    print("DONE! :D")
+###############################################################################
+#####################       Step-by-Step Run        ###########################
+###############################################################################
+model.full_run(max_time_steps=1)
 
 region_list = [32]
 print("--> Visualizing results for regions: ", region_list)

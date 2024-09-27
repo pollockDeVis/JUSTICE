@@ -127,7 +127,7 @@ class Emotion_opinion:
             )
         else:
             self.a = 0
-            self.alpha3 = -3
+
 
     def update_v(self, h_plus, h_minus):
         self.v = np.clip(

@@ -15,6 +15,7 @@
 		<Attribute name="opdyn_influence_close" type="float">0.001</Attribute>
 		<Attribute name="opdyn_threshold_far" type="float">1</Attribute>
 		<Attribute name="opdyn_influence_far" type="float">0.0001</Attribute>
+
     </Class>
     <Class name="Negotiator">
         <Attribute name="policy_start_year" type="float">2015.</Attribute>
@@ -37,7 +38,8 @@
 		<Attribute name="climate_init_var_beliefs_current" type="float">.5</Attribute>
 		<Attribute name="climate_init_var_beliefs_offset1" type="float">0.01</Attribute>
 		<Attribute name="ecr_end_year" type="float">1</Attribute>
-		<Attribute name="sentiment_temperature_increase" type="List[float]">0.66409033,-0.01219696,0.2664733,-0.20323064,0.9081944</Attribute>
-		<Attribute name="sentiment_willingness_to_pay" type="List[float]">0.1509557,0.44381548,-0.8897487,-0.69097911</Attribute>
+		<Attribute name="sentiment_temperature_increase" type="List[float]">0.8,0.4,0.2,0,-0.2</Attribute>
+		<Attribute name="sentiment_willingness_to_pay" type="List[float]">0.5,-0.5,0,0</Attribute>
     </Class>
+    <!-- Add more Class elements as needed -->
 </Simulation>

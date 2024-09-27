@@ -91,27 +91,30 @@ def visualize_policy(directory, region):
         alpha_count = 0
         last_i = 0
 
-        # plt.figure()
+        plt.figure()
+        YEARS = []
         for i in range(emissions_colums.shape[0]):
             if region_mask[i]:
-                """plt.plot(
+                plt.plot(
                     years_colums[:80],
                     emissions_colums.iloc[i][:80],
                     alpha=alpha_space[alpha_count],
-                )"""
+                )
                 last_i = i
                 alpha_count += 1
-        # plt.title("ACTUAL CONTROL RATE region " + str(region) + "(" + save_path + ")")
-        # plt.xlabel("years")
-        # plt.ylabel("emission control rate")
+                YEARS += [2015 + alpha_count * 5]
+        plt.title("Region " + str(region) + " successive pledges and resulting policy")
+        plt.xlabel("years")
+        plt.ylabel("emission control rate")
+
+        time.sleep(1)
 
         plt.figure()
         plt.plot(years_colums, emissions_colums.iloc[last_i])
-        plt.legend(["Actual emission cutting rate pathway"])
-        plt.title(
-            "LAST POLICY vs FULL RUN region " + str(region) + "(" + save_path + ")"
-        )
+        plt.legend(["Final emission cutting rate pathway"])
+        plt.title("Final Policy for Region " + str(region))
         plt.xlabel("years")
+        plt.ylabel("emission control rate")
         ax = plt.gca()
         ax.set_xlim(2015, 2100)
 
@@ -154,7 +157,7 @@ def visualize_policy(directory, region):
             cmap="Reds",
             vmax=1,
             vmin=0,
-            aspect=100,
+            aspect=35,
             extent=[
                 verts[:, 0].min(),
                 verts[:, 0].max(),
@@ -170,7 +173,7 @@ def visualize_policy(directory, region):
             cmap="RdYlGn",
             vmax=1,
             vmin=-1,
-            aspect="auto",
+            aspect=35,
             extent=[
                 verts[:, 0].min(),
                 verts[:, 0].max(),
@@ -186,7 +189,7 @@ def visualize_policy(directory, region):
             cmap="Greens",
             vmax=1,
             vmin=0,
-            aspect="auto",
+            aspect=35,
             extent=[
                 verts[:, 0].min(),
                 verts[:, 0].max(),
@@ -201,13 +204,15 @@ def visualize_policy(directory, region):
         )  # the limits need to be set again because imshow sets zero margins
         ax.set_ylim(ylim)
 
-        plt.legend(loc="upper left")
+        #plt.legend(["Share Opposition","Share Neutral","Share Support"],loc="upper left")
 
         plt.figure()
         plt.plot(df["Timestep"] + 2015, df["strength opposition"])
         plt.plot(df["Timestep"] + 2015, df["mean utility"])
         plt.plot(df["Timestep"] + 2015, df["strength support"])
-        plt.legend(["Strength Opposition", "Strength All", "Strength Support"])
+        plt.legend(["Average Opposition", "Average All", "Average Support"])
+        plt.xlabel("years")
+        plt.ylabel("absolute value of opinion")
 
     plt.show()
 

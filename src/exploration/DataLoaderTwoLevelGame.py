@@ -2,9 +2,11 @@ import xml.etree.ElementTree as ET
 
 
 class DataLoaderTwoLevelGame:
-    def __init__(self):
-        self.tree = ET.parse("data/input/inputs_ABM/init_values.xml")
+    def __init__(self, src):
+        self.tree = ET.parse(src)
         self.root = self.tree.getroot()
+
+        self.seed = self.get_value('Class/[@name="General"]/Attribute/[@name="seed"]')
 
         self.TwoLevelsGame_Y_nego = self.get_value(
             'Class/[@name="TwoLevelsGame"]/Attribute/[@name="Y_nego"]'
@@ -90,8 +92,11 @@ class DataLoaderTwoLevelGame:
         self.Household_ecr_end_year = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="ecr_end_year"]'
         )
-        self.Household_ecr_end_year = self.get_value(
-            'Class/[@name="Household"]/Attribute/[@name="ecr_end_year"]'
+        self.sentiment_temperature_increase = self.get_value(
+            'Class/[@name="Household"]/Attribute/[@name="sentiment_temperature_increase"]'
+        )
+        self.sentiment_willingness_to_pay = self.get_value(
+            'Class/[@name="Household"]/Attribute/[@name="sentiment_willingness_to_pay"]'
         )
 
     def get_value(self, expression):
@@ -103,6 +108,8 @@ class DataLoaderTwoLevelGame:
                 value = float(findings.text)
             case "int":
                 value = int(findings.text)
+            case "List[float]":
+                value = [float(e) for e in findings.text.split(",")]
             case _:
                 raise Exception(
                     type_
@@ -111,4 +118,4 @@ class DataLoaderTwoLevelGame:
         return value
 
 
-XML_init_values = DataLoaderTwoLevelGame()
+XML_init_values = DataLoaderTwoLevelGame("data/input/inputs_ABM/init_values_default.xml")

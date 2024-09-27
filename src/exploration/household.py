@@ -84,13 +84,13 @@ class Household:
             ]
         )  # Climate change is happening: "Yes, No, Don't know, refused"
         means_2200 = [
-            2.5,
+            2,
+            0,
             1,
-            1.5,
-            1.5,
+            1,
         ]  # Climate change is happening: "Yes, No, Don't know, refused"
         variances = [
-            0.5,
+            0.1,
             0.001,
             1,
             1,
@@ -169,30 +169,24 @@ class Household:
         ######################
         ###### EMOTIONS ######
         ######################
-        # Opinion on: "Are we mitigating enough?"
-        choices = [
-            -0.8,
-            -0.4,
-            -0.2,
-            0,
-            0.2,
-        ]  # "Very worried, Somewhat worried, Not very worried, Not at all woried, Refused"
+        # Opinion on: "Is your expected temperature increase worrying to you?"
+        choices = XML_init_values.sentiment_temperature_increase
+        # "Very worried, Somewhat worried, Not very worried, Not at all woried, Refused"
         # choice_cc_happening == 1 indicate an household not believing that climate change is real.
+        # so they are not worried
         choice = (choice_cc_happening != 1) * rng.choice(
             choices, p=list_dicts[1][region.code][:-1] / 100
-        ) + (choice_cc_happening == 1) * 0.8
+        ) - (choice_cc_happening == 1) * 0.8
         valence = choice + rng.normal(0, 0.01, 1)[0]
         opinion = choice + rng.normal(0, 0.01, 1)[0]  # 0
         self.emotion_climate_change = Emotion_opinion(valence, opinion)
         # Opinion on: "Am I willing to pay for mitigation?"
-        choices = [
-            0.5,
-            -0.5,
-            0,
-            0,
-        ]  # "Taking action will improve economy, will damage economy, will not have any effect, Refused"
+        choices = XML_init_values.sentiment_willingness_to_pay
+        # "Taking action will improve economy, will damage economy, will not have any effect, Refused"
         # choice_cc_happening == 1 indicate an household not believing that climate change is real.
-        choice =(choice_cc_happening != 1) *  rng.choice(choices, p=list_dicts[2][region.code][:-1] / 100)
+        choice = (choice_cc_happening != 1) * rng.choice(
+            choices, p=list_dicts[2][region.code][:-1] / 100
+        )
         valence = choice + rng.normal(0, 0.1, 1)[0]
         opinion = choice + rng.normal(0, 0.1, 1)[0]  # 0
         self.emotion_economy = Emotion_opinion(valence, opinion)
@@ -307,10 +301,12 @@ class Household:
 
         """
 
+        #return
+
         #######################################
         ### EXTERNAL INFLUENCES ON EMOTIONS ###
         #######################################
-        # >>> INFLUENCES ON SATISFACTION RELATIVE TO CLIMATE CHANGE, answering the question "Are we mitigating enough"
+        # >>> INFLUENCES ON SATISFACTION RELATIVE TO CLIMATE CHANGE, answering the question "Is your expected temperature increase worrying to you?"
         # -> Expected Temperature Elevation
         expected_temp_elevation_2200 = Household.mean_distribution(
             self.climate_distrib_beliefs[-1]
@@ -319,18 +315,18 @@ class Household:
             expected_temp_elevation_2200
             >= self.threshold_expected_temperature_elevation + 1
         ):
-            # Disatisfied, no we are not mitigating enough
-            self.emotion_climate_change.b0 = max(
-                self.emotion_climate_change.b0 - 0.1, -0.5
+            # Worried!, no we are not mitigating enough
+            self.emotion_climate_change.b0 = min(
+                self.emotion_climate_change.b0 + 0.1, 0.5
             )
 
         elif (
             expected_temp_elevation_2200
-            <= self.threshold_expected_temperature_elevation - 0.5
+            <= self.threshold_expected_temperature_elevation
         ):
-            # Satisfied, yes we are mitigating enough
-            self.emotion_climate_change.b0 = min(
-                self.emotion_climate_change.b0 + 0.1, 0.5
+            # Not worried,
+            self.emotion_climate_change.b0 = max(
+                self.emotion_climate_change.b0 - 0.1, -0.5
             )
 
         # >>> INFLUENCES ON SATISFACTION RELATIVE TO THE ECONOMY, Do I wish to pay for mitigation?
@@ -340,11 +336,17 @@ class Household:
         consumption = self.model_region.disaggregated_post_costs_consumption[
             self.quintile
         ]
-        if loss_and_damages / consumption > 0.01:
-            # Damages from climate change exceed 10% of the final consumption in my quintile, I will pay
+        print_log.write_log(
+            LogFiles.MASKLOG_Household,
+            "household.py",
+            "update_emotion_opinion",
+            f"ratio loss_and_damages / consumption = {loss_and_damages / consumption:.4f}",
+        )
+        if loss_and_damages / consumption > 0.05:
+            # Damages from climate change exceed 5% of the final consumption in my quintile, I will pay
             self.emotion_economy.b0 = min(self.emotion_economy.b0 + 0.1, 0.5)
 
-        else:
+        elif loss_and_damages / consumption < 0.01:
             # Loss and damages do not exceed 10% of my quintile consumption, I will NOT pay
             self.emotion_economy.b0 = max(self.emotion_economy.b0 - 0.1, -0.5)
 

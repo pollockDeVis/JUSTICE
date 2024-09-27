@@ -19,8 +19,9 @@ class Opinion:
         self.I_minus = 0
         self.I_plus = 0
         # Decay of field
-        self.gamma_plus = 0.7
-        self.gamma_minus = 0.7
+        # TODO: Original value was 0.7 (0.1 is just a test)
+        self.gamma_plus = 0.7 #0.7
+        self.gamma_minus = 0.7 #0.7
 
         self.agents = agents
 
@@ -36,6 +37,7 @@ class Opinion:
 
     def update_h(self):
         self.h = self.h_minus + self.h_plus
+
 
     def compute_delta_h(self):
         return self.h_plus - self.h_minus

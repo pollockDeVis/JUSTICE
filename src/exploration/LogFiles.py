@@ -27,6 +27,7 @@ class LogFiles:
             0x00000000
             + LogFiles.MASKLOG_WARNING
             + LogFiles.MASKLOG_ERROR
+            + LogFiles.MASKLOG_Household
         )
         # -> Create folder for current simulation
         self.path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
@@ -115,12 +116,11 @@ class LogFiles:
                 for i in range(XML_init_values.Region_n_households)
             ]
             + [
-                "Opinion Climate Change"
+                "Arousal Climate Change"
                 for i in range(XML_init_values.Region_n_households)
             ]
             + ["B0 Economy" for i in range(XML_init_values.Region_n_households)]
             + ["Emotion Economy" for i in range(XML_init_values.Region_n_households)]
-            + ["Opinion Economy" for i in range(XML_init_values.Region_n_households)]
             + ["H Climate", "H Economy"]
         )
 
@@ -198,6 +198,19 @@ class LogFiles:
             ]
         )
 
+        #Output of FaIR
+        f8 = open(self.path + "outputOfFaIR.csv", "w", newline="")
+        self.f_output_fair = (
+            f8,
+            csv.writer(f8, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        self.f_output_fair[1].writerow(
+            [
+                "Timestep"
+            ]
+            + [ "temp increase" for i in range(1001)]
+        )
+
     def close_files(self):
         self.f_policy[0].close()
         self.f_region[0].close()
@@ -208,12 +221,21 @@ class LogFiles:
         self.f_household_beliefs[0].close()
         self.f_parameters.close()
         self.f_share_opinions[0].close()
+        self.f_output_fair[0].close()
         self.log.close()
         return
 
     def write_log(self, MASK, file_name, function_name, text):
         if MASK & self.MASKLOG == MASK:
-            str_base = "["+datetime.now().strftime("%H%M%S.%f")+"] "+file_name+" :: "+function_name+" :: "
+            str_base = (
+                "["
+                + datetime.now().strftime("%H%M%S.%f")
+                + "] "
+                + file_name
+                + " :: "
+                + function_name
+                + " :: "
+            )
             if MASK == LogFiles.MASKLOG_ERROR:
                 str_base += "[ERROR] "
             elif MASK == LogFiles.MASKLOG_WARNING:
