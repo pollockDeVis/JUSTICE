@@ -131,9 +131,29 @@ class Abatement(Enum):
     ENERDATA = 0
     DICE = 1
 
+
+class EconomySubModules(Enum):
+    """
+    Submodules for the economy submodel
+    """
+
+    MATTER = 0
+    ENERGY = 1
+
+
+class IncomeLevel(Enum):
+    """
+    Income Levels definitions according to World Bank classification
+    """
+
+    LOW_INCOME = (0, "Low Income")
+    LOWER_MIDDLE_INCOME = (1, "Lower Middle Income")
+    UPPER_MIDDLE_INCOME = (2, "Upper Middle Income")
+    HIGH_INCOME = (3, "High Income")
+
     @staticmethod
     def from_index(index):
-        for enum in Abatement:
+        for enum in IncomeLevel:
             if enum.value == index:
                 return enum
         return None

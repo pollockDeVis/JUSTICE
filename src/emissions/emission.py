@@ -49,6 +49,7 @@ class OutputToEmissions:
         if self.timestep != self.data_timestep:
             # Interpolate Carbon Intensity Dictionary
             self._interpolate_carbon_intensity()
+            self._interpolate_gdp()
 
         # Initializing the emissions array
         self.emissions = np.zeros(
@@ -94,6 +95,24 @@ class OutputToEmissions:
         )
 
         return self.emissions[:, timestep, :]
+
+    def feedback_loop_for_adjusted_carbon_intensity(
+        self, scenario, timestep, emissions_avoided
+    ):
+        scenario = get_economic_scenario(scenario)
+        
+        delta_carbon_intensity = emissions_avoided / (
+            self.gdp_array[:, timestep, scenario].reshape(-1, 1)
+        )
+        
+        # Assert if delta_carbon_intensity is bigger than the carbon intensity
+        assert np.all(
+            delta_carbon_intensity <= self.carbon_intensity[:, timestep, :, scenario]
+        ), "Delta carbon intensity is bigger than the carbon intensity"
+
+        self.carbon_intensity[:, timestep, :, scenario] = (
+            self.carbon_intensity[:, timestep, :, scenario] - delta_carbon_intensity
+        )
 
     def emission_downscaler(self, aggregated_emissions):
         """
@@ -149,6 +168,24 @@ class OutputToEmissions:
                 interp_data[i, :, j] = f(self.model_time_horizon)
 
         self.carbon_intensity_array = interp_data
+
+    def _interpolate_gdp(self):
+        interp_data = np.zeros(
+            (
+                self.gdp_array.shape[0],
+                len(self.model_time_horizon),
+                self.gdp_array.shape[2],
+            )
+        )
+
+        for i in range(self.gdp_array.shape[0]):
+            for j in range(self.gdp_array.shape[2]):
+                f = interp1d(
+                    self.data_time_horizon, self.gdp_array[i, :, j], kind="linear"
+                )
+                interp_data[i, :, j] = f(self.model_time_horizon)
+
+        self.gdp_array = interp_data
 
     def get_emissions(self):
         """

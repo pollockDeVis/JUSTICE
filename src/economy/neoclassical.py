@@ -320,6 +320,12 @@ class NeoclassicalEconomyModel:
         # Setting net output to gross output before any damage or abatement
         self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
 
+    def _apply_recycling_cost_to_output(self, timestep, recycling_cost):
+        """
+        This method applies recycling costs to the output.
+        """
+        self.net_output[:, timestep, :] = self.net_output[:,timestep] - recycling_cost
+
     def _apply_damage_to_output(self, timestep, damage_fraction):
         """
         This method applies damage to the output.
@@ -342,7 +348,7 @@ class NeoclassicalEconomyModel:
         self.net_output[:, timestep, :] -= self.abatement[:, timestep, :]
 
     def feedback_loop_for_economic_output(
-        self, timestep, savings_rate, damage_fraction, abatement
+        self, timestep, savings_rate, damage_fraction, abatement, recycling_cost=None
     ):
         """
         This method calculates the capital and investment.
@@ -354,7 +360,11 @@ class NeoclassicalEconomyModel:
 
         # Apply abatement to the output
         self._apply_abatement_to_output(timestep, abatement)
-
+        
+        #Apply recycling cost to the output if provided
+        if recycling_cost is not None:
+            self._apply_recycling_cost_to_output(timestep, recycling_cost)
+            
         # Calculate the investment
         self._calculate_investment(timestep, savings_rate)
 

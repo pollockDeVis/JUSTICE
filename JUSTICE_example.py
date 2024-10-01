@@ -325,4 +325,4 @@ if __name__ == "__main__":
         path_to_rbf_weights="data/optimized_rbf_weights/100k/UTIL_100k/100049.csv",
     )
     # Print the keys of the datasets
-    print(datasets["welfare"])
+    print(datasets.keys())

@@ -7,7 +7,13 @@ import pandas as pd
 from typing import Any
 
 from src.util.data_loader import DataLoader
-from src.util.enumerations import Economy, DamageFunction, Abatement, WelfareFunction
+from src.util.enumerations import (
+    Economy,
+    DamageFunction,
+    Abatement,
+    WelfareFunction,
+    EconomySubModules,
+)
 from src.util.model_time import TimeHorizon
 from src.economy.neoclassical import NeoclassicalEconomyModel
 from src.emissions.emission import OutputToEmissions
@@ -17,6 +23,7 @@ from src.climate.temperature_downscaler import TemperatureDownscaler
 from src.abatement.abatement_enerdata import AbatementEnerdata
 from src.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
+from src.matter.matter import MatterUse
 
 
 class JUSTICE:
@@ -54,6 +61,9 @@ class JUSTICE:
         self.abatement_type = abatement_type
         self.scenario = scenario
 
+        # Set default economy submodule
+        self.economy_submodule = None
+
         # Check for Kwargs. This is implemented for EMA Workbench Support
         if "social_welfare_function_type" in kwargs:
             self.welfare_function_type = WelfareFunction.from_index(
@@ -61,6 +71,10 @@ class JUSTICE:
             )
         else:
             self.welfare_function_type = social_welfare_function
+
+        # Check kwargs for "matter"
+        if "matter" in kwargs:
+            self.economy_submodule = kwargs["matter"]
 
         # Load the datasets by instantiating the DataLoader class
         self.data_loader = DataLoader()
@@ -99,7 +113,7 @@ class JUSTICE:
         #
         ############################################################################################################################################################
 
-        # Set the savings rate and emissions control rate levers
+        # Set the savings rate and emissions control rate levers #TODO add recycling_rate
         # TODO: check if we need this
         self.fixed_savings_rate = np.zeros(
             (
@@ -180,6 +194,17 @@ class JUSTICE:
         else:
             # Assert and raise an error if the economy model is not implemented
             assert False, "The economy model is not provided!"
+
+        if self.economy_submodule == EconomySubModules.MATTER:
+            print("Matter Model Activated")  # For testing, remove later
+            # TODO: Angela - You can instantiate the matter model here after economy.
+            # Then you can run the matter model in the run() or stepwise_run() method
+            self.matter = MatterUse(
+                input_dataset=self.data_loader,
+                time_horizon=self.time_horizon,
+                climate_ensembles=self.no_of_ensembles,
+                scenario=self.scenario,
+            )
 
         self.emissions = OutputToEmissions(
             input_dataset=self.data_loader,
@@ -263,6 +288,13 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
+            "emissions_avoided": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
             "regional_temperature": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
@@ -274,6 +306,69 @@ class JUSTICE:
                 (len(self.time_horizon.model_time_horizon), self.no_of_ensembles)
             ),
             "damage_fraction": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "depletion_ratio": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            # "recycled_material": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            # "material_consumption": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            # "discarded_material": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            # "extracted_matter": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            "waste": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            # "material_reserves": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            # "material_resources": np.zeros(
+            #     (
+            #         len(self.data_loader.REGION_LIST),
+            #         len(self.time_horizon.model_time_horizon),
+            #         self.no_of_ensembles,
+            #     )
+            # ),
+            "recycling_cost": np.zeros(
                 (
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
@@ -340,6 +435,7 @@ class JUSTICE:
         timestep,
         savings_rate=None,
         endogenous_savings_rate=False,
+        **kwargs,
     ):
         """
         This method is used for EMODPS & Reinforcement Learning (RL) applications.
@@ -374,6 +470,42 @@ class JUSTICE:
             timestep=timestep,
             savings_rate=self.savings_rate[:, timestep],
         )
+
+        # Initialize recycling cost as None to ensure that the variable is always defined before it is used
+        recycling_cost = None
+
+        # Add the matter feedback loop here
+        if self.economy_submodule == EconomySubModules.MATTER:
+            # Get the recycling rate policy lever from kwargs
+            recycling_rate = kwargs["recycling_rate"]
+
+            # Run the matter model
+            (depletion_ratio, emissions_avoided, material_reserves,
+            recycled_material, material_consumption, discarded_material,
+            extracted_matter, waste, material_resources, total_costs) = self.matter.stepwise_run(
+                timestep=timestep,
+                output=gross_output,
+                recycling_rate=recycling_rate[
+                    :, timestep
+                ],  # NOTE: @Angela - assuming the recycling rate is of shape (regions, timesteps)
+            )
+            self.data["emissions_avoided"][:, timestep, :] = emissions_avoided
+            self.data["depletion_ratio"][:, timestep, :] = depletion_ratio
+            # self.data["recycled_material"][:, timestep, :] = recycled_material
+            # self.data["material_consumption"][:, timestep, :] = material_consumption
+            # self.data["discarded_material"][:, timestep, :] = discarded_material
+            # self.data["extracted_matter"][:, timestep, :] = extracted_matter
+            self.data["waste"][:, timestep, :] = waste
+            # self.data["material_reserves"][:, timestep, :] = material_reserves
+            # self.data['material_resources'][:,timestep,:]= material_resources
+            self.data['recycling_cost'][:, timestep, :] = total_costs
+
+            # Feedback loop for adjusted carbon intensity #NOTE: Angela - In this way, the model will stay independent of the matter model
+            self.emissions.feedback_loop_for_adjusted_carbon_intensity(
+                self.scenario, timestep, emissions_avoided
+            )
+            #NOTE @Palok can you review this 
+            recycling_cost=total_costs
 
         self.data["emissions"][:, timestep, :] = self.emissions.run(
             timestep=timestep,
@@ -432,6 +564,7 @@ class JUSTICE:
                 savings_rate=self.savings_rate[:, timestep],
                 damage_fraction=damage_fraction,
                 abatement=abatement_cost,
+                recycling_cost=recycling_cost  # Pass recycling cost here
             )
 
             # Store the net economic output for the timestep
@@ -466,6 +599,7 @@ class JUSTICE:
                 savings_rate=self.savings_rate[:, timestep],
                 damage_fraction=damage_fraction,
                 abatement=abatement_cost,
+                recycling_cost=recycling_cost  # Pass recycling cost here
             )
 
         # Save the data

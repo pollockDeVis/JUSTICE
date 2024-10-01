@@ -31,6 +31,9 @@ class DataLoader:
         # Create the data file path
         data_file_path = os.path.join(root_directory, "data/input")
 
+        # Create data file path for recycling data 
+        recycling_file_path = os.path.join(root_directory, "data/input/recycling")
+
         ###############################################################################
         # Load the Economic data in hdf5 format
         ###############################################################################
@@ -93,3 +96,47 @@ class DataLoader:
             os.path.join(data_file_path, "abatement_coefficient_b.hdf5"), "r"
         ) as f:
             self.ABATEMENT_COEFFICIENT_B = f["abatement_coefficient_b"][:]
+
+        ###########################################################################
+        # Load the Material data in hdf5 format
+        ###########################################################################
+
+        # Load Material Intensity
+        with h5py.File(
+            os.path.join(data_file_path, "material_intensity_array.hdf5"), "r"
+        ) as f:
+            self.MATERIAL_INTENSITY_ARRAY = f["material_intensity_array"][:]
+
+        # In use stock initial values
+        with h5py.File(os.path.join(data_file_path, "in_use_stock_init.hdf5"), "r") as f:
+            self.IN_USE_STOCK_INIT_ARRAY = f["in_use_stock_init"][:]
+
+        # In use stock initial values
+        with h5py.File(
+            os.path.join(data_file_path, "material_reserves_init.hdf5"), "r"
+        ) as f:
+            self.MATERIAL_RESERVES_INIT_ARRAY = f["material_reserves_init"][:]
+
+        # In use stock initial values
+        with h5py.File(
+            os.path.join(data_file_path, "material_resources_init.hdf5"), "r"
+        ) as f:
+            self.MATERIAL_RESOURCES_INIT_ARRAY = f["material_resources_init"][:]
+        
+        # In use stock initial values
+        with h5py.File(
+            os.path.join(data_file_path, "income_level_array.hdf5"), "r"
+        ) as f:
+            self.INCOME_LEVEL_ARRAY = f["income_level_array"][:]
+
+        # In use stock initial values
+        with h5py.File(
+            os.path.join(recycling_file_path, "recycling_rate_linear_proyection.hdf5"), "r"
+        ) as f:
+            self.RECYCLING_RATE_LINEAR_PROYECTION = f["recycling_rate_linear_proyection"][:]
+
+        # In use stock initial values
+        with h5py.File(
+            os.path.join(recycling_file_path, "recycling_rate_2050_target.hdf5"), "r"
+        ) as f:
+            self.RECYCLING_RATE_2050_TARGET = f["recycling_rate_2050_target"][:]
