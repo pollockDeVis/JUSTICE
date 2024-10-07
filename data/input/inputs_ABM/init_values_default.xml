@@ -15,6 +15,11 @@
 		<Attribute name="opdyn_influence_close" type="float">0.001</Attribute>
 		<Attribute name="opdyn_threshold_far" type="float">1</Attribute>
 		<Attribute name="opdyn_influence_far" type="float">0.0001</Attribute>
+		<Attribute name="alpha1" type="float">1.</Attribute>
+		<Attribute name="alpha2" type="float">1.</Attribute>
+		<Attribute name="beta1" type="float">1.</Attribute>
+		<Attribute name="beta2" type="float">1.</Attribute>
+		<Attribute name="gamma" type="float">1.</Attribute>
 
     </Class>
     <Class name="Negotiator">

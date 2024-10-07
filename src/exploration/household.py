@@ -12,23 +12,23 @@ from src.exploration.LogFiles import print_log, LogFiles
 
 
 class Household:
-    DISTRIB_RESOLUTION = XML_init_values.Household_DISTRIB_RESOLUTION
+    DISTRIB_RESOLUTION = XML_init_values.dict["Household_DISTRIB_RESOLUTION"]
     # Resolution of distribution in CELSIUS
-    DISTRIB_MIN_VALUE = XML_init_values.Household_DISTRIB_MIN_VALUE
+    DISTRIB_MIN_VALUE = XML_init_values.dict["Household_DISTRIB_MIN_VALUE"]
     # Minimum temperature deviation relative to preindustrial levels in CELSIUS
-    DISTRIB_MAX_VALUE = XML_init_values.Household_DISTRIB_MAX_VALUE
+    DISTRIB_MAX_VALUE = XML_init_values.dict["Household_DISTRIB_MAX_VALUE"]
     # Maximum temperature deviation relative to preindustrial levels in CELSIUS
     DISTRIB_X_AXIS = np.arange(DISTRIB_MIN_VALUE, DISTRIB_MAX_VALUE, DISTRIB_RESOLUTION)
     # Support for the distribution
-    BELIEF_YEAR_OFFSET = np.array([-1, XML_init_values.Household_BELIEF_YEAR_OFFSET])
+    BELIEF_YEAR_OFFSET = np.array([-1, XML_init_values.dict["Household_BELIEF_YEAR_OFFSET"]])
     # The years offset (compared to 2015) for which each agent has to have a specific belief of temperature elevation
     # The first belief is always about the current temperature elevation (it is moving)
     N_CLIMATE_BELIEFS = len(BELIEF_YEAR_OFFSET)
     # Number of beliefs
-    DEFAULT_INFORMATION_STD = XML_init_values.Household_DEFAULT_INFORMATION_STD
-    P_INFORMATION = XML_init_values.Household_P_INFORMATION
+    DEFAULT_INFORMATION_STD = XML_init_values.dict["Household_DEFAULT_INFORMATION_STD"]
+    P_INFORMATION = XML_init_values.dict["Household_P_INFORMATION"]
     # Probability to assimilate information at a given timestep
-    GAMMA = XML_init_values.Household_GAMMA
+    GAMMA = XML_init_values.dict["Household_GAMMA"]
     # Imperfect memory parameter
 
     # global_temperature_information = []; get from the information module
@@ -36,7 +36,7 @@ class Household:
     # global_distrib_flsi = [[] for i in range(N_CLIMATE_BELIEFS)]; get from the information module
     # regional_distrib_flsi = [[[]] for r in range(56)] get from the information module
 
-    def __init__(self, rng, region, quintile, id, list_dicts):
+    def __init__(self, rng, region, quintile, id, quintile_number, list_dicts):
         """
         region::class Region::a reference to the parent of the household
         quintile::int::income quintile of the household
@@ -86,14 +86,14 @@ class Household:
         means_2200 = [
             2,
             0,
-            1,
-            1,
+            np.random.random()*8,
+            np.random.random()*8,
         ]  # Climate change is happening: "Yes, No, Don't know, refused"
         variances = [
             0.1,
             0.001,
-            1,
-            1,
+            .5,
+            .5,
         ]  # Climate change is happening: "Yes, No, Don't know, refused"
         choice_cc_happening = rng.choice(
             [0, 1, 2, 3], p=list_dicts[9][region.code][:-1] / 100
@@ -111,7 +111,7 @@ class Household:
         # -> Confidence in the expectation
         self.climate_init_var_beliefs = np.array(
             [
-                XML_init_values.Household_climate_init_var_beliefs_current,
+                XML_init_values.dict["Household_climate_init_var_beliefs_current"],
                 variance,
             ]
         )
@@ -165,12 +165,13 @@ class Household:
 
         # Wages and consumption
         self.quintile = quintile
+        self.quintile_number = quintile_number
 
         ######################
         ###### EMOTIONS ######
         ######################
         # Opinion on: "Is your expected temperature increase worrying to you?"
-        choices = XML_init_values.sentiment_temperature_increase
+        choices = XML_init_values.dict["sentiment_temperature_increase"]
         # "Very worried, Somewhat worried, Not very worried, Not at all woried, Refused"
         # choice_cc_happening == 1 indicate an household not believing that climate change is real.
         # so they are not worried
@@ -181,7 +182,7 @@ class Household:
         opinion = choice + rng.normal(0, 0.01, 1)[0]  # 0
         self.emotion_climate_change = Emotion_opinion(valence, opinion)
         # Opinion on: "Am I willing to pay for mitigation?"
-        choices = XML_init_values.sentiment_willingness_to_pay
+        choices = XML_init_values.dict["sentiment_willingness_to_pay"]
         # "Taking action will improve economy, will damage economy, will not have any effect, Refused"
         # choice_cc_happening == 1 indicate an household not believing that climate change is real.
         choice = (choice_cc_happening != 1) * rng.choice(
@@ -191,18 +192,37 @@ class Household:
         opinion = choice + rng.normal(0, 0.1, 1)[0]  # 0
         self.emotion_economy = Emotion_opinion(valence, opinion)
 
-    def expected_climate_damages(self):
-        temp_profile = Household.belief_to_projection(self.BELIEF_YEAR_OFFSET)
-        return np.sum(self.psi_2 * temp_profile**2)
+        ####################
+        ###
+        ####################
+        self.expected_dmg_opinion = 0
+        self.perceived_income_opinion = 0
+        self.literacy_opinion = 0
 
-    def experienced_weather_events(self):
-        return 0
+    def update_expected_dmg_opinion(self):
+        #Using DICE 2013R damage function and comparing to 10% GPD damages as 100% wanting more for mitigation policy
+        self.expected_dmg_opinion = .00267 * Household.mean_distribution(self.climate_distrib_beliefs[-1]) ** 2
 
-    def expected_abatement_costs(self):
-        return 0
+    def update_perceived_inequalities_dmg(self):
+        loss_and_damages = self.model_region.distribution_cost_damages[self.quintile]
+        # mitigation_costs = self.model_region.distribution_cost_mitigation[self.quintile]
+        consumption_predmg = self.model_region.disaggregated_predmg_consumption[
+            self.quintile
+        ]
+        x = loss_and_damages / consumption_predmg * 10
+        out = (1 - 8 / 9 * (x >= 0.1)) * (x * 10 - 1)
+        self.expected_dmg_opinion = min(1, out)
 
-    def experienced_economic_context(self):
-        return 0
+    def update_literacy_opinion(self):
+        self.literacy_opinion = (
+            self.model_region.regional_literacy + 0.025 * self.quintile_number
+        )
+
+    def update_perceived_income_opinion(self):
+        self.perceived_income_opinion = (
+            self.model_region.disaggregated_post_costs_consumption[self.quintile]
+            / self.model_region.perceived_avg_income[self.id]
+        )
 
     def filtered_climate_information(self):
         """
@@ -301,7 +321,7 @@ class Household:
 
         """
 
-        #return
+        # return
 
         #######################################
         ### EXTERNAL INFLUENCES ON EMOTIONS ###

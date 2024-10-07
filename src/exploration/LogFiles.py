@@ -27,7 +27,6 @@ class LogFiles:
             0x00000000
             + LogFiles.MASKLOG_WARNING
             + LogFiles.MASKLOG_ERROR
-            + LogFiles.MASKLOG_Household
         )
         # -> Create folder for current simulation
         self.path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
@@ -108,19 +107,19 @@ class LogFiles:
             ["Timestep", "Region"]
             + [
                 "Household Threshold"
-                for i in range(XML_init_values.Region_n_households)
+                for i in range(XML_init_values.dict["Region_n_households"])
             ]
-            + ["B0 Climate Change" for i in range(XML_init_values.Region_n_households)]
+            + ["B0 Climate Change" for i in range(XML_init_values.dict["Region_n_households"])]
             + [
                 "Emotion Climate Change"
-                for i in range(XML_init_values.Region_n_households)
+                for i in range(XML_init_values.dict["Region_n_households"])
             ]
             + [
                 "Arousal Climate Change"
-                for i in range(XML_init_values.Region_n_households)
+                for i in range(XML_init_values.dict["Region_n_households"])
             ]
-            + ["B0 Economy" for i in range(XML_init_values.Region_n_households)]
-            + ["Emotion Economy" for i in range(XML_init_values.Region_n_households)]
+            + ["B0 Economy" for i in range(XML_init_values.dict["Region_n_households"])]
+            + ["Emotion Economy" for i in range(XML_init_values.dict["Region_n_households"])]
             + ["H Climate", "H Economy"]
         )
 
@@ -136,9 +135,9 @@ class LogFiles:
             + [
                 "belief T=" + str(i)
                 for i in np.arange(
-                    XML_init_values.Household_DISTRIB_MIN_VALUE,
-                    XML_init_values.Household_DISTRIB_MAX_VALUE,
-                    XML_init_values.Household_DISTRIB_RESOLUTION,
+                    XML_init_values.dict["Household_DISTRIB_MIN_VALUE"],
+                    XML_init_values.dict["Household_DISTRIB_MAX_VALUE"],
+                    XML_init_values.dict["Household_DISTRIB_RESOLUTION"],
                 )
             ]
         )
@@ -198,17 +197,26 @@ class LogFiles:
             ]
         )
 
-        #Output of FaIR
+        # Output of FaIR
         f8 = open(self.path + "outputOfFaIR.csv", "w", newline="")
         self.f_output_fair = (
             f8,
             csv.writer(f8, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
         self.f_output_fair[1].writerow(
-            [
-                "Timestep"
-            ]
-            + [ "temp increase" for i in range(1001)]
+            ["Timestep"] + ["temp increase" for i in range(1001)]
+        )
+
+        f9 = open(self.path + "household_opinion_and_trust.csv", "w", newline="")
+        self.f_opinion_and_trust = (
+            f9,
+            csv.writer(f9, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        self.f_opinion_and_trust[1].writerow(
+            ["Timestep", "Region", ] + ["expected_dmg_opinion" for i in range(XML_init_values.dict["Region_n_households"])]
+            +["perceived_income_opinion" for i in range(XML_init_values.dict["Region_n_households"])]
+            +["literacy_opinion" for i in range(XML_init_values.dict["Region_n_households"])]
+            +["init. responsibility region","gini region"]
         )
 
     def close_files(self):
@@ -222,6 +230,7 @@ class LogFiles:
         self.f_parameters.close()
         self.f_share_opinions[0].close()
         self.f_output_fair[0].close()
+        self.f_opinion_and_trust[0].close()
         self.log.close()
         return
 
@@ -244,4 +253,6 @@ class LogFiles:
             self.log.write(str_base + text + "\n")
 
 
-print_log = LogFiles()
+
+global print_log
+print_log= LogFiles()

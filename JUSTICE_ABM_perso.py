@@ -48,7 +48,7 @@ model = AbmJustice(
     elasticity_of_marginal_utility_of_consumption=1.45,
     pure_rate_of_social_time_preference=0.015,
     seed=None,
-    utility_params=[0,0,0,0,0]
+    utility_params=[0,0,0,0,0],
 )
 
 

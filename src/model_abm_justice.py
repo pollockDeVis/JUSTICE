@@ -23,10 +23,12 @@ class AbmJustice(JUSTICE):
         **kwargs,
     ):
 
+        #If **kwargs exist, then modify the paramters accordingly
+        XML_init_values.modify(kwargs)
         # Save simulation parameters
         print_log.f_parameters.write("scenario: "+str(scenario)+"\n")
-        for s in [a.get("name") +": "+a.text  for a in XML_init_values.root.findall('Class/Attribute')]:
-            print_log.f_parameters.write(f"{s}\n")
+        for key, value in XML_init_values.dict.items():
+            print_log.f_parameters.write(f"{key}: {value}\n")
 
         # INSTANTIATE JUSTICE MODULE
         print("--> Initialisation of ABM-JUSTICE model")
@@ -105,3 +107,4 @@ class AbmJustice(JUSTICE):
 
     def close_files(self):
         print_log.close_files()
+

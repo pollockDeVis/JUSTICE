@@ -54,13 +54,14 @@ model = AbmJustice(
     # Declaring for endogenous fixed savings rate
     elasticity_of_marginal_utility_of_consumption=1.45,
     pure_rate_of_social_time_preference=0.015,
-    seed=XML_init_values.seed,
+    seed=XML_init_values.dict["seed"],
+    Region_alpha1=1, Region_alpha2=0, Region_beta1=10, Region_beta2=1, Region_gamma=1.5
 )
 
 ###############################################################################
 #####################       Step-by-Step Run        ###########################
 ###############################################################################
-model.full_run(max_time_steps=1)
+model.full_run(max_time_steps=85)
 
 region_list = [32]
 print("--> Visualizing results for regions: ", region_list)

@@ -6,97 +6,117 @@ class DataLoaderTwoLevelGame:
         self.tree = ET.parse(src)
         self.root = self.tree.getroot()
 
-        self.seed = self.get_value('Class/[@name="General"]/Attribute/[@name="seed"]')
+        self.dict = {}
 
-        self.TwoLevelsGame_Y_nego = self.get_value(
+        self.dict["seed"] = self.get_value(
+            'Class/[@name="General"]/Attribute/[@name="seed"]'
+        )
+
+        self.dict["TwoLevelsGame_Y_nego"] = self.get_value(
             'Class/[@name="TwoLevelsGame"]/Attribute/[@name="Y_nego"]'
         )
-        self.TwoLevelsGame_Y_policy = self.get_value(
+        self.dict["TwoLevelsGame_Y_policy"] = self.get_value(
             'Class/[@name="TwoLevelsGame"]/Attribute/[@name="Y_policy"]'
         )
 
-        self.Region_n_households = self.get_value(
+        self.dict["Region_n_households"] = self.get_value(
             'Class/[@name="Region"]/Attribute/[@name="n_households"]'
         )
-        self.Region_opdyn_max_iter = self.get_value(
+        self.dict["Region_opdyn_max_iter"] = self.get_value(
             'Class/[@name="Region"]/Attribute/[@name="opdyn_max_iter"]'
         )
-        self.Region_opdyn_influence_close = self.get_value(
+        self.dict["Region_opdyn_influence_close"] = self.get_value(
             'Class/[@name="Region"]/Attribute/[@name="opdyn_influence_close"]'
         )
-        self.Region_opdyn_influence_far = self.get_value(
+        self.dict["Region_opdyn_influence_far"] = self.get_value(
             'Class/[@name="Region"]/Attribute/[@name="opdyn_influence_far"]'
         )
-        self.Region_opdyn_agreement = self.get_value(
+        self.dict["Region_opdyn_agreement"] = self.get_value(
             'Class/[@name="Region"]/Attribute/[@name="opdyn_agreement"]'
         )
-        self.Region_opdyn_threshold_close = self.get_value(
+        self.dict["Region_opdyn_threshold_close"] = self.get_value(
             'Class/[@name="Region"]/Attribute/[@name="opdyn_threshold_close"]'
         )
-        self.Region_opdyn_threshold_far = self.get_value(
+        self.dict["Region_opdyn_threshold_far"] = self.get_value(
             'Class/[@name="Region"]/Attribute/[@name="opdyn_threshold_far"]'
         )
 
-        self.Negotiator_policy_start_year = self.get_value(
+        self.dict["Negotiator_policy_start_year"] = self.get_value(
             'Class/[@name="Negotiator"]/Attribute/[@name="policy_start_year"]'
         )
-        self.Negotiator_policy_end_year = self.get_value(
+        self.dict["Negotiator_policy_end_year"] = self.get_value(
             'Class/[@name="Negotiator"]/Attribute/[@name="policy_end_year"]'
         )
-        self.Negotiator_ecr_start_year = self.get_value(
+        self.dict["Negotiator_ecr_start_year"] = self.get_value(
             'Class/[@name="Negotiator"]/Attribute/[@name="ecr_start_year"]'
         )
-        self.Negotiator_ecr_first_term = self.get_value(
+        self.dict["Negotiator_ecr_first_term"] = self.get_value(
             'Class/[@name="Negotiator"]/Attribute/[@name="ecr_first_term"]'
         )
-        self.Negotiator_ecr_end_year = self.get_value(
+        self.dict["Negotiator_ecr_end_year"] = self.get_value(
             'Class/[@name="Negotiator"]/Attribute/[@name="ecr_end_year"]'
         )
-        self.Negotiator_max_cutting_rate_gradient = self.get_value(
+        self.dict["Negotiator_max_cutting_rate_gradient"] = self.get_value(
             'Class/[@name="Negotiator"]/Attribute/[@name="max_cutting_rate_gradient"]'
         )
 
-        self.Household_DISTRIB_RESOLUTION = self.get_value(
+        self.dict["Household_DISTRIB_RESOLUTION"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="DISTRIB_RESOLUTION"]'
         )
-        self.Household_DISTRIB_MIN_VALUE = self.get_value(
+        self.dict["Household_DISTRIB_MIN_VALUE"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="DISTRIB_MIN_VALUE"]'
         )
-        self.Household_DISTRIB_MAX_VALUE = self.get_value(
+        self.dict["Household_DISTRIB_MAX_VALUE"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="DISTRIB_MAX_VALUE"]'
         )
-        self.Household_BELIEF_YEAR_OFFSET = self.get_value(
+        self.dict["Household_BELIEF_YEAR_OFFSET"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="BELIEF_YEAR_OFFSET"]'
         )
-        self.Household_DEFAULT_INFORMATION_STD = self.get_value(
+        self.dict["Household_DEFAULT_INFORMATION_STD"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="DEFAULT_INFORMATION_STD"]'
         )
-        self.Household_P_INFORMATION = self.get_value(
+        self.dict["Household_P_INFORMATION"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="P_INFORMATION"]'
         )
-        self.Household_GAMMA = self.get_value(
+        self.dict["Household_GAMMA"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="GAMMA"]'
         )
-        self.Household_climate_init_mean_beliefs_floor = self.get_value(
+        self.dict["Household_climate_init_mean_beliefs_floor"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="climate_init_mean_beliefs_floor"]'
         )
-        self.Household_climate_init_mean_beliefs_var = self.get_value(
+        self.dict["Household_climate_init_mean_beliefs_var"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="climate_init_mean_beliefs_var"]'
         )
-        self.Household_climate_init_var_beliefs_current = self.get_value(
+        self.dict["Household_climate_init_var_beliefs_current"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="climate_init_var_beliefs_current"]'
         )
-        self.Household_climate_init_var_beliefs_offset1 = self.get_value(
+        self.dict["Household_climate_init_var_beliefs_offset1"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="climate_init_var_beliefs_offset1"]'
         )
-        self.Household_ecr_end_year = self.get_value(
+        self.dict["Household_ecr_end_year"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="ecr_end_year"]'
         )
-        self.sentiment_temperature_increase = self.get_value(
+        self.dict["sentiment_temperature_increase"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="sentiment_temperature_increase"]'
         )
-        self.sentiment_willingness_to_pay = self.get_value(
+        self.dict["sentiment_willingness_to_pay"] = self.get_value(
             'Class/[@name="Household"]/Attribute/[@name="sentiment_willingness_to_pay"]'
+        )
+
+        self.dict["Region_alpha1"] = self.get_value(
+            'Class/[@name="Region"]/Attribute/[@name="alpha1"]'
+        )
+        self.dict["Region_alpha2"] = self.get_value(
+            'Class/[@name="Region"]/Attribute/[@name="alpha2"]'
+        )
+        self.dict["Region_beta1"] = self.get_value(
+            'Class/[@name="Region"]/Attribute/[@name="beta1"]'
+        )
+        self.dict["Region_beta2"] = self.get_value(
+            'Class/[@name="Region"]/Attribute/[@name="beta2"]'
+        )
+        self.dict["Region_gamma"] = self.get_value(
+            'Class/[@name="Region"]/Attribute/[@name="gamma"]'
         )
 
     def get_value(self, expression):
@@ -117,5 +137,11 @@ class DataLoaderTwoLevelGame:
                 )
         return value
 
+    def modify(self, dict_changes):
+        for key, value in dict_changes.items():
+            self.dict[key]=value
 
-XML_init_values = DataLoaderTwoLevelGame("data/input/inputs_ABM/init_values_default.xml")
+
+XML_init_values = DataLoaderTwoLevelGame(
+    "data/input/inputs_ABM/init_values_default.xml"
+)

@@ -20,20 +20,20 @@ class Negotiator:
         region,
     ):
         self.region_model = region
-        self.policy_start_year = XML_init_values.Negotiator_policy_start_year
-        self.ecr_start_year = XML_init_values.Negotiator_ecr_start_year
+        self.policy_start_year = XML_init_values.dict["Negotiator_policy_start_year"]
+        self.ecr_start_year = XML_init_values.dict["Negotiator_ecr_start_year"]
         self.policy_period = self.region_model.twolevelsgame_model.Y_policy
         self.policy = np.array(
             [
                 [
                     self.policy_start_year,
                     self.policy_start_year + self.policy_period,
-                    XML_init_values.Negotiator_policy_end_year,
+                    XML_init_values.dict["Negotiator_policy_end_year"],
                 ],
                 [
-                    XML_init_values.Negotiator_ecr_start_year,
-                    XML_init_values.Negotiator_ecr_first_term,
-                    XML_init_values.Negotiator_ecr_end_year,
+                    XML_init_values.dict["Negotiator_ecr_start_year"],
+                    XML_init_values.dict["Negotiator_ecr_first_term"],
+                    XML_init_values.dict["Negotiator_ecr_end_year"],
                 ],
             ]
         )
@@ -41,10 +41,10 @@ class Negotiator:
         # Some parameters
         # Maximum emission cutting rate gradient per year
         self.max_cutting_rate_gradient = (
-            XML_init_values.Negotiator_max_cutting_rate_gradient
+            XML_init_values.dict["Negotiator_max_cutting_rate_gradient"]
         )
 
-        self.regional_pressure_later_ecr = XML_init_values.Negotiator_policy_end_year
+        self.regional_pressure_later_ecr = XML_init_values.dict["Negotiator_policy_end_year"]
         self.regional_pressure_earlier_ecr = 0
 
     def international_netzero_proposal(self):

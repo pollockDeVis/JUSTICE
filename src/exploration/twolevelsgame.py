@@ -41,10 +41,10 @@ class TwoLevelsGame:
 
         # Parameters for international negotiations
         self.Y_nego = (
-            XML_init_values.TwoLevelsGame_Y_nego  # How many years between a new set of international negotiation rounds
+            XML_init_values.dict["TwoLevelsGame_Y_nego"]  # How many years between a new set of international negotiation rounds
         )
         self.Y_policy = (
-            XML_init_values.TwoLevelsGame_Y_policy
+            XML_init_values.dict["TwoLevelsGame_Y_policy"]
         )  # How many years between a new set of regional policy update
 
         # Loading Data to initialise the REGIONS AND THEIR HOUSEHOLDS
@@ -112,6 +112,8 @@ class TwoLevelsGame:
             i += 1
         self.N_regions = i
 
+        self.year_global_net_zero = 0
+
     def step(self, timestep):
         """
         Defines a step for the Policy() class.
@@ -149,6 +151,8 @@ class TwoLevelsGame:
         # Size is 57*1 (mean over all possibilities)
         net_average_consumption = self.justice_model.consumption_per_capita
 
+        mean_consumption = np.mean(net_average_consumption)
+
         average_damages = np.mean(
             self.justice_model.economy.get_damages()[:, timestep, :], axis=1
         )
@@ -158,10 +162,13 @@ class TwoLevelsGame:
 
         for region in self.regions:
 
+            #Update regional relative wealth
+            region.relative_wealth = net_average_consumption[region.id]/mean_consumption
+
             # Size is 57*5: consumption (net of damages and mitigation costs) for regions and each quintiles
             test = 0
             coeff_abatement = 0  # Put to 0 to ignore abatement (hence the quintiles only get the loss and damages)
-            disaggregated_predmg_consumption = (
+            region.disaggregated_predmg_consumption = (
                 5
                 * net_average_consumption[region.id]
                 * (1 + average_damages[region.id])
@@ -206,7 +213,7 @@ class TwoLevelsGame:
 
             # Theoretically it should be such that the sum of disaggregated post costs is equivalent to the net average consumption
             disaggregated_post_costs_consumption = (
-                disaggregated_predmg_consumption
+                region.disaggregated_predmg_consumption
                 - quintiles_damage_costs
                 - quintiles_abatement_costs
             )
@@ -215,6 +222,11 @@ class TwoLevelsGame:
                 disaggregated_post_costs_consumption
             )
 
+            region.perceived_avg_income = (region.network @ [region.disaggregated_post_costs_consumption.iloc[int(i / (0.2 * region.n_households))] for i in range(region.n_households)]) * 1/np.sum(region.network,axis=1)
+
+            if region.id == 32:
+                print_log.write_log(LogFiles.MASKLOG_twolevelsgame, "twolevelsgame.py", "update_regions", str(region.perceived_avg_income))
+
             (print_log.f_region)[1].writerow(
                 [timestep, region.id, region.code]
                 + [d for d in region.distribution_income]
@@ -222,7 +234,7 @@ class TwoLevelsGame:
                 + [average_damages[region.id], average_abatement[region.id]]
                 + [q for q in quintiles_damage_costs]
                 + [a for a in quintiles_abatement_costs]
-                + [p for p in disaggregated_predmg_consumption]
+                + [p for p in region.disaggregated_predmg_consumption]
                 + [p for p in disaggregated_post_costs_consumption]
                 + [np.mean(disaggregated_post_costs_consumption)]
             )
@@ -242,10 +254,14 @@ class TwoLevelsGame:
         if True:
             # Compute the average target year for ECR=1 in current regional policies
             avg_global_net_zero_year = 0
+            self.year_global_net_zero = 0
             for region in self.regions:
                 policy = region.negotiator.policy
+                self.year_global_net_zero = policy[0, -1] if policy[0, -1] > self.year_global_net_zero else self.year_global_net_zero
                 avg_global_net_zero_year += policy[0, -1]
             avg_global_net_zero_year = avg_global_net_zero_year / len(self.regions)
+
+
 
             for region in self.regions:
                 # Earliest achievable ECR=1 according to max_cutting_rate_gradient
@@ -350,3 +366,4 @@ class TwoLevelsGame:
                 if key != "_comment":
                     dict[key] = df[dict_regions_cols[key]].mean(axis=1)
         return dict
+

@@ -71,24 +71,27 @@ class Region:
         self.distribution_income = dict_regions_distribution_income[self.code] / 100
         self.distribution_cost_mitigation = []
         self.distribution_cost_damages = []
+        self.disaggregated_predmg_consumption = []
         self.disaggregated_post_costs_consumption = []
+        self.perceived_avg_income = []
         # print("=======V " + self.code + " V========")
         # print(self.distribution_income)
         # print(np.sum(self.distribution_income))
 
         # Generating the N households (ie, constituency. N = 100 by default from Policy() )
-        self.n_households = XML_init_values.Region_n_households
+        self.n_households = XML_init_values.dict["Region_n_households"]
         self.households = []
 
         # ------ Opinions Dynamics Parameters For Temperature Threshold -----
-        self.opdyn_max_iter = XML_init_values.Region_opdyn_max_iter
+        self.opdyn_max_iter = XML_init_values.dict["Region_opdyn_max_iter"]
         # Only one iteration per step
-        self.opdyn_influence_close = XML_init_values.Region_opdyn_influence_close
-        self.opdyn_influence_far = XML_init_values.Region_opdyn_influence_far
-        self.opdyn_agreement = XML_init_values.Region_opdyn_agreement
-        self.opdyn_threshold_close = XML_init_values.Region_opdyn_threshold_close
-        self.opdyn_threshold_far = XML_init_values.Region_opdyn_threshold_far
+        self.opdyn_influence_close = XML_init_values.dict["Region_opdyn_influence_close"]
+        self.opdyn_influence_far = XML_init_values.dict["Region_opdyn_influence_far"]
+        self.opdyn_agreement = XML_init_values.dict["Region_opdyn_agreement"]
+        self.opdyn_threshold_close = XML_init_values.dict["Region_opdyn_threshold_close"]
+        self.opdyn_threshold_far = XML_init_values.dict["Region_opdyn_threshold_far"]
 
+        self.network = np.zeros((self.n_households, self.n_households))
         for i in range(self.n_households):
             # Initialisation of different households and their perspectives.
             quintile = int(i / (0.2 * self.n_households))
@@ -98,8 +101,14 @@ class Region:
                     self,
                     self.distribution_income.index[quintile],
                     i,
+                    quintile,
                     list_dicts,
                 )
+            ]
+            self.network[i, :] = [
+                rng.random()
+                > (1 / 2 + 0.49 * (quintile != int(r / (0.2 * self.n_households))))
+                for r in range(self.n_households)
             ]
 
         ###############################
@@ -113,6 +122,18 @@ class Region:
             self.n_households, [hh.emotion_economy for hh in self.households]
         )
 
+        self.regional_literacy = list_dicts[10][self.code]["At least once a week"]
+
+        self.relative_wealth = 0
+        self.gini = 0
+        self.initial_responsibility = list_dicts[8][self.code]["Regardless of what other countries do"]
+
+        self.alpha1 = XML_init_values.dict["Region_alpha1"]
+        self.alpha2 = XML_init_values.dict["Region_alpha2"]
+        self.beta1 = XML_init_values.dict["Region_beta1"]
+        self.beta2 = XML_init_values.dict["Region_beta2"]
+        self.gamma = XML_init_values.dict["Region_gamma"]
+
         # Negotiator, negotiation strategy depends on constituency
         self.negotiator = Negotiator(self)
         self.update_state_policy_from_constituency(timestep)
@@ -121,12 +142,28 @@ class Region:
 
         # hh.emotion_climate_change.o "Are we mitigating enough?": if yes (>0), then we want less (or equal) mitigation hence a negative coefficient
         # hh.emotion_economy.o "Am I willing to pay for mitigation?": if yes (>0) then we can keep the same level or more mitigation, hence a positive coefficient
-        array_utility = np.array(
+        """array_utility = np.array(
             [
                 hh.emotion_climate_change.o + hh.emotion_economy.o
                 for hh in self.households
             ]
+        )"""
+        array_utility = np.array(
+            [
+                (1,   (self.alpha1 * hh.expected_dmg_opinion + self.alpha2 * hh.literacy_opinion) * (self.beta1 * self.initial_responsibility + self.beta2 * hh.perceived_income_opinion) - self.gamma * (1-self.gini) )
+                for hh in self.households
+            ]
         )
+        array_utility = np.clip(array_utility, -1, 1)
+
+        print_log.f_opinion_and_trust[1].writerow(
+            [timestep, self.id]
+            + [hh.expected_dmg_opinion for hh in self.households]
+            + [hh.perceived_income_opinion for hh in self.households]
+            + [hh.literacy_opinion for hh in self.households]
+            + [self.initial_responsibility, self.gini]
+        )
+
         array_support = array_utility > 0.05
         array_opposition = array_utility < -0.05
         # Dividing by two because each opinion comprised between -1 and 1 so difference is between -2 and 2
@@ -171,8 +208,12 @@ class Region:
 
     def update_regional_opinion(self, timestep):
         # Update on observations (uses FaIR-Perspectives ==> Understanding)
+        for hh in self.households:
+            hh.update_literacy_opinion()
+            hh.update_perceived_income_opinion()
+            hh.update_expected_dmg_opinion()
         self.update_from_information(timestep)
-        self.update_from_interactions(timestep)
+        #self.update_from_interactions(timestep)
 
     def update_from_interactions(self, timestep):
         print_log.write_log(
@@ -200,6 +241,7 @@ class Region:
             self.opinion_climate_change.step()
             self.opinion_economy.step()
 
+            """
             print_log.f_household[1].writerow(
                 [timestep - 0.2 * (24 - rounds), self.id]
                 + [
@@ -213,6 +255,7 @@ class Region:
                 + [hh.emotion_economy.v for hh in self.households]
                 + [self.opinion_climate_change.h, self.opinion_economy.h],
             )
+            """
 
     def update_from_information(self, timestep):
         for hh in self.households:
@@ -351,3 +394,8 @@ class Region:
             np.matrix(np.clip(ecr_projection, 0, 1)).T,
             self.twolevelsgame_model.justice_model.no_of_ensembles,
         )
+    def compute_gini(self):
+        cumulative_quintile = np.cumsum(self.disaggregated_post_costs_consumption)
+        cumulative_quintile = np.insert(cumulative_quintile, 0, 0)
+        area = sum((cumulative_quintile[:-1]+cumulative_quintile[1:]) * 0.2 / 2)
+        self.gini = 1 - 2 * area
