@@ -111,6 +111,7 @@ def reevaluate_optimal_policy(
     lowest_n_percent=None,
     path_to_rbf_weights=None,
     path_to_output=None,
+    rbf_policy_index=None,
     n_inputs_rbf=2,
     max_annual_growth_rate=0.04,
     emission_control_start_timestep=10,
@@ -145,10 +146,11 @@ def reevaluate_optimal_policy(
     assert input_data is not None, "Input data not provided"
     assert path_to_rbf_weights is not None, "Path to RBF weights not provided"
     assert path_to_output is not None, "Path to output not provided"
+    # Assert if direction of optimization is not provided
+    assert direction_of_optimization != [], "Direction of optimization not provided"
 
     path_to_output = path_to_output  # "data/reevaluation/"
-    # Initialize the rbf_policy_index
-    rbf_policy_index = None
+
     # Loop through the elements in input_data
     for input_data_index, file in enumerate(input_data):
 
@@ -159,24 +161,21 @@ def reevaluate_optimal_policy(
 
         df = pd.read_csv(path)
 
-        # Select the column of interest
-        if list_of_objectives != []:
-            # Assert if direction of optimization is not provided
-            assert (
-                direction_of_optimization != []
-            ), "Direction of optimization not provided"
+        # Select the column of interest #TODO: This should be moved to the top
+        if objective_of_interest is None and rbf_policy_index is None:
 
             list_of_pareto_optimal_policies = get_best_performing_policies(
                 input_data=[file],
                 lowest_n_percent=lowest_n_percent,
-                data_path="data/optimized_rbf_weights/tradeoffs",
-                list_of_objectives=[
-                    "welfare",
-                    "years_above_temperature_threshold",
-                    "welfare_loss_damage",
-                    "welfare_loss_abatement",
-                ],
+                data_path=path_to_rbf_weights,  # "data/optimized_rbf_weights/tradeoffs",
+                list_of_objectives=list_of_objectives,
                 direction_of_optimization=direction_of_optimization,
+            )
+
+            # Print the length of the list of pareto optimal policies #TODO Remove this
+            print(
+                "Length of list of Pareto Optimal Policies: ",
+                len(list_of_pareto_optimal_policies[0]),
             )
             for _, pareto_optimal_policy_index in enumerate(
                 list_of_pareto_optimal_policies[0]
@@ -221,7 +220,32 @@ def reevaluate_optimal_policy(
 
                 print(f"File saved as {output_file_name} at location {path_to_output}")
 
-        elif objective_of_interest is not None and list_of_objectives == []:
+        elif objective_of_interest is None and rbf_policy_index is not None:
+
+            print("index for policy: ", rbf_policy_index)
+
+            scenario_datasets = run_model_with_optimal_policy(
+                scenario_list=scenario_list,
+                path_to_rbf_weights=path_to_rbf_weights + file,
+                saving=False,
+                output_file_name=None,
+                rbf_policy_index=rbf_policy_index,
+                n_inputs_rbf=n_inputs_rbf,
+                max_annual_growth_rate=max_annual_growth_rate,
+                emission_control_start_timestep=emission_control_start_timestep,
+                min_emission_control_rate=min_emission_control_rate,
+                max_temperature=max_temperature,
+                min_temperature=min_temperature,
+                max_difference=max_difference,
+                min_difference=min_difference,
+            )
+            output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
+
+            with open(path_to_output + output_file_name + ".pkl", "wb") as f:
+                pickle.dump(scenario_datasets, f)
+            print(f"File saved as {output_file_name} at location {path_to_output}")
+
+        elif objective_of_interest is not None and rbf_policy_index is None:
             # Choose column in df by index
             rbf_policy_index = df[objective_of_interest].idxmin()
             print("index for obj of interest: ", rbf_policy_index)
@@ -523,28 +547,29 @@ def get_best_performing_policies(
 if __name__ == "__main__":
     reevaluate_optimal_policy(
         input_data=[
-            "UTIL_100024_s1644652.csv",
-            # "PRIOR_101400_s1644652.csv",
-            # "SUFF_100090_s9845531.csv",
-            # "EGAL_100417_s1644652.csv",
-        ],  # "UTIL_100049.csv", "EGAL_101948.csv",
-        path_to_rbf_weights="data/optimized_rbf_weights/tradeoffs/",
-        path_to_output="data/reevaluation/",
-        objective_of_interest="welfare",
-        # direction_of_optimization=[
-        #     "min",
-        #     "min",
-        #     "max",
-        #     "max",
-        # ],
-        lowest_n_percent=0.51,
-        # list_of_objectives=[
-        #     "welfare",
-        #     "years_above_temperature_threshold",
-        #     "welfare_loss_damage",
-        #     "welfare_loss_abatement",
-        # ],
-        scenario_list=list(Scenario.__members__.keys()),
+            # "UTILITARIAN_reference_set.csv",
+            "PRIORITARIAN_reference_set.csv",
+            # "SUFFICIENTARIAN_reference_set.csv",
+            # "EGALITARIAN_reference_set.csv",
+        ],
+        path_to_rbf_weights="data/convergence_metrics/",
+        path_to_output="data/reevaluation/only_welfare_temp/",
+        objective_of_interest=None,  # "years_above_temperature_threshold",  # "welfare", None
+        direction_of_optimization=[
+            "min",
+            "min",
+            "max",
+            "max",
+        ],
+        lowest_n_percent=0.52,  # 0.51, 0.52 is needed for Prioritarian formulation
+        rbf_policy_index=196,
+        list_of_objectives=[
+            "welfare",
+            "years_above_temperature_threshold",
+            "welfare_loss_damage",
+            "welfare_loss_abatement",
+        ],
+        scenario_list=list(Scenario.__members__.keys()),  # ["SSP245"],  #
     )
 
     ########################################################################
@@ -575,20 +600,20 @@ if __name__ == "__main__":
     #     region_list=region_list,
     #     list_of_years=list_of_years,
     #     path_to_data="data/reevaluation",
-    #     path_to_output="data/reevaluation",
-    #     variable_name="net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature",
+    #     path_to_output="data/reevaluation/extracted_variable",
+    #     variable_name="gross_economic_output",  # "net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature", gross_economic_output, consumption_per_capita
     #     data_shape=3,
     #     no_of_ensembles=1001,
     #     input_data=[
-    #         "UTIL_100024_s1644652_idx75.pkl",
-    #         "PRIOR_101400_s1644652_idx236.pkl",
-    #         "SUFF_100090_s9845531_idx86.pkl",
-    #         "EGAL_100417_s1644652_idx31.pkl",
+    #         "UTILITARIAN_reference_set_idx88.pkl",
+    #         "PRIORITARIAN_reference_set_idx748.pkl",
+    #         "SUFFICIENTARIAN_reference_set_idx99.pkl",
+    #         # "EGALITARIAN_reference_set_idx147.pkl",
     #     ],
     #     output_file_names=[
     #         "Utilitarian",
     #         "Prioritarian",
     #         "Sufficientarian",
-    #         "Egalitarian",
+    #         # "Egalitarian",
     #     ],
     # )

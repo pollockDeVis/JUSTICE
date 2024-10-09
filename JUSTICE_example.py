@@ -221,6 +221,11 @@ def JUSTICE_stepwise_run(
     datasets = model.evaluate()
     datasets["constrained_emission_control_rate"] = constrained_emission_control_rate
 
+    # TODO: add default welfare calculation (also welfare loss) for Utilitarian
+    # from src.welfare.social_welfare_function import SocialWelfareFunction
+    # from config.default_parameters import SocialWelfareDefaults
+    #
+
     # Save the datasets
     if saving:
         if output_file_name is not None:

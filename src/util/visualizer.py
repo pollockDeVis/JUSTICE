@@ -386,10 +386,19 @@ def plot_timeseries(
             # Select the last year of the data for the KDE plot
             temp_df_last_year = temp_df.iloc[:, -1]
 
-            # Plot the KDE plot
-            sns.kdeplot(
-                y=temp_df_last_year, color=color, ax=ax[1], fill=True, alpha=alpha
+            # Plot the boxplot on the second subplot
+            sns.boxplot(
+                x=idx,
+                y=temp_df_last_year,
+                color=color,
+                ax=ax[1],
+                width=0.5,
+                showfliers=False,
             )
+            # Plot the KDE plot
+            # sns.kdeplot(
+            #     y=temp_df_last_year, color=color, ax=ax[1], fill=True, alpha=alpha
+            # )
 
         # Convert the mean_data to a dataframe
         median_data = pd.DataFrame(median_data, columns=list_of_years_sliced)
@@ -426,10 +435,10 @@ def plot_timeseries(
         ax[0].xaxis.set_ticks_position("bottom")
         ax[0].yaxis.set_ticks_position("left")
         ax[1].xaxis.set_ticks_position("bottom")
-        # ax[1].yaxis.set_ticks_position('left')
+        ax[1].yaxis.set_ticks_position("left")
 
         # Remove ticks for the second plot
-        ax[1].set_yticks([])
+        # ax[1].set_yticks([])
 
         # Set the labels
         ax[0].set_xlabel(x_label, fontsize=fontsize)
@@ -449,7 +458,13 @@ def plot_timeseries(
             if not os.path.exists(path_to_output):
                 os.makedirs(path_to_output)
 
-            output_file_name = variable_name
+            # Getting the input file's policy index number
+
+            filename = file.split(".")[0]
+            # Split filename based on the underscore and select the last element
+            filename = filename.split("_")[-1]
+
+            output_file_name = variable_name + "_" + filename
 
             plt.savefig(
                 path_to_output
@@ -748,8 +763,15 @@ def plot_choropleth(
             else:
                 fig.update_layout(title_text="")
 
+            # Policy index number
+            filename = file.split(".")[0]
+            # Split filename based on the underscore and select the last element
+            filename = filename.split("_")[-1]
+
             output_file_name = (
                 variable_name
+                + "_"
+                + filename
                 + "_"
                 + output_titles[plotting_idx]
                 + "_"
@@ -1204,37 +1226,43 @@ if __name__ == "__main__":
 
     fig, data = plot_choropleth(
         variable_name="constrained_emission_control_rate",
-        path_to_data="data/reevaluation/",
-        path_to_output="./data/plots/regional",
+        path_to_data="data/reevaluation/only_welfare_temp/",  # "data/reevaluation/balanced/",  # "data/reevaluation",
+        path_to_output="./data/plots/regional/only_welfare_temp",
         projection="natural earth",
         # scope='usa',
         year_to_visualize=2100,
         input_data=[
-            # "UTIL_100024_s1644652_idx75.pkl",
-            # "PRIOR_101400_s1644652_idx236.pkl",
-            # "SUFF_100090_s9845531_idx86.pkl",
-            "EGAL_100417_s1644652_idx31.pkl",
+            "UTILITARIAN_reference_set_idx16.pkl",
+            "PRIORITARIAN_reference_set_idx196.pkl",
+            # "UTILITARIAN_reference_set_idx51.pkl",
+            # "UTILITARIAN_reference_set_idx51_idx62.pkl",
+            # "PRIORITARIAN_reference_set_idx817.pkl",
+            # "PRIORITARIAN_reference_set_idx817_idx59.pkl",
+            # "UTILITARIAN_reference_set_idx88.pkl",
+            # "PRIORITARIAN_reference_set_idx748.pkl",
+            # "SUFFICIENTARIAN_reference_set_idx99.pkl",
+            # "EGALITARIAN_reference_set_idx147.pkl",
         ],
         output_titles=[
-            # "Utilitarian",
-            # "Prioritarian",
+            "Utilitarian",
+            "Prioritarian",
             # "Sufficientarian",
-            "Egalitarian",
+            # "Egalitarian",
         ],
         title="Mitigation Burden Distribution in ",
         data_label="Emission Control Rate",
-        colourmap="matter",
+        colourmap="OrRd",
         legend_label="% Mitigation\n",
         # scenario_list= ['SSP245'],
         scenario_list=[
-            # "SSP119",
-            # "SSP126",
+            "SSP119",
+            "SSP126",
             "SSP245",
-            # "SSP370",
-            # "SSP434",
-            # "SSP460",
-            # "SSP534",
-            # "SSP585",
+            "SSP370",
+            "SSP434",
+            "SSP460",
+            "SSP534",
+            "SSP585",
         ],  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585'],
         data_normalization=True,
         saving=True,
@@ -1244,34 +1272,40 @@ if __name__ == "__main__":
 
     ############################################################################################################
     # fig = plot_timeseries(
-    #     path_to_data="data/reevaluation",
-    #     path_to_output="./data/plots/regional",
+    #     path_to_data="data/reevaluation/only_welfare_temp/",  # "data/reevaluation",  # /balanced,  # "data/reevaluation",
+    #     path_to_output="./data/plots/regional/only_welfare_temp",  # "./data/plots/regional",
     #     x_label="Years",
     #     y_label="Temperature Rise (°C)",
     #     variable_name="global_temperature",
     #     input_data=[
-    #         "UTIL_100024_s1644652_idx75.pkl",
-    #         "PRIOR_101400_s1644652_idx236.pkl",
-    #         "SUFF_100090_s9845531_idx86.pkl",
-    #         "EGAL_100417_s1644652_idx31.pkl",
+    #         "UTILITARIAN_reference_set_idx16.pkl",
+    #         "PRIORITARIAN_reference_set_idx196.pkl",
+    #         # "UTILITARIAN_reference_set_idx51.pkl",
+    #         # "UTILITARIAN_reference_set_idx51_idx62.pkl",
+    #         # "PRIORITARIAN_reference_set_idx817.pkl",
+    #         # "PRIORITARIAN_reference_set_idx817_idx59.pkl",
+    #         # "UTILITARIAN_reference_set_idx88.pkl",
+    #         # "PRIORITARIAN_reference_set_idx748.pkl",
+    #         # "SUFFICIENTARIAN_reference_set_idx99.pkl",
+    #         # "EGALITARIAN_reference_set_idx147.pkl",
     #     ],
     #     output_titles=[
     #         "Utilitarian",
     #         "Prioritarian",
-    #         "Sufficientarian",
-    #         "Egalitarian",
+    #         # "Sufficientarian",
+    #         # "Egalitarian",
     #     ],
     #     main_title="Global Temperature Rise - ",
     #     show_title=False,
     #     saving=True,
     #     yaxis_lower_limit=0,
-    #     yaxis_upper_limit=12,
+    #     yaxis_upper_limit=6,
     #     alpha=0.1,
     #     linewidth=2.5,
     #     start_year=2015,
     #     end_year=2300,
     #     visualization_start_year=2025,
-    #     visualization_end_year=2300,
+    #     visualization_end_year=2100,
     #     scenario_list=[
     #         "SSP119",
     #         "SSP245",
