@@ -691,6 +691,11 @@ def plot_choropleth(
         global_min = min(
             df[data_label].min() for df in data_scenario_year_by_country_dict.values()
         )
+
+        # TODO TEMPORARY: if global_min is greater than 0, set it to 0. This will not do global normalization for the lower bound
+        if global_min > 0:
+            global_min = 0
+
         global_max = max(
             df[data_label].max() for df in data_scenario_year_by_country_dict.values()
         )
@@ -957,6 +962,7 @@ def plot_stacked_area_chart(
     yaxis_lower_limit=0,
     yaxis_upper_limit=25,
     show_legend=True,
+    filetype=".pkl",
 ):
 
     # Assert if input_data list, scenario_list and output_titles list is None
@@ -996,18 +1002,31 @@ def plot_stacked_area_chart(
     for idx, file in enumerate(input_data):
         for scenario in scenario_list:
             print("Loading data for: ", scenario, " - ", file)
-            with open(
-                path_to_data
-                + "/"
-                + file
-                + "_"
-                + scenario
-                + "_"
-                + variable_name
-                + ".pkl",
-                "rb",
-            ) as f:
-                data = pickle.load(f)
+            # Check if the file is pickle or numpy
+            if ".npy" in filetype:
+                data = np.load(
+                    path_to_data
+                    + "/"
+                    + file
+                    + "_"
+                    + scenario
+                    + "_"
+                    + variable_name
+                    + ".npy"
+                )
+            else:
+                with open(
+                    path_to_data
+                    + "/"
+                    + file
+                    + "_"
+                    + scenario
+                    + "_"
+                    + variable_name
+                    + ".pkl",
+                    "rb",
+                ) as f:
+                    data = pickle.load(f)
 
             # Check if region_aggegation is True
             if region_aggegation:
@@ -1234,20 +1253,14 @@ if __name__ == "__main__":
         input_data=[
             "UTILITARIAN_reference_set_idx16.pkl",
             "PRIORITARIAN_reference_set_idx196.pkl",
-            # "UTILITARIAN_reference_set_idx51.pkl",
-            # "UTILITARIAN_reference_set_idx51_idx62.pkl",
-            # "PRIORITARIAN_reference_set_idx817.pkl",
-            # "PRIORITARIAN_reference_set_idx817_idx59.pkl",
-            # "UTILITARIAN_reference_set_idx88.pkl",
-            # "PRIORITARIAN_reference_set_idx748.pkl",
-            # "SUFFICIENTARIAN_reference_set_idx99.pkl",
-            # "EGALITARIAN_reference_set_idx147.pkl",
+            "SUFFICIENTARIAN_reference_set_idx57.pkl",
+            "EGALITARIAN_reference_set_idx404.pkl",
         ],
         output_titles=[
             "Utilitarian",
             "Prioritarian",
-            # "Sufficientarian",
-            # "Egalitarian",
+            "Sufficientarian",
+            "Egalitarian",
         ],
         title="Mitigation Burden Distribution in ",
         data_label="Emission Control Rate",

@@ -9,6 +9,11 @@ from src.model import JUSTICE
 from src.util.emission_control_constraint import EmissionControlConstraint
 
 
+from src.welfare.social_welfare_function import SocialWelfareFunction
+from config.default_parameters import SocialWelfareDefaults
+from src.util.enumerations import get_economic_scenario
+
+
 def get_linear_emission_control():
     """
     Linear emission control problem
@@ -150,6 +155,7 @@ def JUSTICE_stepwise_run(
     no_of_ensembles = model.__getattribute__("no_of_ensembles")
     n_regions = len(data_loader.REGION_LIST)
     n_timesteps = len(time_horizon.model_time_horizon)
+    population = model.economy.get_population()
 
     # Setting up the RBF. Note: this depends on the setup of the optimization run
     rbf = setup_RBF_for_emission_control(
@@ -221,15 +227,39 @@ def JUSTICE_stepwise_run(
     datasets = model.evaluate()
     datasets["constrained_emission_control_rate"] = constrained_emission_control_rate
 
-    # TODO: add default welfare calculation (also welfare loss) for Utilitarian
-    # from src.welfare.social_welfare_function import SocialWelfareFunction
-    # from config.default_parameters import SocialWelfareDefaults
-    #
+    carbon_intensity = model.emissions.carbon_intensity[
+        :, :, :, get_economic_scenario(scenarios)
+    ]
+    print("Carbon Intensity Shape: ", carbon_intensity.shape)
 
+    df_welfare_util_prior = calculate_welfare_for_different_swfs(
+        datasets, data_loader, time_horizon, no_of_ensembles, population
+    )
+
+    gross_economic_output = datasets["gross_economic_output"]
+
+    # Find baseline emissions
+    baseline_emissions = carbon_intensity * gross_economic_output
+    print("Baseline Emissions Shape: ", baseline_emissions.shape)
     # Save the datasets
     if saving:
+        # Save the gross economic output and baseline emissions
+        np.save(
+            path_to_output + "gross_economic_output_" + str(rbf_policy_index),
+            gross_economic_output,
+        )
+        np.save(
+            path_to_output + "baseline_emissions_" + str(rbf_policy_index),
+            baseline_emissions,
+        )
         if output_file_name is not None:
-            np.save(path_to_output + output_file_name + rbf_policy_index, datasets)
+
+            # Save the df
+            df_welfare_util_prior.to_csv(
+                path_to_output + output_file_name + "_" + str(rbf_policy_index) + ".csv"
+            )
+
+            # np.save(path_to_output + output_file_name + rbf_policy_index, datasets)
     # np.save(
     #     "data/output/optimized_emissions_control_rate.npy",
     #     constrained_emission_control_rate,
@@ -266,6 +296,117 @@ def get_scaled_temperature_difference(
     )
 
     return scaled_temperature, scaled_difference
+
+
+def calculate_welfare_for_different_swfs(
+    datasets, data_loader, time_horizon, no_of_ensembles, population
+):
+    social_welfare_defaults = SocialWelfareDefaults()
+
+    # Fetch the defaults for Social Welfare Function
+    welfare_defaults_utilitarian = social_welfare_defaults.get_defaults(
+        WelfareFunction.UTILITARIAN.name
+    )
+
+    # Fetch the defaults for Social Welfare Function
+    welfare_defaults_prioritarian = social_welfare_defaults.get_defaults(
+        WelfareFunction.PRIORITARIAN.name
+    )
+
+    welfare_function_utilitarian = SocialWelfareFunction(
+        input_dataset=data_loader,
+        time_horizon=time_horizon,
+        climate_ensembles=no_of_ensembles,
+        population=population,
+        risk_aversion=welfare_defaults_utilitarian["risk_aversion"],
+        elasticity_of_marginal_utility_of_consumption=welfare_defaults_utilitarian[
+            "elasticity_of_marginal_utility_of_consumption"
+        ],
+        pure_rate_of_social_time_preference=welfare_defaults_utilitarian[
+            "pure_rate_of_social_time_preference"
+        ],
+        inequality_aversion=welfare_defaults_utilitarian["inequality_aversion"],
+        sufficiency_threshold=welfare_defaults_utilitarian["sufficiency_threshold"],
+        egality_strictness=welfare_defaults_utilitarian["egality_strictness"],
+    )
+
+    welfare_function_prioritarian = SocialWelfareFunction(
+        input_dataset=data_loader,
+        time_horizon=time_horizon,
+        climate_ensembles=no_of_ensembles,
+        population=population,
+        risk_aversion=welfare_defaults_prioritarian["risk_aversion"],
+        elasticity_of_marginal_utility_of_consumption=welfare_defaults_prioritarian[
+            "elasticity_of_marginal_utility_of_consumption"
+        ],
+        pure_rate_of_social_time_preference=welfare_defaults_prioritarian[
+            "pure_rate_of_social_time_preference"
+        ],
+        inequality_aversion=welfare_defaults_prioritarian["inequality_aversion"],
+        sufficiency_threshold=welfare_defaults_prioritarian["sufficiency_threshold"],
+        egality_strictness=welfare_defaults_prioritarian["egality_strictness"],
+    )
+
+    _, _, datasets["welfare_utilitarian"] = (
+        welfare_function_utilitarian.calculate_welfare(
+            consumption_per_capita=datasets["consumption_per_capita"]
+        )
+    )
+    _, _, datasets["welfare_prioritarian"] = (
+        welfare_function_prioritarian.calculate_welfare(
+            consumption_per_capita=datasets["consumption_per_capita"]
+        )
+    )
+
+    timestep_2100 = time_horizon.year_to_timestep(2100, timestep=1)
+    print("Timestep 2100: ", timestep_2100)
+
+    net_output = datasets["net_economic_output"]
+    # Sum over all regions
+    net_output = np.sum(net_output, axis=0)
+    # Select the 2100 timestep
+    net_output = net_output[timestep_2100, :]
+
+    damages = datasets["economic_damage"]
+    # Sum over all regions
+    damages = np.sum(damages, axis=0)
+    # Select the 2100 timestep
+    damages = damages[timestep_2100, :]
+
+    abatement = datasets["abatement_cost"]
+    # Sum over all regions
+    abatement = np.sum(abatement, axis=0)
+    # Select the 2100 timestep
+    abatement = abatement[timestep_2100, :]
+
+    temperature = datasets["global_temperature"]
+    # Select the 2100 timestep
+    temperature = temperature[timestep_2100, :]
+
+    consumption_per_capita = datasets["consumption_per_capita"]
+    # Sum over all regions
+    consumption_per_capita = np.sum(consumption_per_capita, axis=0)
+    # Select the 2100 timestep
+    consumption_per_capita = consumption_per_capita[timestep_2100, :]
+
+    # Print the shapes of net_output, damages, abatement, temperature
+    print("Net Output Shape: ", net_output.shape)
+    print("Damages Shape: ", damages.shape)
+    print("Abatement Shape: ", abatement.shape)
+    print("Temperature Shape: ", temperature.shape)
+
+    # Net Output, Damages, Abatement, Temperature have shape (1001,). Combine them in a single dataframe with 4 columns
+    df = pd.DataFrame(
+        {
+            "Net Output": net_output,
+            "Consumption Per Capita": consumption_per_capita,
+            "Damages": damages,
+            "Abatement": abatement,
+            "Temperature": temperature,
+        }
+    )
+
+    return df
 
 
 def setup_RBF_for_emission_control(
@@ -325,9 +466,14 @@ if __name__ == "__main__":
     # )
     datasets = JUSTICE_stepwise_run(
         scenarios=2,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
-        rbf_policy_index=500,
-        path_to_rbf_weights="data/optimized_rbf_weights/100k/UTIL_100k/100049.csv",
+        social_welfare_function=WelfareFunction.PRIORITARIAN,
+        rbf_policy_index=16,
+        path_to_rbf_weights="data/convergence_metrics/UTILITARIAN_reference_set.csv",
+        saving=True,
+        path_to_output="data/reevaluation/only_welfare_temp/",
+        output_file_name="UTILITARIAN",
     )
     # Print the keys of the datasets
-    print(datasets["welfare"])
+    print("Welfare", datasets["welfare"])
+    print("Welfare Utilitarian", datasets["welfare_utilitarian"])
+    print("Welfare Prioritarian", datasets["welfare_prioritarian"])
