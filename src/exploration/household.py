@@ -20,7 +20,9 @@ class Household:
     # Maximum temperature deviation relative to preindustrial levels in CELSIUS
     DISTRIB_X_AXIS = np.arange(DISTRIB_MIN_VALUE, DISTRIB_MAX_VALUE, DISTRIB_RESOLUTION)
     # Support for the distribution
-    BELIEF_YEAR_OFFSET = np.array([-1, XML_init_values.dict["Household_BELIEF_YEAR_OFFSET"]])
+    BELIEF_YEAR_OFFSET = np.array(
+        [-1, XML_init_values.dict["Household_BELIEF_YEAR_OFFSET"]]
+    )
     # The years offset (compared to 2015) for which each agent has to have a specific belief of temperature elevation
     # The first belief is always about the current temperature elevation (it is moving)
     N_CLIMATE_BELIEFS = len(BELIEF_YEAR_OFFSET)
@@ -86,14 +88,14 @@ class Household:
         means_2200 = [
             2,
             0,
-            np.random.random()*8,
-            np.random.random()*8,
+            np.random.random() * 8,
+            np.random.random() * 8,
         ]  # Climate change is happening: "Yes, No, Don't know, refused"
         variances = [
-            0.1,
+            0.5,
             0.001,
-            .5,
-            .5,
+            0.5,
+            0.5,
         ]  # Climate change is happening: "Yes, No, Don't know, refused"
         choice_cc_happening = rng.choice(
             [0, 1, 2, 3], p=list_dicts[9][region.code][:-1] / 100
@@ -200,8 +202,10 @@ class Household:
         self.literacy_opinion = 0
 
     def update_expected_dmg_opinion(self):
-        #Using DICE 2013R damage function and comparing to 10% GPD damages as 100% wanting more for mitigation policy
-        self.expected_dmg_opinion = .00267 * Household.mean_distribution(self.climate_distrib_beliefs[-1]) ** 2
+        # Using DICE 2013R damage function and comparing to 10% GPD damages as 100% wanting more for mitigation policy
+        self.expected_dmg_opinion = (
+            0.00267 * Household.mean_distribution(self.climate_distrib_beliefs[-1]) ** 2
+        )
 
     def update_perceived_inequalities_dmg(self):
         loss_and_damages = self.model_region.distribution_cost_damages[self.quintile]
@@ -220,7 +224,11 @@ class Household:
 
     def update_perceived_income_opinion(self):
         self.perceived_income_opinion = (
-            self.model_region.disaggregated_post_costs_consumption[self.quintile]
+            np.sign(self.model_region.perceived_avg_income[self.id])
+            * (
+                self.model_region.disaggregated_post_costs_consumption[self.quintile]
+                - self.model_region.perceived_avg_income[self.id]
+            )
             / self.model_region.perceived_avg_income[self.id]
         )
 

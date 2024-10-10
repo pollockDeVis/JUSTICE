@@ -6,6 +6,7 @@
     <Class name="TwoLevelsGame">
         <Attribute name="Y_nego" type="int">5</Attribute>
         <Attribute name="Y_policy" type="int">5</Attribute>
+		<Attribute name="IPCC_report_period" type="int">45</Attribute>
     </Class>
     <Class name="Region">
         <Attribute name="n_households" type="int">100</Attribute>

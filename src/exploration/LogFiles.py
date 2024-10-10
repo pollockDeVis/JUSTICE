@@ -23,11 +23,7 @@ class LogFiles:
         !!! WARNING: When adding a file for logs or to save some data, DO NOT FORGET to also add
         the corresponding line to CLOSE THE FILE at the end of the simulation!
         """
-        self.MASKLOG = (
-            0x00000000
-            + LogFiles.MASKLOG_WARNING
-            + LogFiles.MASKLOG_ERROR
-        )
+        self.MASKLOG = 0x00000000 + LogFiles.MASKLOG_WARNING + LogFiles.MASKLOG_ERROR
         # -> Create folder for current simulation
         self.path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
         os.makedirs(self.path, exist_ok=True)
@@ -79,11 +75,33 @@ class LogFiles:
             ]
         )
 
-        # self.f_policy[1].writerow(['Region ID', 'Timestep', 'Policy Size', 'Range of Shift', 'Delta Shift', 'Policy goals', 'Policy Years', 'Support'])
+        #
         f2 = open(self.path + "policy.csv", "w", newline="")
         self.f_policy = (
             f2,
             csv.writer(f2, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        self.f_policy[1].writerow(
+            [
+                "Region ID",
+                "Timestep",
+                "Policy Size",
+                "Range of Shift",
+                "Delta Shift",
+                "ECR current",
+                "ECR next end term",
+                "ECR net-zero",
+                "Beginning year next term",
+                "Ending year next term",
+                "Net-zero year",
+                "share_opposition",
+                "share_neutral",
+                "share_support",
+                "strength_opposition",
+                "mean_utility",
+                "strength_support",
+                "first_year_region_net_zero"
+            ]
         )
 
         f3 = open(self.path + "negotiator.csv", "w", newline="")
@@ -109,7 +127,10 @@ class LogFiles:
                 "Household Threshold"
                 for i in range(XML_init_values.dict["Region_n_households"])
             ]
-            + ["B0 Climate Change" for i in range(XML_init_values.dict["Region_n_households"])]
+            + [
+                "B0 Climate Change"
+                for i in range(XML_init_values.dict["Region_n_households"])
+            ]
             + [
                 "Emotion Climate Change"
                 for i in range(XML_init_values.dict["Region_n_households"])
@@ -119,7 +140,10 @@ class LogFiles:
                 for i in range(XML_init_values.dict["Region_n_households"])
             ]
             + ["B0 Economy" for i in range(XML_init_values.dict["Region_n_households"])]
-            + ["Emotion Economy" for i in range(XML_init_values.dict["Region_n_households"])]
+            + [
+                "Emotion Economy"
+                for i in range(XML_init_values.dict["Region_n_households"])
+            ]
             + ["H Climate", "H Economy"]
         )
 
@@ -213,10 +237,23 @@ class LogFiles:
             csv.writer(f9, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
         self.f_opinion_and_trust[1].writerow(
-            ["Timestep", "Region", ] + ["expected_dmg_opinion" for i in range(XML_init_values.dict["Region_n_households"])]
-            +["perceived_income_opinion" for i in range(XML_init_values.dict["Region_n_households"])]
-            +["literacy_opinion" for i in range(XML_init_values.dict["Region_n_households"])]
-            +["init. responsibility region","gini region"]
+            [
+                "Timestep",
+                "Region",
+            ]
+            + [
+                "expected_dmg_opinion"
+                for i in range(XML_init_values.dict["Region_n_households"])
+            ]
+            + [
+                "perceived_income_opinion"
+                for i in range(XML_init_values.dict["Region_n_households"])
+            ]
+            + [
+                "literacy_opinion"
+                for i in range(XML_init_values.dict["Region_n_households"])
+            ]
+            + ["init. responsibility region", "gini region", "region relative_wealth"]
         )
 
     def close_files(self):
@@ -253,6 +290,5 @@ class LogFiles:
             self.log.write(str_base + text + "\n")
 
 
-
 global print_log
-print_log= LogFiles()
+print_log = LogFiles()

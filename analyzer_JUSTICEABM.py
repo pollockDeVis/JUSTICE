@@ -57,8 +57,8 @@ def full_run_justice_abm(
 
 sampler = qmc.LatinHypercube(d=5)
 sample = sampler.random(n=100)
-l_bounds = [0.0, 0.0, 0.0, 0, 0]
-u_bounds = [100, 2, 2, 0.1, 10]
+l_bounds = [75, 0, 0, 0, 0]
+u_bounds = [100, 2, 2, 2, 2]
 sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
 results = []
 for sample in sample_scaled:
@@ -67,6 +67,8 @@ for sample in sample_scaled:
                     )
     )
     print(results[-1])
+
+print(results)
 
 
 """

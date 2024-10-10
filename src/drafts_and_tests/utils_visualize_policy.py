@@ -15,9 +15,9 @@ def visualize_policy(directory, region):
 
         f = open(save_path + "\parameters.txt", "r")
 
-        df = pd.read_csv(save_path + "\policy.csv", header=None, dtype="float64")
+        df = pd.read_csv(save_path + "\policy.csv", header=0, dtype="float64")
 
-        region_mask = df[0] == region
+        region_mask = df["Region ID"] == region
         count_rows = np.count_nonzero(region_mask)
 
         emissions_colums = df[df.columns[5:8]]
@@ -25,7 +25,7 @@ def visualize_policy(directory, region):
         current_time_colums = df[df.columns[1]]
         max_possible_shift = df[df.columns[3]]
         year_shift = df[df.columns[4]]
-        support_shares = df[df.columns[11:]]
+        support_shares = df[df.columns[11:-2]]
 
         plt.figure()
         plt.plot(current_time_colums[region_mask], year_shift[region_mask], "*")
@@ -72,8 +72,10 @@ def visualize_policy(directory, region):
         plt.figure()
         cmap = plt.get_cmap("rainbow", 57)
         for r in range(57):
-            mask = df[0] == r
-            plt.plot(df[1][mask], years_colums[10][mask], color=cmap(r))
+            mask = df["Region ID"] == r
+            plt.plot(
+                df["Timestep"][mask], years_colums["Net-zero year"][mask], color=cmap(r)
+            )
         plt.xlabel("Negotiations year")
         plt.ylabel("Pledged year for ECR 100%")
 
@@ -204,7 +206,7 @@ def visualize_policy(directory, region):
         )  # the limits need to be set again because imshow sets zero margins
         ax.set_ylim(ylim)
 
-        #plt.legend(["Share Opposition","Share Neutral","Share Support"],loc="upper left")
+        # plt.legend(["Share Opposition","Share Neutral","Share Support"],loc="upper left")
 
         plt.figure()
         plt.plot(df["Timestep"] + 2015, df["strength opposition"])
@@ -217,4 +219,28 @@ def visualize_policy(directory, region):
     plt.show()
 
 
-visualize_policy("../../data/output/SAVE_2024_08_28_1345", 32)
+def superpose_policies(directory):
+    path_list = glob.glob(directory)
+    # print(path_list)
+    for save_path in path_list:
+
+        f = open(save_path + "\parameters.txt", "r")
+
+        df = pd.read_csv(save_path + "\policy.csv", header=0, dtype="float64")
+        years_colums = df["Timestep"]
+        emissions_colums = df["ECR current"]
+        plt.figure()
+        for region in range(57):
+            plt.plot(years_colums[df["Region ID"].isin([region])], emissions_colums[df["Region ID"].isin([region])])
+            plt.legend(["Final emission cutting rate pathway"])
+            plt.title("Final Policy for All Regions")
+        plt.xlabel("years")
+        plt.ylabel("emission control rate")
+        ax = plt.gca()
+        ax.set_xlim(2015, 2100)
+
+    plt.show()
+
+
+# visualize_policy("../../data/output/SAVE_2024_10_09_1403", 32)
+superpose_policies("../../data/output/SAVE_2024_10_09_1758")

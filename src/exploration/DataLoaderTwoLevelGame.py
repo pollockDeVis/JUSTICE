@@ -118,6 +118,9 @@ class DataLoaderTwoLevelGame:
         self.dict["Region_gamma"] = self.get_value(
             'Class/[@name="Region"]/Attribute/[@name="gamma"]'
         )
+        self.dict["IPCC_report_period"] = self.get_value(
+            'Class/[@name="TwoLevelsGame"]/Attribute/[@name="IPCC_report_period"]'
+        )
 
     def get_value(self, expression):
         findings = self.root.find(expression)
@@ -139,7 +142,7 @@ class DataLoaderTwoLevelGame:
 
     def modify(self, dict_changes):
         for key, value in dict_changes.items():
-            self.dict[key]=value
+            self.dict[key] = value
 
 
 XML_init_values = DataLoaderTwoLevelGame(

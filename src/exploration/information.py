@@ -10,6 +10,7 @@ import pandas as pd
 from typing import Any
 import copy
 
+from src.exploration.DataLoaderTwoLevelGame import XML_init_values
 from src.exploration.LogFiles import LogFiles, print_log
 from src.util.data_loader import DataLoader
 from src.util.enumerations import Economy, DamageFunction, Abatement, WelfareFunction
@@ -49,8 +50,7 @@ class Information:
         # self.pure_rate_of_social_time_preference = 0.015
         # self.inequality_aversion = 0
 
-        self.IPCC_report_period = 20
-        self.local_policy_update_period = 5
+        self.IPCC_report_period = XML_init_values.dict["IPCC_report_period"]
 
         # TODO APN: Change to numpy arrays
         self.global_temperature_information = []

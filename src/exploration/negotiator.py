@@ -40,11 +40,13 @@ class Negotiator:
 
         # Some parameters
         # Maximum emission cutting rate gradient per year
-        self.max_cutting_rate_gradient = (
-            XML_init_values.dict["Negotiator_max_cutting_rate_gradient"]
-        )
+        self.max_cutting_rate_gradient = XML_init_values.dict[
+            "Negotiator_max_cutting_rate_gradient"
+        ]
 
-        self.regional_pressure_later_ecr = XML_init_values.dict["Negotiator_policy_end_year"]
+        self.regional_pressure_later_ecr = XML_init_values.dict[
+            "Negotiator_policy_end_year"
+        ]
         self.regional_pressure_earlier_ecr = 0
 
     def international_netzero_proposal(self):
@@ -86,10 +88,10 @@ class Negotiator:
 
             i = np.argmax(support[:3])
             range_of_shift = self.delta_shift_range()
-            if support[i+3] > 0:
-                delta_shift = range_of_shift * support[i+3]
+            if support[i + 3] > 0:
+                delta_shift = range_of_shift * support[i + 3]
             else:
-                delta_shift = (-self.policy[1, 0] + self.policy[1, 1]) * support[i+3]
+                delta_shift = (-self.policy[1, 0] + self.policy[1, 1]) * support[i + 3]
 
             """
             if support[2] > support[0]:
@@ -116,6 +118,7 @@ class Negotiator:
                 + [p for p in self.policy[1]]
                 + [y for y in self.policy[0]]
                 + [s for s in support]
+                + [self.region_model.twolevelsgame_model.first_year_region_net_zero]
             )
 
             # Verifying new target compatibility with end goal
@@ -130,17 +133,41 @@ class Negotiator:
                 self.regional_pressure_later_ecr = np.maximum(
                     self.regional_pressure_later_ecr, earliest_possible_target
                 )
+        elif (
+            self.policy[1, 1] == 1
+            and self.region_model.twolevelsgame_model.first_year_region_net_zero == -1
+        ):
+            self.region_model.twolevelsgame_model.first_year_region_net_zero = (
+                current_time
+            )
+            (print_log.f_policy)[1].writerow(
+                [
+                    self.region_model.id,
+                    current_time,
+                    self.policy.shape[1],
+                    0,
+                    0,
+                ]
+                + [p for p in self.policy[1]]
+                + [y for y in self.policy[0]]
+                + [s for s in [0,0,0,0,0,0]]
+                + [self.region_model.twolevelsgame_model.first_year_region_net_zero]
+            )
 
     def expected_year_ecr_max(self):
         # The time it will take from policy goal in policy[:,1] to reach target ecr=1 given track record
         # Plus the time assigned for goal in policy[:,1]
         # Reminder that policy[0,:] = years and policy[1,:] = ecr targets
 
-        p1 = (self.policy[1, 1]-self.ecr_start_year)/(self.policy[0, 1]-self.policy_start_year)
-        p2 = (self.policy[1, 0]-self.policy[1, 1])/(self.policy[0, 0]-self.policy[0, 1])
-        p = (p1+p2)/2
-        if p!=0:
-            return np.ceil((1-self.policy[1, 1])/p+self.policy[0, 1])
+        p1 = (self.policy[1, 1] - self.ecr_start_year) / (
+            self.policy[0, 1] - self.policy_start_year
+        )
+        p2 = (self.policy[1, 0] - self.policy[1, 1]) / (
+            self.policy[0, 0] - self.policy[0, 1]
+        )
+        p = (p1 + p2) / 2
+        if p != 0:
+            return np.ceil((1 - self.policy[1, 1]) / p + self.policy[0, 1])
         else:
             return self.policy[0, -1]
 

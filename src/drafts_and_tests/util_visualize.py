@@ -1,11 +1,11 @@
 import time
 
-from src.drafts_and_tests.utils_save import visualize_policy
 from src.drafts_and_tests.utils_save_household_thresholds import (
     visualize_household_thresholds,
 )
+from src.drafts_and_tests.utils_visualize_policy import visualize_policy
 
-path = "../../data/output/SAVE_2024_10_04_1538/"
+path = "../../data/output/SAVE_2024_10_09_1403/"
 region_list = [6]
 print("--> Visualizing results for regions: ", region_list)
 print("   -> Save directory is: ", path)

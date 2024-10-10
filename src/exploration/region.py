@@ -122,11 +122,11 @@ class Region:
             self.n_households, [hh.emotion_economy for hh in self.households]
         )
 
-        self.regional_literacy = list_dicts[10][self.code]["At least once a week"]
+        self.regional_literacy = list_dicts[10][self.code]["At least once a week"]/100
 
         self.relative_wealth = 0
         self.gini = 0
-        self.initial_responsibility = list_dicts[8][self.code]["Regardless of what other countries do"]
+        self.initial_responsibility = list_dicts[8][self.code]["Regardless of what other countries do"]/100
 
         self.alpha1 = XML_init_values.dict["Region_alpha1"]
         self.alpha2 = XML_init_values.dict["Region_alpha2"]
@@ -150,18 +150,18 @@ class Region:
         )"""
         array_utility = np.array(
             [
-                (1,   (self.alpha1 * hh.expected_dmg_opinion + self.alpha2 * hh.literacy_opinion) * (self.beta1 * self.initial_responsibility + self.beta2 * hh.perceived_income_opinion) - self.gamma * (1-self.gini) )
+                (self.alpha1 * hh.expected_dmg_opinion + self.alpha2 * hh.literacy_opinion) + (self.beta1 * self.initial_responsibility + self.beta2 * hh.perceived_income_opinion) - (1-self.gini) + self.gamma * (self.relative_wealth-1)
                 for hh in self.households
             ]
         )
-        array_utility = np.clip(array_utility, -1, 1)
+        array_utility = np.clip(array_utility,a_min= -1, a_max=1)
 
         print_log.f_opinion_and_trust[1].writerow(
             [timestep, self.id]
             + [hh.expected_dmg_opinion for hh in self.households]
             + [hh.perceived_income_opinion for hh in self.households]
             + [hh.literacy_opinion for hh in self.households]
-            + [self.initial_responsibility, self.gini]
+            + [self.initial_responsibility, self.gini,self.relative_wealth]
         )
 
         array_support = array_utility > 0.05
@@ -395,7 +395,7 @@ class Region:
             self.twolevelsgame_model.justice_model.no_of_ensembles,
         )
     def compute_gini(self):
-        cumulative_quintile = np.cumsum(self.disaggregated_post_costs_consumption)
+        cumulative_quintile = np.cumsum(self.disaggregated_post_costs_consumption/np.sum(self.disaggregated_post_costs_consumption))
         cumulative_quintile = np.insert(cumulative_quintile, 0, 0)
         area = sum((cumulative_quintile[:-1]+cumulative_quintile[1:]) * 0.2 / 2)
         self.gini = 1 - 2 * area
