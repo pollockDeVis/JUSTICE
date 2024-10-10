@@ -963,6 +963,7 @@ def plot_stacked_area_chart(
     yaxis_upper_limit=25,
     show_legend=True,
     filetype=".pkl",
+    regional_order=None,
 ):
 
     # Assert if input_data list, scenario_list and output_titles list is None
@@ -995,7 +996,7 @@ def plot_stacked_area_chart(
         # Convert into a flat list
         region_list = [item for sublist in region_list for item in sublist]
 
-    print(region_list)
+    # print(region_list)
 
     # Load the data
     # Enumerate through the input data and load the data
@@ -1044,6 +1045,11 @@ def plot_stacked_area_chart(
 
             # Create the slice according to visualization years
             data = data.loc[:, visualization_start_year:visualization_end_year]
+
+            print("Region list: ", region_list)
+
+            if regional_order is not None:
+                region_list = regional_order
 
             # Create plotly figure
             fig = px.area(
