@@ -100,27 +100,15 @@
         "VUT",
         "WSM"
     ],
-    "Middle East & North Africa": [
+    "Gulf Countries": [
         "ARE",
         "BHR",
-        "DJI",
-        "DZA",
-        "EGY",
-        "ESH",
         "IRN",
         "IRQ",
-        "ISR",
-        "JOR",
         "KWT",
-        "LBN",
-        "LBY",
-        "MAR",
         "OMN",
-        "PSE",
         "QAT",
         "SAU",
-        "SYR",
-        "TUN",
         "YEM"
     ],
     "Sub-Saharan Africa": [
@@ -266,6 +254,18 @@
         "KAZ",
         "TKM",
         "BLR",
-        "BRA"
+        "BRA",
+        "DJI",
+        "EGY",
+        "ISR",
+        "JOR",
+        "LBN",
+        "PSE",
+        "SYR",
+        "ESH",
+        "TUN",
+        "MAR",
+        "LBY",
+        "DZA"
     ]
 }
