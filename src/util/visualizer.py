@@ -692,10 +692,6 @@ def plot_choropleth(
             df[data_label].min() for df in data_scenario_year_by_country_dict.values()
         )
 
-        # TODO TEMPORARY: if global_min is greater than 0, set it to 0. This will not do global normalization for the lower bound
-        if global_min > 0:
-            global_min = 0
-
         global_max = max(
             df[data_label].max() for df in data_scenario_year_by_country_dict.values()
         )
@@ -1271,7 +1267,7 @@ if __name__ == "__main__":
         title="Mitigation Burden Distribution in ",
         data_label="Emission Control Rate",
         colourmap="OrRd",
-        legend_label="% Mitigation\n",
+        legend_label="\n",
         # scenario_list= ['SSP245'],
         scenario_list=[
             "SSP119",
@@ -1285,7 +1281,7 @@ if __name__ == "__main__":
         ],  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585'],
         data_normalization=True,
         saving=True,
-        show_colorbar=False,
+        show_colorbar=True,
         show_title=False,
     )
 
