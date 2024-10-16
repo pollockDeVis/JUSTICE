@@ -588,6 +588,78 @@ def process_country_data_for_choropleth_plot(
     return data_scenario_year_by_country
 
 
+def process_2D_regional_data_for_choropleth_plot_v2_opt(  # OUTPUT dataset VALIDATED with the previous version
+    region_list=None,
+    data=None,
+    list_of_years=None,
+    year_to_visualize=2100,
+    data_label="Emission Control Rate",
+    region_to_country_mapping=None,
+    # scaler=False,
+    feature_scale=(0, 1),
+    data_correction=True,
+):
+    # Assert if region list, data, and list of years are None
+    assert region_list is not None, "Region list is not provided."
+    assert data is not None, "Data is not provided."
+    assert list_of_years is not None, "List of years is not provided."
+    assert (
+        region_to_country_mapping is not None
+    ), "Region to country mapping is not provided."
+
+    # Convert the region list, a numpy array, to a list
+    regions_str = region_list.tolist()
+
+    # Create DataFrame for the specific scenario
+    data_scenario = pd.DataFrame(data, index=regions_str, columns=list_of_years)
+
+    # Select the year to visualize
+    data_scenario_year = data_scenario[year_to_visualize].reset_index()
+    data_scenario_year.columns = ["Region", data_label]
+
+    # Load region to country mapping from JSON file
+    with open(region_to_country_mapping) as json_file:
+        region_to_country = json.load(json_file)
+
+    # Create a DataFrame from the mapping
+    mapping_df = pd.DataFrame(
+        list(region_to_country.items()), columns=["Region", "CountryCode"]
+    )
+
+    # Ensure 'Region' column exists in both DataFrames
+    if "Region" not in data_scenario_year.columns or "Region" not in mapping_df.columns:
+        raise KeyError("The 'Region' column is missing from one of the DataFrames.")
+
+    # Merge the mapping DataFrame with the data
+    data_scenario_year = pd.merge(
+        mapping_df, data_scenario_year, on="Region", how="inner"
+    )
+
+    # Explode the CountryCode if it's a list
+    data_scenario_year = data_scenario_year.explode("CountryCode")
+
+    # Precompute country code to name mapping
+    country_code_to_name = {
+        country.alpha_3: country.name for country in pycountry.countries
+    }
+
+    # Map CountryCode to CountryName
+    data_scenario_year["CountryName"] = data_scenario_year["CountryCode"].map(
+        country_code_to_name
+    )
+
+    if data_correction:
+        # Apply data corrections
+        data_scenario_year.loc[
+            data_scenario_year["CountryCode"] == "ATA", data_label
+        ] = np.nan
+        data_scenario_year.loc[
+            data_scenario_year["CountryCode"] == "KSV", "CountryName"
+        ] = "Kosovo"
+
+    return data_scenario_year[["CountryCode", data_label, "CountryName"]]
+
+
 def min_max_scaler(X, global_min, global_max):
 
     # Check if data is a numpy array
@@ -785,6 +857,145 @@ def plot_choropleth(
 
     # plotting_idx = 2
     return fig, data_scenario_year_by_country
+
+
+def plot_choropleth_2D_data(
+    variable_name="constrained_emission_control_rate",
+    path_to_data="data/reevaluation/",
+    path_to_output="./data/plots",
+    year_to_visualize=2100,
+    input_data=None,
+    region_to_country_mapping="data/input/rice50_regions_dict.json",
+    title="Mitigation Burden Distribution in ",
+    data_label="Emission Control Rate",
+    legend_label="% Mitigation\n",
+    colourmap="matter",
+    projection="natural earth",
+    scope="world",
+    height=700,
+    width=1200,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    saving=False,
+    scenario_list=[],
+    data_normalization=True,
+    show_colorbar=True,
+    show_title=True,
+):
+
+    # Assert if input_data list and output_titles list is None
+    assert input_data, "No input data provided for visualization."
+    # assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
+
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+    data_loader = DataLoader()
+
+    region_list = data_loader.REGION_LIST
+    columns = list_of_years
+
+    processed_data_dict = {}
+
+    # Loop through the input data and plot the choropleth
+    for plotting_idx, file in enumerate(input_data):
+        # Load the scenario data from the pickle file
+        data = np.load(path_to_data + file)
+
+        processed_country_data = process_2D_regional_data_for_choropleth_plot_v2_opt(
+            region_list=region_list,
+            data=data,
+            list_of_years=list_of_years,
+            year_to_visualize=year_to_visualize,
+            data_label=data_label,
+            region_to_country_mapping=region_to_country_mapping,
+        )
+
+        processed_data_dict[(plotting_idx)] = processed_country_data
+
+    if data_normalization:
+        # Find the global minimum and maximum
+        global_min = min(df[data_label].min() for df in processed_data_dict.values())
+
+        global_max = max(df[data_label].max() for df in processed_data_dict.values())
+
+        print("Global Min & Max", global_min, global_max)
+
+        # Loop over the keys in the dictionary
+        for idx in processed_data_dict.keys():
+            print(idx)
+            # Reshape the 'Emission' column to fit the scaler
+            dataframe_to_normalize = processed_data_dict[(idx)]
+            dataframe_to_normalize = dataframe_to_normalize[data_label].values.reshape(
+                -1, 1
+            )
+
+            # Transform the 'Emission' column
+            processed_data_dict[(idx)][data_label] = min_max_scaler(
+                dataframe_to_normalize, global_min, global_max
+            )
+
+    # Loop through the input data and plot the choropleth
+    for plotting_idx, file in enumerate(input_data):
+
+        choropleth_title = " "  # output_titles[plotting_idx]
+
+        fig = px.choropleth(
+            processed_data_dict[(plotting_idx)],
+            # processed_data_dict[plotting_idx],
+            locations="CountryCode",
+            color=data_label,
+            hover_name="CountryName",
+            scope=scope,
+            projection=projection,
+            title=choropleth_title,
+            height=height,
+            width=width,
+            color_continuous_scale=colourmap,
+        )
+
+        if show_colorbar == False:
+            fig.update_layout(coloraxis_showscale=False)
+
+        if show_title:
+            # Update the layout
+            fig.update_layout(
+                title={
+                    "text": choropleth_title,
+                    "xanchor": "center",
+                    "yanchor": "top",
+                    "x": 0.5,
+                    "y": 0.95,
+                },
+                coloraxis_colorbar=dict(title=legend_label),
+            )
+        else:
+            fig.update_layout(title_text="")
+
+        # Policy index number
+        filename = file.split(".")[0]
+        # Split filename based on the underscore and select the last element
+        filename = (
+            filename.split("_")[0]
+            + filename.split("_")[1]
+            + "_"
+            + filename.split("_")[-1]
+        )
+
+        output_file_name = filename
+        print(output_file_name)
+        if saving:
+            # Save the plot as a png file
+            fig.write_image(path_to_output + "/" + output_file_name + ".png")
+
+    return fig, processed_data_dict
 
 
 # TODO: Under Construction

@@ -602,7 +602,7 @@ if __name__ == "__main__":
         list_of_years=list_of_years,
         path_to_data="data/reevaluation/only_welfare_temp",
         path_to_output="data/reevaluation/only_welfare_temp/extracted_variable",
-        variable_name="abatement_cost",  # "net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature", gross_economic_output, consumption_per_capita
+        variable_name="consumption",  # "net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature", gross_economic_output, consumption_per_capita
         data_shape=3,
         no_of_ensembles=1001,
         input_data=[
