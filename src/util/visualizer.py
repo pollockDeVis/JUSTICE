@@ -998,6 +998,179 @@ def plot_choropleth_2D_data(
     return fig, processed_data_dict
 
 
+def process_economic_data_for_barchart(
+    input_data_paths,
+    region_mapping_path,
+    rice_region_dict_path,
+    start_year,
+    end_year,
+    splice_start_year,
+    splice_end_year,
+    data_timestep=5,
+    timestep=1,
+):
+    """
+    Process economic data for barchart by aggregating regional economic damages over a specified time horizon.
+
+    Args:
+        input_data_paths (list): List of file paths for different economic data to be loaded as numpy arrays.
+        region_mapping_path (str): File path for the region mapping JSON.
+        rice_region_dict_path (str): File path for the rice region dictionary JSON.
+        start_year (int): The start year for the model time horizon.
+        end_year (int): The end year for the model time horizon.
+        splice_start_year (int): The start year for splicing the data.
+        splice_end_year (int): The end year for splicing the data.
+        data_timestep (int): The data time step, default is 5.
+        timestep (int): The time step for year-to-timestep conversion, default is 1.
+
+    Returns:
+        list: A list of pandas DataFrames containing the aggregated economic data for each input data path.
+    """
+
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    data_loader = DataLoader()
+
+    # Load the region mapping from the JSON file
+    with open(region_mapping_path, "r") as f:
+        region_mapping_json = json.load(f)
+
+    # Load the rice region dictionary from the JSON file
+    with open(rice_region_dict_path, "r") as f:
+        rice_50_dict_ISO3 = json.load(f)
+
+    # Prepare the data container
+    aggregated_dataframes = []
+
+    # Iterate over each input data path to load and process data
+    for data_path in input_data_paths:
+        economic_data = np.load(data_path)
+
+        # Aggregate the regions
+        region_list, economic_data_aggregated = justice_region_aggregator(
+            data_loader, region_mapping_json, economic_data
+        )
+
+        # Get year to time step
+        start_time_step = time_horizon.year_to_timestep(
+            splice_start_year, timestep=timestep
+        )
+        end_time_step = time_horizon.year_to_timestep(
+            splice_end_year, timestep=timestep
+        )
+
+        # Slice the data
+        economic_data_aggregated = economic_data_aggregated[
+            :, start_time_step:end_time_step
+        ]
+
+        # Sum up over the years
+        economic_data_aggregated = np.sum(economic_data_aggregated, axis=1)
+
+        # Convert to DataFrame with region_list as columns
+        economic_data_df = pd.DataFrame(economic_data_aggregated.T, columns=region_list)
+
+        # Add to result list
+        aggregated_dataframes.append(economic_data_df)
+
+    return aggregated_dataframes
+
+
+def plot_comparison_bar_chart(
+    input_data_paths,
+    region_mapping_path,
+    rice_region_dict_path,
+    start_year,
+    end_year,
+    splice_start_year,
+    splice_end_year,
+    data_timestep=5,
+    timestep=1,
+    bar_width=0.35,
+    plot_height=600,
+    plot_width=1200,
+    color_palette=["salmon", "lightblue", "lightgreen", "orange", "purple"],
+    datanames=["Utilitarian", "Prioritarian", "Egalitarian", "Sufficientarian"],
+    plot_title=None,
+    x_axis_title=None,
+    y_axis_title=None,
+):
+    """
+    Plot a comparison bar chart for economic data between two different scenarios.
+
+    Args:
+        economic_dataframes (list): List of pandas DataFrames containing the economic data for each scenario.
+        region_mapping_path (str): File path for the region mapping JSON.
+        rice_region_dict_path (str): File path for the rice region dictionary JSON.
+        start_year (int): The start year for the model time horizon.
+        end_year (int): The end year for the model time horizon.
+        splice_start_year (int): The start year for splicing the data.
+        splice_end_year (int): The end year for splicing the data.
+        data_timestep (int): The data time step, default is 5.
+        timestep (int): The time step for year-to-timestep conversion, default is 1.
+    """
+
+    economic_dataframes = process_economic_data_for_barchart(
+        input_data_paths=input_data_paths,
+        region_mapping_path=region_mapping_path,
+        rice_region_dict_path=rice_region_dict_path,
+        start_year=start_year,
+        end_year=end_year,
+        splice_start_year=splice_start_year,
+        splice_end_year=splice_end_year,
+    )
+
+    # Loop through the economic dataframes to calculate means and standard deviations
+    means = []
+    stds = []
+
+    for idx, economic_data in enumerate(economic_dataframes):
+        # Calculate mean and standard deviation for each region
+        mean = economic_data.mean(axis=0)
+        std = economic_data.std(axis=0)
+
+        # Append to the lists
+        means.append(mean)
+        stds.append(std)
+
+    # Define the regions
+    regions = means[0].index
+
+    # Create the figure by looping through the dataframes and add_trace for each formulation
+    fig = go.Figure()
+
+    for idx, mean in enumerate(means):
+        # Add bars for the mean
+        fig.add_trace(
+            go.Bar(
+                x=regions,
+                y=mean,
+                error_y=dict(type="data", array=stds[idx]),
+                name=datanames[idx],
+                marker_color=color_palette[idx],
+            )
+        )
+
+    # Update layout
+    fig.update_layout(
+        title=plot_title,
+        xaxis_title=x_axis_title,
+        yaxis_title=y_axis_title,
+        barmode="group",
+        xaxis_tickangle=-45,
+        template="plotly_white",
+    )
+
+    # Set the figure size
+    fig.update_layout(width=plot_width, height=plot_height)
+
+    return fig
+
+
 # TODO: Under Construction
 def plot_ssp_rcp_subplots(
     path_to_data="data/reevaluation",
