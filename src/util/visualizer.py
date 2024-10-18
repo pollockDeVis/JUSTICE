@@ -10,7 +10,10 @@ import seaborn as sns
 import os
 from src.util.model_time import TimeHorizon
 from src.util.enumerations import *
-from src.util.regional_configuration import justice_region_aggregator
+from src.util.regional_configuration import (
+    justice_region_aggregator,
+    get_region_mapping,
+)
 import pickle
 from src.util.data_loader import DataLoader
 
@@ -20,6 +23,70 @@ import json
 import pycountry
 import plotly.express as px
 import plotly.graph_objects as go
+
+
+def process_data_for_stacked_area_plot(
+    data,
+    variable_name,
+    visualization_start_year,
+    visualization_end_year,
+    start_year,
+    end_year,
+    data_timestep,
+    timestep,
+    region_dict,
+    rice_50_names,
+    rice_50_region_dict,
+):
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    data_loader = DataLoader()
+
+    region_list = data_loader.REGION_LIST
+
+    # Create a DataFrame from the data
+    data = pd.DataFrame(data, index=region_list, columns=list_of_years)
+
+    # Slice the data according to visualization years
+    data = data.loc[:, visualization_start_year:visualization_end_year]
+
+    # Pivot the data so that all years are in one column
+    data = data.reset_index().melt(
+        id_vars="index", var_name="Year", value_name=variable_name
+    )
+
+    # Sort the data by regions and years
+    data.sort_values(by=["index", "Year"], inplace=True)
+
+    # Rename index to RICE50_Region
+    data.rename(columns={"index": "RICE50_Region"}, inplace=True)
+
+    # Create a new column with RICE50_Region names using vectorized operations
+    data["RICE50_Region_Names"] = data["RICE50_Region"].map(
+        lambda x: rice_50_names.get(x, [x])[0]
+    )
+
+    # Get the mapping dictionary
+    mapping_dictionary = get_region_mapping(
+        aggregated_region_dict=region_dict,
+        disaggregated_region_dict=rice_50_region_dict,
+        similarity_threshold=0.01,
+    )
+
+    # Create a reverse mapping for efficient lookup
+    reverse_mapping = {v: k for k, values in mapping_dictionary.items() for v in values}
+
+    # Map the RICE50_Region to Region using the reverse mapping
+    data["Region"] = data["RICE50_Region"].map(reverse_mapping)
+
+    return data
 
 
 def process_input_data_for_tradeoff_plot(
