@@ -88,6 +88,145 @@ def process_data_for_stacked_area_plot(
 
     return data
 
+def plot_stacked_area_chart_v2(
+    variable_name=None,
+    path_to_data="data/reevaluation",
+    path_to_output="./data/plots",
+    input_data=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    scenario_list=[],
+    title=None,
+    title_x=0.5,
+    xaxis_label=None,
+    yaxis_label=None,
+    legend_label=None,
+    colour_palette=px.colors.qualitative.Set1_r,
+    height=800,
+    width=1200,
+    visualization_start_year=2015,
+    visualization_end_year=2300,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    template="plotly_white",
+    plot_title=None,
+    groupnorm=None,
+    region_dict_filepath='data/input/9_regions.json',
+    saving=False,
+    fontsize=15,
+    yaxis_lower_limit=0,
+    yaxis_upper_limit=25,
+    show_legend=True,
+    filetype=".pkl",
+    regional_order=None,
+):
+
+    # Assert if input_data list, scenario_list and output_titles list is None
+    assert input_data, "No input data provided for visualization."
+    assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
+    assert region_dict_filepath, "No region dictionary provided for visualization."
+
+
+    # Load the dictionary from the json file
+    with open(region_dict_filepath, 'r') as f:
+        region_dict = json.load(f)
+
+    with open("data/input/rice50_regions_dict.json", "r") as f:
+        rice_50_region_dict = json.load(f)
+
+    with open("data/input/rice50_region_names.json", "r") as f:
+        rice_50_names = json.load(f)
+
+    # Enumerate through the input data and load the data
+    for idx, file in enumerate(input_data):
+        for scenario in scenario_list:
+            print("Loading data for: ", scenario, " - ", file)
+
+            # Search for file in the path 
+            filename = path_to_data + "/" + file + "_" + scenario + "_" + variable_name 
+
+            # Check if the file is pickle or numpy
+            if filetype == ".npy":
+                data = np.load(
+                    filename
+                    + ".npy"
+                )
+            else:
+                with open(
+                    filename
+                    + ".pkl",
+                    "rb",
+                ) as f:
+                    data = pickle.load(f)
+
+
+            # Check shape of data
+            if len(data.shape) == 3:
+                data = np.mean(data, axis=2)
+
+
+            data = process_data_for_stacked_area_plot(data, variable_name, visualization_start_year, visualization_end_year,
+                    start_year, end_year, data_timestep, timestep, region_dict, rice_50_names, rice_50_region_dict)
+
+            # Get all the keys of region_dict
+            aggregated_region_dict_keys = list(region_dict.keys())
+
+            # Compare the regional_order with the aggregated_region_dict_keys
+            if regional_order:
+                assert set(regional_order) == set(aggregated_region_dict_keys), "Regional order does not match the aggregated region dictionary keys."
+        
+
+            # Create plotly figure
+            fig = px.area(
+                data,
+                x="Year",
+                y=variable_name,
+                color="Region",
+                line_group= "RICE50_Region_Names",
+                title=plot_title,
+                template=template,
+                height=height,
+                width=width,
+                color_discrete_sequence=colour_palette,
+                groupnorm=groupnorm,
+                category_orders={"Region": regional_order},
+            )
+
+            if groupnorm is None:
+                fig.update_layout(yaxis_range=[yaxis_lower_limit, yaxis_upper_limit])
+
+            # Update layout
+            fig.update_layout(
+                legend_title_text=legend_label,
+                # X-axis label
+                xaxis_title=xaxis_label,
+                # Y-axis label
+                yaxis_title=yaxis_label,
+                title_text=title,
+                title_x=title_x,
+                font=dict(size=fontsize),
+                legend_traceorder="reversed",
+        
+            )
+  
+            # Check if display legend is True
+            if show_legend == False:
+                fig.update_layout(showlegend=False)
+
+            if saving:
+                # Save the figure
+                if not os.path.exists(path_to_output):
+                    os.makedirs(path_to_output)
+
+                output_file_name = (
+                    variable_name + "_" + output_titles[idx] + "_" + scenario
+                )
+                print("Saving plot for: ", scenario, " - ", output_file_name)
+                fig.write_image(path_to_output + "/" + output_file_name + ".png")
+
+    return fig, data
 
 def process_input_data_for_tradeoff_plot(
     input_data,
