@@ -25,6 +25,113 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 
+
+def plot_sunburst(
+    variable_name=None,
+    path_to_data="data/reevaluation",
+    path_to_output="./data/plots",
+    input_data=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    scenario_list=[],
+    colour_palette=px.colors.qualitative.Set1_r,
+    year_to_visualize = 2100,
+    height=800,
+    width=800,
+    visualization_start_year=2015,
+    visualization_end_year=2300,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    region_dict_filepath='data/input/9_regions.json',
+    saving=False,
+    filetype=".pkl",
+    regional_order=None,
+):
+
+    # Assert if input_data list, scenario_list and output_titles list is None
+    assert input_data, "No input data provided for visualization."
+    assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
+    assert region_dict_filepath, "No region dictionary provided for visualization."
+    
+    pd.options.mode.copy_on_write = True
+
+    # Load the dictionary from the json file
+    with open(region_dict_filepath, 'r') as f:
+        region_dict = json.load(f)
+
+    with open("data/input/rice50_regions_dict.json", "r") as f:
+        rice_50_region_dict = json.load(f)
+
+    with open("data/input/rice50_region_names.json", "r") as f:
+        rice_50_names = json.load(f)
+
+    # Enumerate through the input data and load the data
+    for idx, file in enumerate(input_data):
+        for scenario in scenario_list:
+            print("Loading data for: ", scenario, " - ", file)
+
+            # Search for file in the path 
+            filename = path_to_data + "/" + file + "_" + scenario + "_" + variable_name 
+
+            # Check if the file is pickle or numpy
+            if filetype == ".npy":
+                data = np.load(
+                    filename
+                    + ".npy"
+                )
+            else:
+                with open(
+                    filename
+                    + ".pkl",
+                    "rb",
+                ) as f:
+                    data = pickle.load(f)
+
+
+            # Check shape of data
+            if len(data.shape) == 3:
+                data = np.mean(data, axis=2)
+
+
+            data = process_data_for_stacked_area_plot(data, variable_name, visualization_start_year, visualization_end_year,
+                    start_year, end_year, data_timestep, timestep, region_dict, rice_50_names, rice_50_region_dict)
+
+            # Get all the keys of region_dict
+            aggregated_region_dict_keys = list(region_dict.keys())
+
+            # data query for the selected year
+            query_string = "Year == " + str(year_to_visualize)
+            data = data.query(query_string)
+
+            # Add a column to the dataframe with the selected year
+            data.loc[:, 'Selected Year'] = str(year_to_visualize)
+
+        
+            fig = px.sunburst(data, path=['Selected Year', 'Region', 'RICE50_Region_Names'], values=variable_name, # 'abatement_cost'
+                  color='Region',
+                  )
+
+            # Update the size of the figure
+            fig.update_layout(
+                width=width,
+                height=height
+            )
+
+            if saving:
+                # Save the figure
+                if not os.path.exists(path_to_output):
+                    os.makedirs(path_to_output)
+
+                output_file_name = (
+                    variable_name + "_" + output_titles[idx] + "_" + scenario
+                )
+                print("Saving plot for: ", scenario, " - ", output_file_name)
+                fig.write_image(path_to_output + "/" + output_file_name + ".png")
+
+    return fig, data
+
 def process_data_for_stacked_area_plot(
     data,
     variable_name,
