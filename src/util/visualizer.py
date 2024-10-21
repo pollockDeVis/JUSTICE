@@ -824,8 +824,6 @@ def plot_choropleth(
             )
 
     if data_normalization:
-        # Initialize the scaler
-        # scaler = MinMaxScaler(feature_scale)
         # Find the global minimum and maximum
         global_min = min(
             df[data_label].min() for df in data_scenario_year_by_country_dict.values()
@@ -837,26 +835,18 @@ def plot_choropleth(
 
         print("Global Min & Max", global_min, global_max)
 
-        # Set the scaler's min and max
-        # scaler.min_, scaler.scale_ = global_min, 1.0 / (global_max - global_min)
-
         # Loop over the keys in the dictionary
         for key in data_scenario_year_by_country_dict.keys():
             print(key)
-            # Reshape the 'Emission' column to fit the scaler
+            # Reshape the 'data' column to fit the scaler
             normalized_data = data_scenario_year_by_country_dict[key][
                 data_label
             ].values.reshape(-1, 1)
 
-            # Transform the 'Emission' column
+            # Transform the 'data' column
             data_scenario_year_by_country_dict[key][data_label] = min_max_scaler(
                 normalized_data, global_min, global_max
             )
-
-            # print(data_scenario_year_by_country_dict[key][data_label])
-            # data_scenario_year_by_country_dict[key][data_label] = scaler.transform(
-            #     normalized_data
-            # )
 
     # Loop through the input data and plot the choropleth
     for plotting_idx, file in enumerate(input_data):
@@ -922,21 +912,20 @@ def plot_choropleth(
                 # print("Saving plot for: ", scenarios, " - ", output_file_name)
                 fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
-    # plotting_idx = 2
     return fig, data_scenario_year_by_country
 
 
 def plot_choropleth_2D_data(
-    variable_name="constrained_emission_control_rate",
     path_to_data="data/reevaluation/",
     path_to_output="./data/plots",
-    year_to_visualize=2100,
-    input_data=None,
+    year_to_visualize=2050,
+    input_data_path_list=None,
     region_to_country_mapping="data/input/rice50_regions_dict.json",
-    title="Mitigation Burden Distribution in ",
+    title=None,
+    output_titles=None,
     data_label="Emission Control Rate",
-    legend_label="% Mitigation\n",
-    colourmap="matter",
+    legend_label=" ",
+    colourmap=px.colors.sequential.Reds,
     projection="natural earth",
     scope="world",
     height=700,
@@ -946,16 +935,15 @@ def plot_choropleth_2D_data(
     data_timestep=5,
     timestep=1,
     saving=False,
-    scenario_list=[],
     data_normalization=True,
     show_colorbar=True,
-    show_title=True,
+    normalized_colorbar=False,
+    tickvals=[0, 0.25, 0.5, 0.75, 1],
+    ticktext=["0%", "25%", "50%", "75%", "100%"],
 ):
 
     # Assert if input_data list and output_titles list is None
-    assert input_data, "No input data provided for visualization."
-    # assert output_titles, "No output titles provided for visualization."
-    assert scenario_list, "No scenario list provided for visualization."
+    assert input_data_path_list, "No input data provided for visualization."
 
     time_horizon = TimeHorizon(
         start_year=start_year,
@@ -967,13 +955,13 @@ def plot_choropleth_2D_data(
     data_loader = DataLoader()
 
     region_list = data_loader.REGION_LIST
-    columns = list_of_years
 
     processed_data_dict = {}
 
     # Loop through the input data and plot the choropleth
-    for plotting_idx, file in enumerate(input_data):
-        # Load the scenario data from the pickle file
+    for plotting_idx, file in enumerate(input_data_path_list):
+
+        # Load the data
         data = np.load(path_to_data + file)
 
         processed_country_data = process_2D_regional_data_for_choropleth_plot_v2_opt(
@@ -993,46 +981,71 @@ def plot_choropleth_2D_data(
 
         global_max = max(df[data_label].max() for df in processed_data_dict.values())
 
-        print("Global Min & Max", global_min, global_max)
+        # print("Global Min & Max", global_min, global_max)
 
         # Loop over the keys in the dictionary
         for idx in processed_data_dict.keys():
             print(idx)
-            # Reshape the 'Emission' column to fit the scaler
+            # Reshape the 'data' column to fit the scaler
             dataframe_to_normalize = processed_data_dict[(idx)]
             dataframe_to_normalize = dataframe_to_normalize[data_label].values.reshape(
                 -1, 1
             )
 
-            # Transform the 'Emission' column
+            # Transform the 'data' column
             processed_data_dict[(idx)][data_label] = min_max_scaler(
                 dataframe_to_normalize, global_min, global_max
             )
 
     # Loop through the input data and plot the choropleth
-    for plotting_idx, file in enumerate(input_data):
-
-        choropleth_title = " "  # output_titles[plotting_idx]
+    for plotting_idx, file in enumerate(input_data_path_list):
 
         fig = px.choropleth(
             processed_data_dict[(plotting_idx)],
-            # processed_data_dict[plotting_idx],
             locations="CountryCode",
             color=data_label,
             hover_name="CountryName",
             scope=scope,
             projection=projection,
-            title=choropleth_title,
             height=height,
             width=width,
             color_continuous_scale=colourmap,
         )
 
-        if show_colorbar == False:
+        # Set the discrete color scale and discrete legend
+        if normalized_colorbar:
+            n_colors = len(colourmap)
+            discrete_values = [(i / (n_colors - 1)) for i in range(n_colors)]
+            color_values = [
+                (value, colourmap[i]) for i, value in enumerate(discrete_values)
+            ]
+            fig.update_layout(
+                coloraxis=dict(
+                    colorscale=color_values,
+                    cmin=0,
+                    cmax=1,
+                    colorbar=dict(
+                        title=legend_label,
+                        tickvals=tickvals,
+                        ticktext=ticktext,
+                        lenmode="pixels",  # Fixed length for discrete ticks
+                        ticks="inside",
+                        tickmode="array",
+                    ),
+                )
+            )
+
+        if not show_colorbar:
             fig.update_layout(coloraxis_showscale=False)
 
-        if show_title:
-            # Update the layout
+        if title:
+            # Assert if len of input_data_path_list is not equal to len of output_titles
+            assert len(input_data_path_list) == len(
+                output_titles
+            ), "Input data path list and output titles list are not equal."
+
+            choropleth_title = title + output_titles[plotting_idx]
+
             fig.update_layout(
                 title={
                     "text": choropleth_title,
@@ -1041,14 +1054,12 @@ def plot_choropleth_2D_data(
                     "x": 0.5,
                     "y": 0.95,
                 },
-                coloraxis_colorbar=dict(title=legend_label),
             )
         else:
             fig.update_layout(title_text="")
 
         # Policy index number
         filename = file.split(".")[0]
-        # Split filename based on the underscore and select the last element
         filename = (
             filename.split("_")[0]
             + filename.split("_")[1]
@@ -1057,10 +1068,10 @@ def plot_choropleth_2D_data(
         )
 
         output_file_name = filename
-        print(output_file_name)
         if saving:
-            # Save the plot as a png file
             fig.write_image(path_to_output + "/" + output_file_name + ".png")
+
+        fig.show()
 
     return fig, processed_data_dict
 
