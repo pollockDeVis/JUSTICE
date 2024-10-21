@@ -24,16 +24,23 @@ import pycountry
 import plotly.express as px
 import plotly.graph_objects as go
 
-def plot_emission_control_rate(data_files, start_year=2015, end_year=2300, 
-                               data_timestep=5, timestep=1,
-                               viz_end_year=2100,
-                               variable_name='constrained_emission_control',
-                               output_path=None, saving=False,
-                               show_max_line= False,
-                               show_top_10_regions = False,
-                               region_dict_path = "data/input/9_regions.json",
-                               rice_50_region_dict_path = "data/input/rice50_regions_dict.json",
-                               rice_50_names_path = "data/input/rice50_region_names.json"):
+
+def plot_emission_control_rate(
+    data_files,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    viz_end_year=2100,
+    variable_name="constrained_emission_control",
+    output_path=None,
+    saving=False,
+    show_max_line=False,
+    show_top_10_regions=False,
+    region_dict_path="data/input/9_regions.json",
+    rice_50_region_dict_path="data/input/rice50_regions_dict.json",
+    rice_50_names_path="data/input/rice50_region_names.json",
+):
     """
     Plots the emission control rate for the given list of data files.
 
@@ -50,17 +57,22 @@ def plot_emission_control_rate(data_files, start_year=2015, end_year=2300,
 
     with open(rice_50_region_dict_path, "r") as f:
         rice_50_region_dict = json.load(f)
-    
+
     with open(rice_50_names_path, "r") as f:
         rice_50_names = json.load(f)
-                                
+
     for idx, data_file in enumerate(data_files):
-        print("Loading data from: ", data_file) 
+        print("Loading data from: ", data_file)
         # Load the data
         data = np.load(data_file)
 
         # Initialize TimeHorizon and DataLoader
-        time_horizon = TimeHorizon(start_year=start_year, end_year=end_year, data_timestep=data_timestep, timestep=timestep)
+        time_horizon = TimeHorizon(
+            start_year=start_year,
+            end_year=end_year,
+            data_timestep=data_timestep,
+            timestep=timestep,
+        )
         list_of_years = time_horizon.model_time_horizon
 
         data_loader = DataLoader()
@@ -69,20 +81,30 @@ def plot_emission_control_rate(data_files, start_year=2015, end_year=2300,
         # Convert the data to a dataframe with list_of_years as columns and region_list as index
         data = pd.DataFrame(data, columns=list_of_years, index=region_list)
 
-        data = process_data_for_stacked_area_plot(data, variable_name=variable_name, visualization_start_year=2015, visualization_end_year=2100,
-        start_year=2015, end_year=2300, data_timestep=5, timestep=1, region_dict=region_dict, 
-        rice_50_names=rice_50_names, rice_50_region_dict=rice_50_region_dict)
+        data = process_data_for_stacked_area_plot(
+            data,
+            variable_name=variable_name,
+            visualization_start_year=2015,
+            visualization_end_year=2100,
+            start_year=2015,
+            end_year=2300,
+            data_timestep=5,
+            timestep=1,
+            region_dict=region_dict,
+            rice_50_names=rice_50_names,
+            rice_50_region_dict=rice_50_region_dict,
+        )
 
-        fig = px.line(data, x="Year", y=variable_name, color='RICE50_Region_Names')
+        fig = px.line(data, x="Year", y=variable_name, color="RICE50_Region_Names")
 
         # # Update layout for better visualization
         fig.update_layout(
-            title=' ',
-            xaxis_title='Year',
-            yaxis_title='Emission Control Rate',
-            template='plotly_white',
+            title=" ",
+            xaxis_title="Year",
+            yaxis_title="Emission Control Rate",
+            template="plotly_white",
             height=600,
-            width=1200
+            width=1200,
         )
 
         # Hide the legend
@@ -97,26 +119,21 @@ def plot_emission_control_rate(data_files, start_year=2015, end_year=2300,
 
             # Get the maximum value of the emission control rate from sorted data
             max_value = sorted_data[variable_name].max()
-      
-        
+
         if show_top_10_regions:
 
             # extract the top 10 region from RICE50_Region_Names columns
-            top_10_regions = sorted_data['RICE50_Region_Names'].head(10)
+            top_10_regions = sorted_data["RICE50_Region_Names"].head(10)
 
             # Convert the top 10 regions to a list
             top_10_regions = top_10_regions.tolist()
-            
 
             # Add annotations for the top 10 regions
             for idx, region in enumerate(reversed(top_10_regions)):
                 fig.add_annotation(
-                    x=2110,
-                    y=(idx/10 +0.1),
-                    text=region,
-                    showarrow=False
+                    x=2110, y=(idx / 10 + 0.1), text=region, showarrow=False
                 )
-                
+
             # Show the max value as an annotation and draw a horizontal line
             fig.add_shape(
                 type="line",
@@ -124,11 +141,7 @@ def plot_emission_control_rate(data_files, start_year=2015, end_year=2300,
                 y0=max_value,
                 x1=2100,
                 y1=max_value,
-                line=dict(
-                    color="red",
-                    width=1,
-                    dash="dash"
-                )
+                line=dict(color="red", width=1, dash="dash"),
             )
 
             # Add annotation for the max value
@@ -137,28 +150,128 @@ def plot_emission_control_rate(data_files, start_year=2015, end_year=2300,
                 y=1.1,
                 text="Top 10 Regions",
                 # Update the font color
-                font=dict(
-                    color="red"
-                ),
-                showarrow=False
+                font=dict(color="red"),
+                showarrow=False,
             )
 
             fig.add_annotation(
-                x=2020,
-                y=1.03,
-                text=f"Max EC: {max_value:.2f}",
-                showarrow=False
+                x=2020, y=1.03, text=f"Max EC: {max_value:.2f}", showarrow=False
             )
 
         if saving:
             # Save the plot as a png file
-            fig.write_image(output_path + f"/{data_file.split('/')[-1].split('.')[0]}.png")
+            fig.write_image(
+                output_path + f"/{data_file.split('/')[-1].split('.')[0]}.png"
+            )
             # Save it as html file
-            fig.write_html(output_path + f"/{data_file.split('/')[-1].split('.')[0]}.html")
-
+            fig.write_html(
+                output_path + f"/{data_file.split('/')[-1].split('.')[0]}.html"
+            )
 
         fig.show()
     return fig, data
+
+
+def plot_baseline_emission_comparison(
+    data_paths=[],
+    labels=[],
+    fill=["none", "none", "tozeroy"],
+    path_to_output="./data/plots",
+    xaxis_title=None,
+    yaxis_title=None,
+    linewidth=3,
+    colour_palette=px.colors.qualitative.Dark2,
+    template="plotly_white",
+    yaxis_upper_limit=0.7,
+    visualization_start_year=2025,
+    visualization_end_year=2100,
+    title_x=0.5,
+    width=1000,
+    height=800,
+    fontsize=15,
+    saving=False,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+):
+
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    data_frames = []
+    for idx, path in enumerate(data_paths):
+        filetype = os.path.splitext(path)[1]
+        if filetype == ".npy":
+            data = np.load(path)
+        elif filetype == ".pkl":
+            with open(path, "rb") as f:
+                data = pickle.load(f)
+        elif filetype == ".csv":
+            data = pd.read_csv(path)
+
+        # Check if data is 3D. Then take the mean across the first dimension
+        if len(data.shape) == 3:
+            data = np.sum(data, axis=0)
+
+        data = data.T
+        df = pd.DataFrame(data, columns=list_of_years).loc[
+            :, visualization_start_year:visualization_end_year
+        ]
+
+        # Calculate the median across the rows
+        median = df.median()
+
+        data_frames.append(median)
+
+    fig = go.Figure()
+    # Enumerate through the data_frames and plot the line plots in the same figure
+    for idx, median in enumerate(data_frames):
+        fig.add_trace(
+            go.Scatter(
+                x=median.index,
+                y=median.values,
+                fill=fill[idx],
+                mode="lines",
+                line=dict(
+                    color=colour_palette[idx % len(colour_palette)],
+                    width=linewidth,
+                ),
+                name=labels[idx],
+            )
+        )
+
+    # Set the chart title and axis labels
+    fig.update_layout(
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        width=width,
+        height=height,
+        template=template,
+        yaxis_range=[
+            0.01,
+            yaxis_upper_limit,
+        ],  # 0.01 is purely cosmetic to avoid the y-axis starting at 0
+        title_x=title_x,
+        font=dict(size=fontsize),
+    )
+
+    fig.show()
+
+    if saving:
+        if not os.path.exists(path_to_output):
+            os.makedirs(path_to_output)
+
+        # Loop through labels and append them to the output file name
+        output_file_name = "emission_comparison_" + "_".join(labels)
+        fig.write_image(path_to_output + "/" + output_file_name + ".png")
+
+    return fig, data_frames
 
 
 # Function to calculate statistics
@@ -166,14 +279,40 @@ def calc_stats(df):
     return df.median(), df.min(), df.max()
 
 
-
-def plot_comparison_with_boxplots(data_paths, labels, start_year, end_year, data_timestep, timestep, 
-                                  visualization_start_year, visualization_end_year, yaxis_range, plot_title, 
-                                  xaxis_title, yaxis_title, template, width, height, linecolors = ['red',  'green', 'blue',  'orange'], 
-                                  colors = ['rgba(255, 0, 0, 0.2)','rgba(0, 128, 0, 0.2)',  'rgba(0, 0, 255, 0.2)', 'rgba(255, 165, 0, 0.2)'],
-                                  show_red_dashed_line = True):
+def plot_comparison_with_boxplots(
+    data_paths,
+    labels,
+    start_year,
+    end_year,
+    data_timestep,
+    timestep,
+    visualization_start_year,
+    visualization_end_year,
+    yaxis_range,
+    plot_title,
+    output_path,
+    xaxis_title,
+    yaxis_title,
+    template,
+    width,
+    height,
+    linecolors=["red", "green", "blue", "orange"],
+    colors=[
+        "rgba(255, 0, 0, 0.2)",
+        "rgba(0, 128, 0, 0.2)",
+        "rgba(0, 0, 255, 0.2)",
+        "rgba(255, 165, 0, 0.2)",
+    ],
+    show_red_dashed_line=True,
+    saving=False,
+):
     # Set the time horizon
-    time_horizon = TimeHorizon(start_year=start_year, end_year=end_year, data_timestep=data_timestep, timestep=timestep)
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
     list_of_years = time_horizon.model_time_horizon
 
     # Load the data and create dataframes
@@ -190,51 +329,100 @@ def plot_comparison_with_boxplots(data_paths, labels, start_year, end_year, data
         # Check if data is 3D. Then take the mean across the first dimension
         if len(data.shape) == 3:
             data = np.sum(data, axis=0)
-        
+
         data = data.T
-        df = pd.DataFrame(data, columns=list_of_years).loc[:, visualization_start_year:visualization_end_year]
+        df = pd.DataFrame(data, columns=list_of_years).loc[
+            :, visualization_start_year:visualization_end_year
+        ]
         data_frames.append(df)
 
     # Create plot
     fig = go.Figure()
 
     # Create subplots: 1 row, 2 columns
-    fig = make_subplots(rows=1, cols=2, column_widths=[0.7, 0.3], subplot_titles=[plot_title, ' '])
-
+    fig = make_subplots(
+        rows=1, cols=2, column_widths=[0.7, 0.3], subplot_titles=[plot_title, " "]
+    )
 
     # Calculate statistics for each dataframe
     stats = [calc_stats(df) for df in data_frames]
 
     # Function to create traces for line plot
     def add_traces(fig, median, min_vals, max_vals, name, color, linecolor, col):
-        fig.add_trace(go.Scatter(x=median.index, y=median.values, mode='lines', name=name, line=dict(color=linecolor)), row=1, col=col)
-        fig.add_trace(go.Scatter(x=median.index, y=max_vals.values, mode='lines', line=dict(width=0), 
-                                    fillcolor=color, showlegend=False), row=1, col=col)
-        fig.add_trace(go.Scatter(x=median.index, y=min_vals.values, mode='lines', fill='tonexty', 
-                                    fillcolor=color, line=dict(width=0), showlegend=False), row=1, col=col)
-    
+        fig.add_trace(
+            go.Scatter(
+                x=median.index,
+                y=median.values,
+                mode="lines",
+                name=name,
+                line=dict(color=linecolor),
+            ),
+            row=1,
+            col=col,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=median.index,
+                y=max_vals.values,
+                mode="lines",
+                line=dict(width=0),
+                fillcolor=color,
+                showlegend=False,
+            ),
+            row=1,
+            col=col,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=median.index,
+                y=min_vals.values,
+                mode="lines",
+                fill="tonexty",
+                fillcolor=color,
+                line=dict(width=0),
+                showlegend=False,
+            ),
+            row=1,
+            col=col,
+        )
+
     for i, (median, min_vals, max_vals) in enumerate(stats):
-        add_traces(fig, median, min_vals, max_vals, labels[i], colors[i % len(colors)], linecolors[i % len(linecolors)], col=1)
+        add_traces(
+            fig,
+            median,
+            min_vals,
+            max_vals,
+            labels[i],
+            colors[i % len(colors)],
+            linecolors[i % len(linecolors)],
+            col=1,
+        )
 
     # Extract the last column data for each dataframe
     last_year_data = [df.iloc[:, -1] for df in data_frames]
 
     # Add box plots as a second subplot
     for i, data in enumerate(last_year_data):
-        fig.add_trace(go.Box(
-            y=data,
-            name=labels[i],
-            marker=dict(color=linecolors[i % len(linecolors)]),  # Use corresponding color from linecolors
-            width=0.2  # Adjust width
-        ), row=1, col=2)
+        fig.add_trace(
+            go.Box(
+                y=data,
+                name=labels[i],
+                marker=dict(
+                    color=linecolors[i % len(linecolors)]
+                ),  # Use corresponding color from linecolors
+                width=0.2,  # Adjust width
+            ),
+            row=1,
+            col=2,
+        )
 
     # Add marker borders
-    fig.update_traces(marker=dict(line=dict(width=0.3, color='gray')), row=1, col=2)
+    fig.update_traces(marker=dict(line=dict(width=0.3, color="gray")), row=1, col=2)
 
     # Add styling and labels for the box plot
-    fig.update_yaxes(title_text=' ', range=yaxis_range, row=1, col=2)
+    fig.update_yaxes(title_text=" ", range=yaxis_range, row=1, col=2)
 
-    fig.update_yaxes(title_text=yaxis_title, range=yaxis_range,  row=1, col=1)
+    fig.update_yaxes(title_text=yaxis_title, range=yaxis_range, row=1, col=1)
 
     # Remove y axis labels for the box plot
     fig.update_yaxes(showticklabels=False, row=1, col=2)
@@ -244,7 +432,7 @@ def plot_comparison_with_boxplots(data_paths, labels, start_year, end_year, data
 
     # Make Y axis label for every 1 unit
     fig.update_yaxes(tick0=0, dtick=1, row=1, col=1)
-    
+
     if show_red_dashed_line:
         # Add a red dashed line at 2°C for reference
         fig.add_shape(
@@ -254,8 +442,10 @@ def plot_comparison_with_boxplots(data_paths, labels, start_year, end_year, data
                 y0=2,
                 x1=3.1,
                 y1=2,
-                line=dict(color="red", width=1, dash="dash")
-            ), row=1, col=2
+                line=dict(color="red", width=1, dash="dash"),
+            ),
+            row=1,
+            col=2,
         )
 
         # Add red dashed line annotation to the first subplot
@@ -266,25 +456,29 @@ def plot_comparison_with_boxplots(data_paths, labels, start_year, end_year, data
                 y0=2,
                 x1=2100,
                 y1=2,
-                line=dict(color="red", width=1, dash="dash")
-            ), row=1, col=1
+                line=dict(color="red", width=1, dash="dash"),
+            ),
+            row=1,
+            col=1,
         )
 
-
     # Update layout
-    fig.update_layout(
-        template=template,
-        width=width, height=height
-    )
+    fig.update_layout(template=template, width=width, height=height)
 
     # Adjust the width of the first subplot (column=1) to be more than the second subplot (column=2)
     fig.update_layout(
         xaxis=dict(domain=[0, 0.7]),  # First subplot takes 65% of the width
-        xaxis2=dict(domain=[0.75, 1])   # Second subplot takes the remaining 30% of the width
+        xaxis2=dict(
+            domain=[0.75, 1]
+        ),  # Second subplot takes the remaining 30% of the width
     )
 
     # Show the plot
     fig.show()
+
+    if saving:
+        # Save the plot
+        fig.write_image(f"{output_path}/{plot_title}.png")
 
 
 def plot_sunburst(
@@ -295,7 +489,7 @@ def plot_sunburst(
     output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
     scenario_list=[],
     colour_palette=px.colors.qualitative.Set1_r,
-    year_to_visualize = 2100,
+    year_to_visualize=2100,
     height=800,
     width=800,
     visualization_start_year=2015,
@@ -304,7 +498,7 @@ def plot_sunburst(
     end_year=2300,
     data_timestep=5,
     timestep=1,
-    region_dict_filepath='data/input/9_regions.json',
+    region_dict_filepath="data/input/9_regions.json",
     saving=False,
     filetype=".pkl",
     regional_order=None,
@@ -315,11 +509,11 @@ def plot_sunburst(
     assert output_titles, "No output titles provided for visualization."
     assert scenario_list, "No scenario list provided for visualization."
     assert region_dict_filepath, "No region dictionary provided for visualization."
-    
+
     pd.options.mode.copy_on_write = True
 
     # Load the dictionary from the json file
-    with open(region_dict_filepath, 'r') as f:
+    with open(region_dict_filepath, "r") as f:
         region_dict = json.load(f)
 
     with open("data/input/rice50_regions_dict.json", "r") as f:
@@ -333,31 +527,36 @@ def plot_sunburst(
         for scenario in scenario_list:
             print("Loading data for: ", scenario, " - ", file)
 
-            # Search for file in the path 
-            filename = path_to_data + "/" + file + "_" + scenario + "_" + variable_name 
+            # Search for file in the path
+            filename = path_to_data + "/" + file + "_" + scenario + "_" + variable_name
 
             # Check if the file is pickle or numpy
             if filetype == ".npy":
-                data = np.load(
-                    filename
-                    + ".npy"
-                )
+                data = np.load(filename + ".npy")
             else:
                 with open(
-                    filename
-                    + ".pkl",
+                    filename + ".pkl",
                     "rb",
                 ) as f:
                     data = pickle.load(f)
-
 
             # Check shape of data
             if len(data.shape) == 3:
                 data = np.mean(data, axis=2)
 
-
-            data = process_data_for_stacked_area_plot(data, variable_name, visualization_start_year, visualization_end_year,
-                    start_year, end_year, data_timestep, timestep, region_dict, rice_50_names, rice_50_region_dict)
+            data = process_data_for_stacked_area_plot(
+                data,
+                variable_name,
+                visualization_start_year,
+                visualization_end_year,
+                start_year,
+                end_year,
+                data_timestep,
+                timestep,
+                region_dict,
+                rice_50_names,
+                rice_50_region_dict,
+            )
 
             # Get all the keys of region_dict
             aggregated_region_dict_keys = list(region_dict.keys())
@@ -367,18 +566,17 @@ def plot_sunburst(
             data = data.query(query_string)
 
             # Add a column to the dataframe with the selected year
-            data.loc[:, 'Selected Year'] = str(year_to_visualize)
+            data.loc[:, "Selected Year"] = str(year_to_visualize)
 
-        
-            fig = px.sunburst(data, path=['Selected Year', 'Region', 'RICE50_Region_Names'], values=variable_name, # 'abatement_cost'
-                  color='Region',
-                  )
+            fig = px.sunburst(
+                data,
+                path=["Selected Year", "Region", "RICE50_Region_Names"],
+                values=variable_name,  # 'abatement_cost'
+                color="Region",
+            )
 
             # Update the size of the figure
-            fig.update_layout(
-                width=width,
-                height=height
-            )
+            fig.update_layout(width=width, height=height)
 
             if saving:
                 # Save the figure
@@ -392,6 +590,7 @@ def plot_sunburst(
                 fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     return fig, data
+
 
 def process_data_for_stacked_area_plot(
     data,
@@ -456,6 +655,7 @@ def process_data_for_stacked_area_plot(
 
     return data
 
+
 def plot_stacked_area_chart_v2(
     variable_name=None,
     path_to_data="data/reevaluation",
@@ -480,7 +680,7 @@ def plot_stacked_area_chart_v2(
     template="plotly_white",
     plot_title=None,
     groupnorm=None,
-    region_dict_filepath='data/input/9_regions.json',
+    region_dict_filepath="data/input/9_regions.json",
     saving=False,
     fontsize=15,
     yaxis_lower_limit=0,
@@ -496,9 +696,8 @@ def plot_stacked_area_chart_v2(
     assert scenario_list, "No scenario list provided for visualization."
     assert region_dict_filepath, "No region dictionary provided for visualization."
 
-
     # Load the dictionary from the json file
-    with open(region_dict_filepath, 'r') as f:
+    with open(region_dict_filepath, "r") as f:
         region_dict = json.load(f)
 
     with open("data/input/rice50_regions_dict.json", "r") as f:
@@ -512,39 +711,45 @@ def plot_stacked_area_chart_v2(
         for scenario in scenario_list:
             print("Loading data for: ", scenario, " - ", file)
 
-            # Search for file in the path 
-            filename = path_to_data + "/" + file + "_" + scenario + "_" + variable_name 
+            # Search for file in the path
+            filename = path_to_data + "/" + file + "_" + scenario + "_" + variable_name
 
             # Check if the file is pickle or numpy
             if filetype == ".npy":
-                data = np.load(
-                    filename
-                    + ".npy"
-                )
+                data = np.load(filename + ".npy")
             else:
                 with open(
-                    filename
-                    + ".pkl",
+                    filename + ".pkl",
                     "rb",
                 ) as f:
                     data = pickle.load(f)
-
 
             # Check shape of data
             if len(data.shape) == 3:
                 data = np.mean(data, axis=2)
 
-
-            data = process_data_for_stacked_area_plot(data, variable_name, visualization_start_year, visualization_end_year,
-                    start_year, end_year, data_timestep, timestep, region_dict, rice_50_names, rice_50_region_dict)
+            data = process_data_for_stacked_area_plot(
+                data,
+                variable_name,
+                visualization_start_year,
+                visualization_end_year,
+                start_year,
+                end_year,
+                data_timestep,
+                timestep,
+                region_dict,
+                rice_50_names,
+                rice_50_region_dict,
+            )
 
             # Get all the keys of region_dict
             aggregated_region_dict_keys = list(region_dict.keys())
 
             # Compare the regional_order with the aggregated_region_dict_keys
             if regional_order:
-                assert set(regional_order) == set(aggregated_region_dict_keys), "Regional order does not match the aggregated region dictionary keys."
-        
+                assert set(regional_order) == set(
+                    aggregated_region_dict_keys
+                ), "Regional order does not match the aggregated region dictionary keys."
 
             # Create plotly figure
             fig = px.area(
@@ -552,7 +757,7 @@ def plot_stacked_area_chart_v2(
                 x="Year",
                 y=variable_name,
                 color="Region",
-                line_group= "RICE50_Region_Names",
+                line_group="RICE50_Region_Names",
                 title=plot_title,
                 template=template,
                 height=height,
@@ -576,9 +781,8 @@ def plot_stacked_area_chart_v2(
                 title_x=title_x,
                 font=dict(size=fontsize),
                 legend_traceorder="reversed",
-        
             )
-  
+
             # Check if display legend is True
             if show_legend == False:
                 fig.update_layout(showlegend=False)
@@ -595,6 +799,7 @@ def plot_stacked_area_chart_v2(
                 fig.write_image(path_to_output + "/" + output_file_name + ".png")
 
     return fig, data
+
 
 def process_input_data_for_tradeoff_plot(
     input_data,
