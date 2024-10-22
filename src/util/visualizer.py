@@ -488,7 +488,7 @@ def plot_sunburst(
     input_data=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
     output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
     scenario_list=[],
-    colour_palette=px.colors.qualitative.Set1_r,
+    path=["Selected Year", "Region", "RICE50_Region_Names"],
     year_to_visualize=2100,
     height=800,
     width=800,
@@ -501,7 +501,18 @@ def plot_sunburst(
     region_dict_filepath="data/input/9_regions.json",
     saving=False,
     filetype=".pkl",
-    regional_order=None,
+    color_discrete_map={
+        "(?)": "rgb(255,255,255)",
+        "Rest of the World": "rgb(153,153,153)",
+        "Europe": "rgb(247,129,191)",
+        "Gulf Countries": "rgb(166,86,40)",
+        "South and Southeast Asia": "rgb(255,255,51)",
+        "Other High Income": "rgb(255,127,0)",
+        "Sub-Saharan Africa": "rgb(152,78,163)",
+        "China": "rgb(77,175,74)",
+        "India": "rgb(55,126,184)",
+        "United States": "rgb(228,26,28)",
+    },
 ):
 
     # Assert if input_data list, scenario_list and output_titles list is None
@@ -570,9 +581,10 @@ def plot_sunburst(
 
             fig = px.sunburst(
                 data,
-                path=["Selected Year", "Region", "RICE50_Region_Names"],
+                path=path,
                 values=variable_name,  # 'abatement_cost'
                 color="Region",
+                color_discrete_map=color_discrete_map,
             )
 
             # Update the size of the figure
@@ -584,7 +596,13 @@ def plot_sunburst(
                     os.makedirs(path_to_output)
 
                 output_file_name = (
-                    variable_name + "_" + output_titles[idx] + "_" + scenario
+                    variable_name
+                    + "_"
+                    + output_titles[idx]
+                    + "_"
+                    + scenario
+                    + "_"
+                    + str(year_to_visualize)
                 )
                 print("Saving plot for: ", scenario, " - ", output_file_name)
                 fig.write_image(path_to_output + "/" + output_file_name + ".png")
