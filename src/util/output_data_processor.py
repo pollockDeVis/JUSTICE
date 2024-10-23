@@ -678,6 +678,26 @@ def reevaluate_all_for_utilitarian_prioritarian(
                     ]
                 )
             )
+            _, _, reference_set_df.loc[index, "damage_cost_per_capita_utilitarian"] = (
+                welfare_function_utilitarian.calculate_welfare(
+                    consumption_per_capita=scenario_datasets[scenario_list[0]][
+                        "damage_cost_per_capita"
+                    ],
+                    welfare_loss=True,
+                )
+            )
+
+            (
+                _,
+                _,
+                reference_set_df.loc[index, "abatement_cost_per_capita_utilitarian"],
+            ) = welfare_function_utilitarian.calculate_welfare(
+                consumption_per_capita=scenario_datasets[scenario_list[0]][
+                    "abatement_cost_per_capita"
+                ],
+                welfare_loss=True,
+            )
+
             _, _, reference_set_df.loc[index, "welfare_prioritarian"] = (
                 welfare_function_prioritarian.calculate_welfare(
                     consumption_per_capita=scenario_datasets[scenario_list[0]][
@@ -686,9 +706,40 @@ def reevaluate_all_for_utilitarian_prioritarian(
                 )
             )
 
+            _, _, reference_set_df.loc[index, "damage_cost_per_capita_prioritarian"] = (
+                welfare_function_prioritarian.calculate_welfare(
+                    consumption_per_capita=scenario_datasets[scenario_list[0]][
+                        "damage_cost_per_capita"
+                    ],
+                    welfare_loss=True,
+                )
+            )
+
+            (
+                _,
+                _,
+                reference_set_df.loc[index, "abatement_cost_per_capita_prioritarian"],
+            ) = welfare_function_prioritarian.calculate_welfare(
+                consumption_per_capita=scenario_datasets[scenario_list[0]][
+                    "abatement_cost_per_capita"
+                ],
+                welfare_loss=True,
+            )
+
+        # # Transform the damage cost per capita to welfare loss value
+        # _, _, welfare_loss_damage = model.welfare_function.calculate_welfare(
+        #     datasets["damage_cost_per_capita"], welfare_loss=True
+        # )
+        # welfare_loss_damage = np.abs(welfare_loss_damage)
+        # # Transform the abatement cost to welfare loss value
+        # _, _, welfare_loss_abatement = model.welfare_function.calculate_welfare(
+        #     datasets["abatement_cost_per_capita"], welfare_loss=True
+        # )
+        # welfare_loss_abatement = np.abs(welfare_loss_abatement)
+
         # Save the reference_set_df as a csv file
         reference_set_df.to_csv(
-            path_to_output + output_file_name + "reevaluated" + ".csv"
+            path_to_output + output_file_name + "_reevaluated" + ".csv"
         )
 
 
@@ -697,7 +748,7 @@ if __name__ == "__main__":
     reevaluate_all_for_utilitarian_prioritarian(
         input_data=[
             "UTILITARIAN_reference_set.csv",
-            # "PRIORITARIAN_reference_set.csv",
+            "PRIORITARIAN_reference_set.csv",
             # "SUFFICIENTARIAN_reference_set.csv",
             # "EGALITARIAN_reference_set.csv",
         ],
