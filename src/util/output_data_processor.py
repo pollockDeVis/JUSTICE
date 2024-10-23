@@ -13,6 +13,9 @@ import os
 import h5py
 from ema_workbench import load_results, ema_logging
 import pandas as pd
+from src.welfare.social_welfare_function import SocialWelfareFunction
+from config.default_parameters import SocialWelfareDefaults
+from src.util.enumerations import get_economic_scenario
 
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
@@ -186,7 +189,7 @@ def reevaluate_optimal_policy(
                     rbf_policy_index,
                 )
 
-                scenario_datasets = run_model_with_optimal_policy(
+                scenario_datasets, _ = run_model_with_optimal_policy(
                     scenario_list=scenario_list,
                     path_to_rbf_weights=path_to_rbf_weights + file,
                     saving=False,
@@ -224,7 +227,7 @@ def reevaluate_optimal_policy(
 
             print("index for policy: ", rbf_policy_index)
 
-            scenario_datasets = run_model_with_optimal_policy(
+            scenario_datasets, _ = run_model_with_optimal_policy(
                 scenario_list=scenario_list,
                 path_to_rbf_weights=path_to_rbf_weights + file,
                 saving=False,
@@ -250,7 +253,7 @@ def reevaluate_optimal_policy(
             rbf_policy_index = df[objective_of_interest].idxmin()
             print("index for obj of interest: ", rbf_policy_index)
 
-            scenario_datasets = run_model_with_optimal_policy(
+            scenario_datasets, _ = run_model_with_optimal_policy(
                 scenario_list=scenario_list,
                 path_to_rbf_weights=path_to_rbf_weights + file,
                 saving=False,
@@ -306,12 +309,13 @@ def run_model_with_optimal_policy(
 ):
     # Create a dictionary to store the data for each scenario
     scenario_data = {}
+    model_object = {}
 
     for _, scenarios in enumerate(scenario_list):
         scneario_idx = Scenario[scenarios].value[0]
         print(scneario_idx, scenarios)
 
-        scenario_data[scenarios] = JUSTICE_stepwise_run(
+        scenario_data[scenarios], model_object[scenarios] = JUSTICE_stepwise_run(
             scenarios=scneario_idx,
             path_to_rbf_weights=path_to_rbf_weights,
             saving=saving,
@@ -330,7 +334,7 @@ def run_model_with_optimal_policy(
         )
 
         print("Keys of the scenario data: ", scenario_data.keys())
-    return scenario_data
+    return scenario_data, model_object
 
 
 def interpolator(data_array, data_time_horizon, model_time_horizon):
@@ -544,7 +548,162 @@ def get_best_performing_policies(
     return indices_list
 
 
+def reevaluate_all_for_utilitarian_prioritarian(
+    input_data=[],
+    path_to_rbf_weights="data/convergence_metrics/",
+    path_to_output="data/reevaluation/",
+    scenario_list=["SSP245"],  # NOTE: Only works with 1 scenario for now
+    n_inputs_rbf=2,
+    max_annual_growth_rate=0.04,
+    emission_control_start_timestep=10,
+    min_emission_control_rate=0.01,
+    max_temperature=16.0,
+    min_temperature=0.0,
+    max_difference=2.0,
+    min_difference=0.0,
+):
+
+    # Assert if any arguments are None
+    assert input_data is not None, "Input data not provided"
+    assert path_to_rbf_weights is not None, "Path to RBF weights not provided"
+    assert path_to_output is not None, "Path to output not provided"
+
+    # Loop through the elements in input_data
+    for input_data_index, file in enumerate(input_data):
+
+        rival_framing = file  # input_data[index]
+        output_file_name = file.split(".")[0]  # input_data[index]
+
+        path = path_to_rbf_weights + rival_framing  #
+
+        reference_set_df = pd.read_csv(path)  # The refset
+
+        # Loop through the rows in input_data and set the rbf_policy_index
+        for index, row in reference_set_df.iterrows():
+            rbf_policy_index = index
+            print("File: ", file)
+            print("index for policy: ", rbf_policy_index)
+
+            scenario_datasets, model_objects = run_model_with_optimal_policy(
+                scenario_list=scenario_list,
+                path_to_rbf_weights=path_to_rbf_weights + file,
+                saving=False,
+                output_file_name=None,
+                rbf_policy_index=rbf_policy_index,
+                n_inputs_rbf=n_inputs_rbf,
+                max_annual_growth_rate=max_annual_growth_rate,
+                emission_control_start_timestep=emission_control_start_timestep,
+                min_emission_control_rate=min_emission_control_rate,
+                max_temperature=max_temperature,
+                min_temperature=min_temperature,
+                max_difference=max_difference,
+                min_difference=min_difference,
+            )
+
+            # Print scenario datasets keys
+            print("Keys of the scenario data: ", scenario_datasets.keys())
+            print(
+                "Shape of CPC",
+                (scenario_datasets[scenario_list[0]]["consumption_per_capita"]).shape,
+            )
+            model = model_objects[scenario_list[0]]
+
+            # Accessing attributes using dot notation or getattr
+            time_horizon = getattr(model, "time_horizon", None)  # or model.time_horizon
+            data_loader = getattr(model, "data_loader", None)  # or model.data_loader
+            no_of_ensembles = getattr(
+                model, "no_of_ensembles", None
+            )  # or model.no_of_ensembles
+
+            # Using the attributes to get further information
+            n_regions = len(data_loader.REGION_LIST) if data_loader else 0
+            n_timesteps = len(time_horizon.model_time_horizon) if time_horizon else 0
+            population = model.economy.get_population() if model.economy else None
+            social_welfare_defaults = SocialWelfareDefaults()
+
+            # Fetch the defaults for Social Welfare Function
+            welfare_defaults_utilitarian = social_welfare_defaults.get_defaults(
+                WelfareFunction.UTILITARIAN.name
+            )
+
+            # Fetch the defaults for Social Welfare Function
+            welfare_defaults_prioritarian = social_welfare_defaults.get_defaults(
+                WelfareFunction.PRIORITARIAN.name
+            )
+
+            welfare_function_utilitarian = SocialWelfareFunction(
+                input_dataset=data_loader,
+                time_horizon=time_horizon,
+                climate_ensembles=no_of_ensembles,
+                population=population,
+                risk_aversion=welfare_defaults_utilitarian["risk_aversion"],
+                elasticity_of_marginal_utility_of_consumption=welfare_defaults_utilitarian[
+                    "elasticity_of_marginal_utility_of_consumption"
+                ],
+                pure_rate_of_social_time_preference=welfare_defaults_utilitarian[
+                    "pure_rate_of_social_time_preference"
+                ],
+                inequality_aversion=welfare_defaults_utilitarian["inequality_aversion"],
+                sufficiency_threshold=welfare_defaults_utilitarian[
+                    "sufficiency_threshold"
+                ],
+                egality_strictness=welfare_defaults_utilitarian["egality_strictness"],
+            )
+
+            welfare_function_prioritarian = SocialWelfareFunction(
+                input_dataset=data_loader,
+                time_horizon=time_horizon,
+                climate_ensembles=no_of_ensembles,
+                population=population,
+                risk_aversion=welfare_defaults_prioritarian["risk_aversion"],
+                elasticity_of_marginal_utility_of_consumption=welfare_defaults_prioritarian[
+                    "elasticity_of_marginal_utility_of_consumption"
+                ],
+                pure_rate_of_social_time_preference=welfare_defaults_prioritarian[
+                    "pure_rate_of_social_time_preference"
+                ],
+                inequality_aversion=welfare_defaults_prioritarian[
+                    "inequality_aversion"
+                ],
+                sufficiency_threshold=welfare_defaults_prioritarian[
+                    "sufficiency_threshold"
+                ],
+                egality_strictness=welfare_defaults_prioritarian["egality_strictness"],
+            )
+
+            _, _, reference_set_df.loc[index, "welfare_utilitarian"] = (
+                welfare_function_utilitarian.calculate_welfare(
+                    consumption_per_capita=scenario_datasets[scenario_list[0]][
+                        "consumption_per_capita"
+                    ]
+                )
+            )
+            _, _, reference_set_df.loc[index, "welfare_prioritarian"] = (
+                welfare_function_prioritarian.calculate_welfare(
+                    consumption_per_capita=scenario_datasets[scenario_list[0]][
+                        "consumption_per_capita"
+                    ]
+                )
+            )
+
+        # Save the reference_set_df as a csv file
+        reference_set_df.to_csv(
+            path_to_output + output_file_name + "reevaluated" + ".csv"
+        )
+
+
 if __name__ == "__main__":
+
+    reevaluate_all_for_utilitarian_prioritarian(
+        input_data=[
+            "UTILITARIAN_reference_set.csv",
+            # "PRIORITARIAN_reference_set.csv",
+            # "SUFFICIENTARIAN_reference_set.csv",
+            # "EGALITARIAN_reference_set.csv",
+        ],
+    )
+
+    ########################################################################
     # reevaluate_optimal_policy(
     #     input_data=[
     #         # "UTILITARIAN_reference_set.csv",
@@ -576,45 +735,45 @@ if __name__ == "__main__":
     # scenario_list = list(
     #     Scenario.__members__.keys()
     # )  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
-    scenario_list = ["SSP245"]
-    start_year = 2015
-    end_year = 2300
-    data_timestep = 5
-    timestep = 1
+    # scenario_list = ["SSP245"]
+    # start_year = 2015
+    # end_year = 2300
+    # data_timestep = 5
+    # timestep = 1
 
-    data_loader = DataLoader()
-    region_list = data_loader.REGION_LIST
+    # data_loader = DataLoader()
+    # region_list = data_loader.REGION_LIST
 
-    # Set the time horizon
-    time_horizon = TimeHorizon(
-        start_year=start_year,
-        end_year=end_year,
-        data_timestep=data_timestep,
-        timestep=timestep,
-    )
+    # # Set the time horizon
+    # time_horizon = TimeHorizon(
+    #     start_year=start_year,
+    #     end_year=end_year,
+    #     data_timestep=data_timestep,
+    #     timestep=timestep,
+    # )
 
-    list_of_years = time_horizon.model_time_horizon
-    columns = list_of_years
-    # net_economic_output consumption, emissions, economic_damage, global_temperature
-    reevaluated_optimal_policy_variable_extractor(
-        scenario_list=scenario_list,  # ['SSP245'],
-        region_list=region_list,
-        list_of_years=list_of_years,
-        path_to_data="data/reevaluation/only_welfare_temp",
-        path_to_output="data/reevaluation/only_welfare_temp/extracted_variable",
-        variable_name="consumption",  # "net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature", gross_economic_output, consumption_per_capita
-        data_shape=3,
-        no_of_ensembles=1001,
-        input_data=[
-            "UTILITARIAN_reference_set_idx16.pkl",
-            "PRIORITARIAN_reference_set_idx196.pkl",
-            # "SUFFICIENTARIAN_reference_set_idx99.pkl",
-            # "EGALITARIAN_reference_set_idx147.pkl",
-        ],
-        output_file_names=[
-            "Utilitarian",
-            "Prioritarian",
-            # "Sufficientarian",
-            # "Egalitarian",
-        ],
-    )
+    # list_of_years = time_horizon.model_time_horizon
+    # columns = list_of_years
+    # # net_economic_output consumption, emissions, economic_damage, global_temperature
+    # reevaluated_optimal_policy_variable_extractor(
+    #     scenario_list=scenario_list,  # ['SSP245'],
+    #     region_list=region_list,
+    #     list_of_years=list_of_years,
+    #     path_to_data="data/reevaluation/only_welfare_temp",
+    #     path_to_output="data/reevaluation/only_welfare_temp/extracted_variable",
+    #     variable_name="consumption",  # "net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature", gross_economic_output, consumption_per_capita
+    #     data_shape=3,
+    #     no_of_ensembles=1001,
+    #     input_data=[
+    #         "UTILITARIAN_reference_set_idx16.pkl",
+    #         "PRIORITARIAN_reference_set_idx196.pkl",
+    #         # "SUFFICIENTARIAN_reference_set_idx99.pkl",
+    #         # "EGALITARIAN_reference_set_idx147.pkl",
+    #     ],
+    #     output_file_names=[
+    #         "Utilitarian",
+    #         "Prioritarian",
+    #         # "Sufficientarian",
+    #         # "Egalitarian",
+    #     ],
+    # )

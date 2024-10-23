@@ -1694,6 +1694,11 @@ def plot_choropleth_2D_data(
         # Load the data
         data = np.load(path_to_data + file)
 
+        # Check if data is 3D
+        if len(data.shape) == 3:
+            print("Taking average over the last dimension.")
+            data = np.mean(data, axis=2)
+
         processed_country_data = process_2D_regional_data_for_choropleth_plot_v2_opt(
             region_list=region_list,
             data=data,
@@ -1790,16 +1795,16 @@ def plot_choropleth_2D_data(
 
         # Policy index number
         filename = file.split(".")[0]
-        filename = (
-            filename.split("_")[0]
-            + filename.split("_")[1]
-            + "_"
-            + filename.split("_")[-1]
-        )
+        # filename = (
+        #     filename.split("_")[0]
+        #     + filename.split("_")[1]
+        #     + "_"
+        #     + filename.split("_")[-1]
+        # )
 
         output_file_name = filename
         if saving:
-            fig.write_image(path_to_output + "/" + output_file_name + ".png")
+            fig.write_image(path_to_output + "/" + output_file_name + str(year_to_visualize) + ".png")
 
         fig.show()
 

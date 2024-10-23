@@ -234,17 +234,17 @@ def JUSTICE_stepwise_run(
     #     datasets, data_loader, time_horizon, no_of_ensembles, population
     # )
 
-    # Example usage within JUSTICE_stepwise_run
-    save_constrained_emission_control_rate_at_percentile(
-        datasets=datasets,
-        constrained_emission_control_rate=constrained_emission_control_rate,
-        time_horizon=time_horizon,
-        path_to_output=path_to_output,
-        output_file_name=output_file_name,
-        rbf_policy_index=rbf_policy_index,
-        year=2100,
-        percentile=95,
-    )
+    # Example usage within JUSTICE_stepwise_run #NOTE: This is optional for data analysis
+    # save_constrained_emission_control_rate_at_percentile(
+    #     datasets=datasets,
+    #     constrained_emission_control_rate=constrained_emission_control_rate,
+    #     time_horizon=time_horizon,
+    #     path_to_output=path_to_output,
+    #     output_file_name=output_file_name,
+    #     rbf_policy_index=rbf_policy_index,
+    #     year=2100,
+    #     percentile=95,
+    # )
 
     # Save the datasets
     if saving:
@@ -259,13 +259,15 @@ def JUSTICE_stepwise_run(
         #         path_to_output + output_file_name + "_" + str(rbf_policy_index) + ".csv"
         #     )
 
-        np.save(path_to_output + output_file_name + rbf_policy_index, datasets)
+        np.save(
+            path_to_output + output_file_name + "_" + str(rbf_policy_index), datasets
+        )
         # np.save(
         #     "data/output/optimized_emissions_control_rate.npy",
         #     constrained_emission_control_rate,
         # )
 
-    return datasets
+    return datasets, model
 
 
 # TODO: Under Construction - Not implemented yet
@@ -546,14 +548,14 @@ if __name__ == "__main__":
     #     scenarios=2,
     #     social_welfare_function=WelfareFunction.UTILITARIAN,
     # )
-    datasets = JUSTICE_stepwise_run(
+    datasets, _ = JUSTICE_stepwise_run(
         scenarios=2,
-        social_welfare_function=WelfareFunction.PRIORITARIAN,
-        rbf_policy_index=196,
-        path_to_rbf_weights="data/convergence_metrics/PRIORITARIAN_reference_set.csv",
-        saving=False,
-        path_to_output="data/reevaluation/only_welfare_temp/",
-        output_file_name="TEST_PRIORITARIAN",
+        social_welfare_function=WelfareFunction.UTILITARIAN,
+        rbf_policy_index=66,
+        path_to_rbf_weights="data/convergence_metrics/UTILITARIAN_reference_set.csv",
+        saving=True,
+        path_to_output="data/reevaluation/util_90_welfare_temp/",
+        output_file_name="UTILITARIAN",
     )
     # Print the keys of the datasets
     # print("Welfare", datasets["welfare"])
