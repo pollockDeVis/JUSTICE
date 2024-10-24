@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import os
+from matplotlib.lines import Line2D
 from src.util.model_time import TimeHorizon
 from src.util.enumerations import *
 from src.util.regional_configuration import (
@@ -477,8 +478,9 @@ def plot_comparison_with_boxplots(
     fig.show()
 
     if saving:
+        filename = data_paths[0].split("/")[-1].split(".")[0]
         # Save the plot
-        fig.write_image(f"{output_path}/{plot_title}.png")
+        fig.write_image(f"{output_path}/{filename}.png")
 
 
 def plot_sunburst(
@@ -819,230 +821,193 @@ def plot_stacked_area_chart_v2(
     return fig, data
 
 
-def process_input_data_for_tradeoff_plot(
-    input_data,
-    path_to_data,
-    number_of_objectives,
-    objective_of_interest,
-    scaling=True,
-    scaling_index=0,
-    feature_adjustment_value=300,
-):
-    data = pd.DataFrame()
-    output_file_name = ""
-    sliced_data = {}
-    filtered_data = np.zeros((number_of_objectives, number_of_objectives))
-
-    data_length = np.zeros(len(input_data))
-    for index, file in enumerate(input_data):
-        _read_data = pd.read_csv(path_to_data + "/" + file)
-        # Keep only the last objective columns
-        _read_data = _read_data.iloc[:, -number_of_objectives:]
-
-        if scaling:
-            # Adjust the feature values if any values are over feature_adjustment_value, subtract feature_adjustment_value for the scaling_index
-            # TODO: This operation happens twice. Might be good to combine the groups and apply the scaling together
-            if np.max(_read_data.iloc[:, scaling_index]) > feature_adjustment_value:
-                feature_range = (0.51, 1)
-                _read_data.iloc[:, scaling_index] = MinMaxScaler(
-                    feature_range
-                ).fit_transform(_read_data.iloc[:, scaling_index].values.reshape(-1, 1))
-            else:
-                feature_range = (0, 0.49)
-                _read_data.iloc[:, scaling_index] = MinMaxScaler(
-                    feature_range
-                ).fit_transform(_read_data.iloc[:, scaling_index].values.reshape(-1, 1))
-
-        data = pd.concat([data, _read_data])
-        output_file_name = output_file_name + file.split(".")[0] + "_"
-
-        data_length[index] = int(data.shape[0])
-
-        sliced_data[index] = _read_data
-
-    if scaling:
-
-        # Scale the data, slice the data and filter the data
-        scaler = MinMaxScaler(feature_range=(0, 1))
-
-        # Actual columns
-        actual_columns = data.columns
-        # Get the column name for the scaling index
-        scaling_column = data.columns[scaling_index]
-
-        # Get the list of columns without the scaling column
-        filtered_columns = data.columns.tolist()
-        filtered_columns.remove(scaling_column)
-
-        # Transform data except for the scaling column
-        data[filtered_columns] = pd.DataFrame(
-            scaler.fit_transform(data[filtered_columns]),
-            # columns=data.columns,
-        )
-        data.columns = actual_columns
-
-        # Create a single dataframe with all the data from sliced_data
-        combined_data = pd.concat(sliced_data.values(), ignore_index=True)
-
-        # Apply minmax scaling to the combined data
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        scaled_data = pd.DataFrame(
-            scaler.fit_transform(combined_data), columns=combined_data.columns
-        )
-
-        # Redistribute the scaled data back to sliced_data
-        start_index = 0
-        for index, df in sliced_data.items():
-            end_index = start_index + len(df)
-            sliced_data[index] = scaled_data.iloc[start_index:end_index]
-            start_index = end_index
-
-        # Iterate through sliced data and select the row with the minimum value for the objective of interest
-        for index, df in sliced_data.items():
-
-            # Reset index for sliced data
-            df.reset_index(drop=True, inplace=True)
-
-            # Get the index of the row with the minimum value for the objective of interest
-            filtered_idx = df.iloc[:, objective_of_interest].idxmin()
-            filtered_data[index, :] = df.iloc[filtered_idx].values
-
-    # Convert filtered data to a dataframe
-    filtered_data = pd.DataFrame(filtered_data, columns=data.columns)
-
-    return data, data_length, output_file_name, sliced_data, filtered_data
-
-
 def visualize_tradeoffs(
+    input_data=[],
     figsize=(15, 10),
     set_style="whitegrid",
     font_scale=1.8,
-    number_of_objectives=4,
     colourmap="bright",
     linewidth=0.4,
-    alpha=0.05,
-    path_to_data=None,
-    path_to_output="./data/plots",
-    output_file_name="",
-    objective_of_interest=0,
-    show_best_solutions=True,
+    alpha=0.1,
+    path_to_data="data/reevaluation/",
+    path_to_output="./data/plots/only_welfare_temp",
     scaling=True,
-    scaling_index=0,
+    feature_range=(0, 1),
     column_labels=None,
     legend_labels=None,
-    axis_rotation=45,
-    fontsize=15,
-    feature_adjustment_value=300,
-    **kwargs,
+    show_legend=True,
+    axis_rotation=30,
+    fontsize=12,
+    list_of_objectives=[
+        "welfare_utilitarian",
+        "years_above_temperature_threshold",
+        "damage_cost_per_capita_utilitarian",
+        "abatement_cost_per_capita_utilitarian",
+    ],
+    direction_of_optimization=[
+        "min",
+        "min",
+        "max",
+        "max",
+    ],
+    pretty_labels=[
+        "Welfare",
+        "Years Above Temp Threshold",
+        "Welfare Loss Damage",
+        "Welfare Loss Abatement",
+    ],
+    default_colors=["red", "blue"],
+    top_percentage=0.1,
+    objective_of_interest="welfare_utilitarian",
+    show_best_solutions=False,
+    temperature_filter=False,
+    saving=False,
 ):
-    """
-    Visualize the tradeoffs between different objectives in the model.
-    """
+
     sns.set_theme(font_scale=font_scale)
     sns.set_style(set_style)
     sns.set_theme(rc={"figure.figsize": figsize})
 
-    # Check kwargs for input data or multiple data files
-    input_data = kwargs.get("input_data", None)
-    if input_data is None:
-        raise ValueError("No input data provided for visualization.")
+    # Assertions
+    assert input_data, "Input data not provided"
+    assert path_to_data, "Path to reference set is not provided"
+    assert len(list_of_objectives) == len(
+        direction_of_optimization
+    ), "Length of objectives and direction of optimization not equal"
 
-    if path_to_data is not None and input_data is not None:
-        # Repeat for multiple data files and concatenate them into one dataframe
-        if isinstance(input_data, list):
-            data, data_length, output_file_name, sliced_data, filtered_data = (
-                process_input_data_for_tradeoff_plot(
-                    input_data=input_data,
-                    path_to_data=path_to_data,
-                    number_of_objectives=number_of_objectives,
-                    objective_of_interest=objective_of_interest,
-                    scaling=scaling,
-                    scaling_index=scaling_index,
-                    feature_adjustment_value=feature_adjustment_value,
-                )
+    color_mapping = {
+        file: default_colors[i % len(default_colors)]
+        for i, file in enumerate(input_data)
+    }
+
+    if column_labels:
+        assert len(column_labels) == len(
+            list_of_objectives
+        ), "Length of column labels and objectives not equal"
+
+    concatenated_df = pd.DataFrame()
+
+    for file in input_data:
+        data = pd.read_csv(path_to_data + "/" + file)
+        data = data[list_of_objectives]
+        data = np.abs(data)
+
+        # Add a column to track the data type
+        data["type"] = file
+
+        concatenated_df = pd.concat([concatenated_df, data], axis=0)
+
+    # Reset index for concatenated_df
+    concatenated_df.reset_index(drop=True, inplace=True)
+
+    # Determine top 10% indices for the objective of interest
+    top_indices = {}
+    if show_best_solutions:
+        for file in input_data:
+            df_type = concatenated_df[concatenated_df["type"] == file]
+
+            top_indices[file] = (
+                df_type[objective_of_interest]
+                .nsmallest(int(df_type.shape[0] * top_percentage))
+                .index
             )
+            print(file, len(top_indices[file]))
 
-        else:
-            data = pd.read_csv(path_to_data + "/" + input_data)
+            # Now within the top_indices, find the index with lowest years_above_temperature_threshold
+            if temperature_filter:
+                index = df_type.loc[top_indices[file]][
+                    "years_above_temperature_threshold"
+                ].idxmin()
+                print(index)
+                top_indices[file] = [index]
 
-            output_file_name = input_data
-
-    if column_labels is not None:
-        # Check if the number of column labels is equal to the number of objectives
-        if len(column_labels) != number_of_objectives:
-            raise ValueError(
-                "Number of column labels provided does not match the number of objectives."
-            )
-        data.columns = column_labels
-
-    limits = parcoords.get_limits(data)
-    axes = parcoords.ParallelAxes(limits, rot=axis_rotation, fontsize=fontsize)
-
-    # TODO: Flip the axis here. Create a new argument for this
-    # axes.invert_axis(data.columns[2])
-    # axes.invert_axis(data.columns[3])
-
-    # Getting the matplotlib axes object from Parcoords for annotation
-    matplotlib_ax = axes.axes[0]
-
-    # Add annotation text on the plot. write on the left side of the plot: "Direction of Preference -->"
-    matplotlib_ax.annotate(
-        "$\\leftarrow$ Direction of Preference",  # $\\rightarrow$"
-        xy=(0.0, 0.5),
-        xytext=(-0.05, 0.5),  # Adjust the xytext to move the text more to the left
-        xycoords="axes fraction",
-        fontsize=15,
-        ha="center",
-        va="center",
-        color="black",
-        rotation=90,
-        # arrowprops=dict(arrowstyle="<-", color="black", lw=1.5),
-    )
-
-    color_palette = sns.color_palette(colourmap)
-
-    # Plot the data and save the figure
-    for i in range(len(data_length)):
-
-        # end_index = int(data_length[i])
-
-        _sliced_data = sliced_data[i]
-        _sliced_data.columns = data.columns
-
-        labels = []
-        if legend_labels is not None:
-            labels = legend_labels
-        else:
-            labels = input_data
-
-        axes.plot(
-            _sliced_data,
-            color=color_palette[i],
-            linewidth=linewidth,
-            alpha=alpha,
-            label=labels[i].split(".")[0],  # Splitting in case of file extension
+    if scaling:
+        scaler = MinMaxScaler(feature_range=feature_range)
+        concatenated_df[list_of_objectives] = scaler.fit_transform(
+            concatenated_df[list_of_objectives]
         )
 
-    # Add the column labels
-    filtered_data.columns = data.columns
+        for i, direction in enumerate(direction_of_optimization):
+            if direction == "min":
+                concatenated_df[list_of_objectives[i]] = (
+                    1 - concatenated_df[list_of_objectives[i]]
+                )
 
-    if show_best_solutions:
-        # Loop through the best solutions dataframe and plot them
-        for j in range(filtered_data.shape[0]):
+    limits = parcoords.get_limits(concatenated_df[list_of_objectives])
+    limits.columns = pretty_labels
+    axes = parcoords.ParallelAxes(limits, rot=axis_rotation, fontsize=fontsize)
+
+    adjusted_linewidth = linewidth
+    # Plot each row with its corresponding color
+    for idx, row in concatenated_df.iterrows():
+        if show_best_solutions:
+            # Default to gray for all lines, except top indices get color
+            file_color = "gray"
+            adjusted_linewidth = linewidth
+            for _type, indices in top_indices.items():
+                if idx in indices:
+                    file_color = color_mapping[_type]
+                    if temperature_filter:
+                        adjusted_linewidth = linewidth * 5
+                    break
+        else:
+            # Color differentiation based on file type
+            file_color = color_mapping.get(
+                row["type"], "green"
+            )  # Default to 'green' if no specific color is set
+
+        _sliced_data = pd.DataFrame(row[list_of_objectives].values).T
+        _sliced_data.columns = pretty_labels
+        if show_best_solutions or temperature_filter:
             axes.plot(
-                filtered_data.iloc[j],
-                color=color_palette[j],
-                linewidth=2.5,
-                alpha=0.8,
+                _sliced_data,
+                color=file_color,
+                linewidth=adjusted_linewidth,
+                alpha=alpha if (show_best_solutions and file_color == "gray") else 1.0,
+            )
+        else:
+            axes.plot(
+                _sliced_data,
+                color=file_color,
+                linewidth=adjusted_linewidth,
+                alpha=alpha,
             )
 
-    # Add the legend
-    axes.legend()
+    # Creating a legend
+    if show_legend:  # Only show legend when not highlighting best solutions
+        if legend_labels is None:
+            legend_labels = list(color_mapping.keys())
+            # Split the legend labels by '_' and keep the first part
+            legend_labels = [label.split("_")[0] for label in legend_labels]
 
-    # Save the figure
-    if not os.path.exists(path_to_output):
-        os.makedirs(path_to_output)
-    plt.savefig(path_to_output + "/" + output_file_name, dpi=300)
+            unique_colors = list(color_mapping.values())
+            legend_elements = [
+                Line2D([0], [0], color=unique_colors[i], lw=2, label=legend_labels[i])
+                for i in range(len(unique_colors))
+            ]
+
+            plt.legend(
+                handles=legend_elements,
+                loc="upper right",
+                fontsize="small",
+                bbox_to_anchor=(1.1, 1.1),
+            )
+
+    if saving:
+        output_file_name = (
+            "tradeoffs_"
+            + "_".join([file.split("_")[0] for file in input_data])
+            + "_"
+            + ".png"
+        )
+        # Save the figure
+        if not os.path.exists(path_to_output):
+            os.makedirs(path_to_output)
+        plt.savefig(path_to_output + "/" + output_file_name, dpi=300)
+
+    # Show the plot
+    plt.show()
+    return concatenated_df
 
 
 def plot_timeseries(
@@ -1804,7 +1769,13 @@ def plot_choropleth_2D_data(
 
         output_file_name = filename
         if saving:
-            fig.write_image(path_to_output + "/" + output_file_name + str(year_to_visualize) + ".png")
+            fig.write_image(
+                path_to_output
+                + "/"
+                + output_file_name
+                + str(year_to_visualize)
+                + ".png"
+            )
 
         fig.show()
 
