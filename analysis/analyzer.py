@@ -65,8 +65,8 @@ nfe = 5000
 epsilons = [
     0.1,
     0.25,
-    10,
-    10,
+    # 10,
+    # 10,
 ]  # epsilons for welfare, years_above_threshold, total_damage, total_abatement
 
 # # TODO should have a configuration file for optimizations
