@@ -173,16 +173,16 @@ def run_optimization_adaptive(
             variable_name="years_above_threshold",
             kind=ScalarOutcome.MINIMIZE,
         ),
-        ScalarOutcome(
-            "welfare_loss_damage",
-            variable_name="welfare_loss_damage",
-            kind=ScalarOutcome.MAXIMIZE,
-        ),
-        ScalarOutcome(
-            "welfare_loss_abatement",
-            variable_name="welfare_loss_abatement",
-            kind=ScalarOutcome.MAXIMIZE,
-        ),
+        # ScalarOutcome(
+        #     "welfare_loss_damage",
+        #     variable_name="welfare_loss_damage",
+        #     kind=ScalarOutcome.MAXIMIZE,
+        # ),
+        # ScalarOutcome(
+        #     "welfare_loss_abatement",
+        #     variable_name="welfare_loss_abatement",
+        #     kind=ScalarOutcome.MAXIMIZE,
+        # ),
     ]
 
     reference_scenario = Scenario(
