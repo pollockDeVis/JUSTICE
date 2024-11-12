@@ -506,6 +506,13 @@ def setup_RBF_for_emission_control(
     # select 6810 row
     rbf_decision_vars = rbf_decision_vars.iloc[rbf_policy_index, :]
 
+    # Print the welfare and years_above_temperature_threshold values # Diagnostics
+    print("Welfare: ", rbf_decision_vars["welfare"])
+    print(
+        "Years Above Temperature Threshold: ",
+        rbf_decision_vars["years_above_temperature_threshold"],
+    )
+
     # Read the columns starting with name 'center'
     center_columns = rbf_decision_vars.filter(regex="center")
 

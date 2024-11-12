@@ -19,6 +19,9 @@ from src.util.enumerations import get_economic_scenario
 
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
+# To run the code, you need to run the following command in the terminal to add the path to the PYTHONPATH
+# export PYTHONPATH=$PYTHONPATH:/Users/palokbiswas/Desktop/pollockdevis_git/JUSTICE
+
 
 def reevaluated_optimal_policy_variable_extractor(
     scenario_list=None,
@@ -98,8 +101,14 @@ def reevaluated_optimal_policy_variable_extractor(
 
             # TODO: Change from pickle to hdf5
             # Save the processed data as a pickle file
-            with open(path_to_output + "/" + output_file_name, "wb") as f:
-                pickle.dump(processed_data, f)
+            # with open(path_to_output + "/" + output_file_name, "wb") as f:
+            #     pickle.dump(processed_data, f)
+
+            # Save it as npy file
+            np.save(
+                path_to_output + "/" + output_file_name.split(".")[0] + ".npy",
+                processed_data,
+            )
 
             # Print file saved as filename at location path
             print(f"File saved as {output_file_name} at location {path_to_output}")
@@ -745,14 +754,14 @@ def reevaluate_all_for_utilitarian_prioritarian(
 
 if __name__ == "__main__":
 
-    reevaluate_all_for_utilitarian_prioritarian(
-        input_data=[
-            "UTILITARIAN_reference_set.csv",
-            "PRIORITARIAN_reference_set.csv",
-            # "SUFFICIENTARIAN_reference_set.csv",
-            # "EGALITARIAN_reference_set.csv",
-        ],
-    )
+    # reevaluate_all_for_utilitarian_prioritarian(
+    #     input_data=[
+    #         "UTILITARIAN_reference_set.csv",
+    #         "PRIORITARIAN_reference_set.csv",
+    #         # "SUFFICIENTARIAN_reference_set.csv",
+    #         # "EGALITARIAN_reference_set.csv",
+    #     ],
+    # )
 
     ########################################################################
     # reevaluate_optimal_policy(
@@ -760,10 +769,12 @@ if __name__ == "__main__":
     #         # "UTILITARIAN_reference_set.csv",
     #         # "PRIORITARIAN_reference_set.csv",
     #         # "SUFFICIENTARIAN_reference_set.csv",
-    #         "EGALITARIAN_reference_set.csv",
+    #         # "EGALITARIAN_reference_set.csv",
+    #         # "UTILITARIAN_reference_set_reevaluated.csv",
+    #         "PRIORITARIAN_reference_set_reevaluated.csv",
     #     ],
-    #     path_to_rbf_weights="data/convergence_metrics/",
-    #     path_to_output="data/reevaluation/only_welfare_temp/",
+    #     path_to_rbf_weights="data/reevaluation/",  # convergence_metrics
+    #     path_to_output="data/reevaluation/comparison_experiments/",
     #     objective_of_interest=None,  # "years_above_temperature_threshold",  # "welfare", None
     #     direction_of_optimization=[
     #         "min",
@@ -772,59 +783,67 @@ if __name__ == "__main__":
     #         "max",
     #     ],
     #     lowest_n_percent=0.52,  # 0.51, 0.52 is needed for Prioritarian formulation
-    #     rbf_policy_index=404,
+    #     rbf_policy_index=529,
     #     list_of_objectives=[
     #         "welfare",
     #         "years_above_temperature_threshold",
     #         "welfare_loss_damage",
     #         "welfare_loss_abatement",
     #     ],
-    #     scenario_list=list(Scenario.__members__.keys()),  # ["SSP245"],  #
+    #     scenario_list=["SSP245"],  # list(Scenario.__members__.keys()),  #
     # )
 
     ########################################################################
     # scenario_list = list(
     #     Scenario.__members__.keys()
     # )  # ['SSP119', 'SSP126', 'SSP245', 'SSP370', 'SSP434', 'SSP460', 'SSP534', 'SSP585']
-    # scenario_list = ["SSP245"]
-    # start_year = 2015
-    # end_year = 2300
-    # data_timestep = 5
-    # timestep = 1
+    scenario_list = ["SSP245"]
+    start_year = 2015
+    end_year = 2300
+    data_timestep = 5
+    timestep = 1
 
-    # data_loader = DataLoader()
-    # region_list = data_loader.REGION_LIST
+    data_loader = DataLoader()
+    region_list = data_loader.REGION_LIST
 
-    # # Set the time horizon
-    # time_horizon = TimeHorizon(
-    #     start_year=start_year,
-    #     end_year=end_year,
-    #     data_timestep=data_timestep,
-    #     timestep=timestep,
-    # )
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
 
-    # list_of_years = time_horizon.model_time_horizon
-    # columns = list_of_years
-    # # net_economic_output consumption, emissions, economic_damage, global_temperature
-    # reevaluated_optimal_policy_variable_extractor(
-    #     scenario_list=scenario_list,  # ['SSP245'],
-    #     region_list=region_list,
-    #     list_of_years=list_of_years,
-    #     path_to_data="data/reevaluation/only_welfare_temp",
-    #     path_to_output="data/reevaluation/only_welfare_temp/extracted_variable",
-    #     variable_name="consumption",  # "net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature", gross_economic_output, consumption_per_capita
-    #     data_shape=3,
-    #     no_of_ensembles=1001,
-    #     input_data=[
-    #         "UTILITARIAN_reference_set_idx16.pkl",
-    #         "PRIORITARIAN_reference_set_idx196.pkl",
-    #         # "SUFFICIENTARIAN_reference_set_idx99.pkl",
-    #         # "EGALITARIAN_reference_set_idx147.pkl",
-    #     ],
-    #     output_file_names=[
-    #         "Utilitarian",
-    #         "Prioritarian",
-    #         # "Sufficientarian",
-    #         # "Egalitarian",
-    #     ],
-    # )
+    list_of_years = time_horizon.model_time_horizon
+    columns = list_of_years
+    # net_economic_output consumption, emissions, economic_damage, global_temperature
+    reevaluated_optimal_policy_variable_extractor(
+        scenario_list=scenario_list,  # ['SSP245'],
+        region_list=region_list,
+        list_of_years=list_of_years,
+        path_to_data="data/reevaluation/comparison_experiments",
+        path_to_output="data/reevaluation/comparison_experiments",
+        variable_name="emissions",  # "net_economic_output",  # "economic_damage",  # "emissions", #abatement_cost, # "global_temperature", gross_economic_output, consumption_per_capita
+        data_shape=3,
+        no_of_ensembles=1001,
+        input_data=[
+            "UTILITARIAN_reference_set_reevaluated_idx85.pkl",
+            "UTILITARIAN_reference_set_reevaluated_idx73.pkl",
+            "UTILITARIAN_reference_set_reevaluated_idx19.pkl",
+            "PRIORITARIAN_reference_set_reevaluated_idx639.pkl",
+            "PRIORITARIAN_reference_set_reevaluated_idx605.pkl",
+            "PRIORITARIAN_reference_set_reevaluated_idx529.pkl",
+            # "SUFFICIENTARIAN_reference_set_idx99.pkl",
+            # "EGALITARIAN_reference_set_idx147.pkl",
+        ],
+        output_file_names=[
+            "Utilitarian_85",
+            "Utilitarian_73",
+            "Utilitarian_19",
+            "Prioritarian_639",
+            "Prioritarian_605",
+            "Prioritarian_529",
+            # "Sufficientarian",
+            # "Egalitarian",
+        ],
+    )

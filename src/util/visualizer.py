@@ -67,6 +67,11 @@ def plot_emission_control_rate(
         # Load the data
         data = np.load(data_file)
 
+        # Check shape of data
+        if len(data.shape) == 3:
+            print("Average across the last dimension")
+            data = np.mean(data, axis=2)
+
         # Initialize TimeHorizon and DataLoader
         time_horizon = TimeHorizon(
             start_year=start_year,
@@ -162,12 +167,12 @@ def plot_emission_control_rate(
         if saving:
             # Save the plot as a png file
             fig.write_image(
-                output_path + f"/{data_file.split('/')[-1].split('.')[0]}.png"
+                output_path + f"/{data_file.split('/')[-1].split('.')[0]}.svg"
             )
             # Save it as html file
-            fig.write_html(
-                output_path + f"/{data_file.split('/')[-1].split('.')[0]}.html"
-            )
+            # fig.write_html(
+            #     output_path + f"/{data_file.split('/')[-1].split('.')[0]}.html"
+            # )
 
         fig.show()
     return fig, data
@@ -480,7 +485,268 @@ def plot_comparison_with_boxplots(
     if saving:
         filename = data_paths[0].split("/")[-1].split(".")[0]
         # Save the plot
-        fig.write_image(f"{output_path}/{filename}.png")
+        fig.write_image(f"{output_path}/{filename}.svg")
+
+
+def plot_emissions_comparison_with_boxplots(
+    utilitarian_path,
+    prioritarian_path,
+    start_year,
+    end_year,
+    data_timestep,
+    timestep,
+    visualization_start_year,
+    visualization_end_year,
+    yaxis_range,
+    opacity,
+    plot_title,
+    xaxis_title,
+    yaxis_title,
+    template,
+    width,
+    height,
+    baseline_path=None,
+    utilitarian_color="coral",
+    prioritarian_color="lightgreen",
+    median_utilitarian_color="red",
+    median_prioritarian_color="green",
+    baseline_color="gray",
+    fontsize=18,
+    column_widths=[0.8, 0.2],
+    output_path=None,
+    saving=False,
+):
+
+    # NOTE: Rough Implementation. Needs to be refactored and cleaned up.
+
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    if baseline_path:
+        baseline = np.load(baseline_path)
+        if len(baseline.shape) == 3:
+            baseline = np.sum(baseline, axis=0)
+        baseline = pd.DataFrame(baseline.T, columns=list_of_years)
+        baseline = baseline.loc[:, visualization_start_year:visualization_end_year]
+        baseline = baseline.T
+        # Take average over all ensemble members
+        baseline = baseline.mean(axis=1)
+
+    # Load and process the data
+    with open(utilitarian_path, "rb") as f:
+        emissions_utilitarian = pickle.load(f)
+
+    with open(prioritarian_path, "rb") as f:
+        emissions_prioritarian = pickle.load(f)
+
+    # only sum over regions if the data is 3D
+    if len(emissions_utilitarian.shape) == 3:
+        # Sum over the regions
+        emissions_utilitarian = np.sum(emissions_utilitarian, axis=0)
+        emissions_prioritarian = np.sum(emissions_prioritarian, axis=0)
+
+    # Convert to dataframe with years as columns
+    emissions_utilitarian = pd.DataFrame(emissions_utilitarian.T, columns=list_of_years)
+    emissions_prioritarian = pd.DataFrame(
+        emissions_prioritarian.T, columns=list_of_years
+    )
+
+    # Only select up to visualization_end_year columns
+    emissions_utilitarian = emissions_utilitarian.loc[
+        :, visualization_start_year:visualization_end_year
+    ]
+    emissions_prioritarian = emissions_prioritarian.loc[
+        :, visualization_start_year:visualization_end_year
+    ]
+
+    emissions_utilitarian = emissions_utilitarian.T
+    emissions_prioritarian = emissions_prioritarian.T
+
+    # Create subplots: 1 row, 2 columns
+    fig = make_subplots(
+        rows=1, cols=2, column_widths=column_widths, subplot_titles=[plot_title, " "]
+    )
+    # Calculate the envelope for utilitarian emissions
+    utilitarian_max = np.percentile(emissions_utilitarian, 100, axis=1)
+    utilitarian_min = np.percentile(emissions_utilitarian, 0, axis=1)
+    prioritarian_max = np.percentile(emissions_prioritarian, 100, axis=1)
+    prioritarian_min = np.percentile(emissions_prioritarian, 0, axis=1)
+
+    # Add trace for the utilitarian envelope
+    fig.add_trace(
+        go.Scatter(
+            x=emissions_utilitarian.index,
+            y=utilitarian_max,
+            mode="lines",
+            line=dict(color=utilitarian_color, width=0.5),
+            fill=None,
+            showlegend=False,
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=emissions_utilitarian.index,
+            y=utilitarian_min,
+            mode="lines",
+            line=dict(color=utilitarian_color, width=0.5),
+            fill="tonexty",
+            opacity=opacity,
+            showlegend=False,
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Add trace for the prioritarian envelope
+    fig.add_trace(
+        go.Scatter(
+            x=emissions_prioritarian.index,
+            y=prioritarian_max,
+            mode="lines",
+            line=dict(color=prioritarian_color, width=0.5),
+            fill=None,
+            showlegend=False,
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=emissions_prioritarian.index,
+            y=prioritarian_min,
+            mode="lines",
+            line=dict(color=prioritarian_color, width=0.5),
+            fill="tonexty",
+            opacity=opacity,
+            showlegend=False,
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Add trace for the median prioritarian emissions
+    fig.add_trace(
+        go.Scatter(
+            x=emissions_prioritarian.index,
+            y=emissions_prioritarian.median(axis=1),
+            mode="lines",
+            line=dict(color=median_prioritarian_color, width=2),
+            name="Prioritarian Median",
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Add trace for the median utilitarian emissions
+    fig.add_trace(
+        go.Scatter(
+            x=emissions_utilitarian.index,
+            y=emissions_utilitarian.median(axis=1),
+            mode="lines",
+            line=dict(color=median_utilitarian_color, width=2),
+            name="Utilitarian Median",
+        ),
+        row=1,
+        col=1,
+    )
+
+    if baseline_path:
+        fig.add_trace(
+            go.Scatter(
+                x=emissions_utilitarian.index,
+                y=baseline,
+                mode="lines",
+                line=dict(color=baseline_color, width=2, dash="dash"),
+                name="Baseline",
+            ),
+            row=1,
+            col=1,
+        )
+
+    # Add box plots for the last year
+    utilitarian_last_year_data = emissions_utilitarian.iloc[-1]
+    prioritarian_last_year_data = emissions_prioritarian.iloc[-1]
+
+    fig.add_trace(
+        go.Box(
+            y=utilitarian_last_year_data,
+            name="Utilitarian",
+            marker=dict(color=median_utilitarian_color),
+            width=0.1,
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.add_trace(
+        go.Box(
+            y=prioritarian_last_year_data,
+            name="Prioritarian",
+            marker=dict(color=median_prioritarian_color),
+            width=0.1,
+        ),
+        row=1,
+        col=2,
+    )
+
+    # Styling the box plot
+    fig.update_traces(
+        marker=dict(line=dict(width=0.3, color=baseline_color)), row=1, col=2
+    )
+
+    # Update layout
+    fig.update_layout(
+        title=plot_title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        template=template,
+        height=height,
+        width=width,
+    )
+
+    # Align the y-axes for both subplots
+    fig.update_yaxes(
+        title_text=yaxis_title, range=yaxis_range, showgrid=False, row=1, col=1
+    )
+    fig.update_yaxes(
+        range=yaxis_range, showticklabels=False, showgrid=False, row=1, col=2
+    )
+
+    # Update x-axis for the line plot
+    fig.update_xaxes(title_text=xaxis_title, showgrid=False, row=1, col=1)
+
+    # Update font size
+    fig.update_layout(font=dict(size=fontsize))
+
+    # Adjust the width of the first subplot (column=1) to be more than the second subplot (column=2)
+    fig.update_layout(
+        xaxis=dict(domain=[0, 0.8]),  # First subplot takes 65% of the width
+        xaxis2=dict(
+            domain=[0.9, 1]
+        ),  # Second subplot takes the remaining 30% of the width
+    )
+
+    # Show the figure
+    fig.show()
+
+    if saving:
+        filename = (
+            utilitarian_path.split("/")[-1].split(".")[0]
+            + "_"
+            + prioritarian_path.split("/")[-1].split(".")[0]
+        )
+        # Save the plot
+        fig.write_image(f"{output_path}/{filename}.svg")
 
 
 def plot_sunburst(
@@ -1605,7 +1871,7 @@ def plot_choropleth(
             if saving:
                 # Save the plot as a png file
                 # print("Saving plot for: ", scenarios, " - ", output_file_name)
-                fig.write_image(path_to_output + "/" + output_file_name + ".png")
+                fig.write_image(path_to_output + "/" + output_file_name + ".svg")
 
     return fig, data_scenario_year_by_country
 
@@ -1774,7 +2040,7 @@ def plot_choropleth_2D_data(
                 + "/"
                 + output_file_name
                 + str(year_to_visualize)
-                + ".png"
+                + ".svg"
             )
 
         fig.show()
@@ -2258,7 +2524,7 @@ def plot_stacked_area_chart(
                     variable_name + "_" + output_titles[idx] + "_" + scenario
                 )
                 print("Saving plot for: ", scenario, " - ", output_file_name)
-                fig.write_image(path_to_output + "/" + output_file_name + ".png")
+                fig.write_image(path_to_output + "/" + output_file_name + ".svg")
 
     return fig
 
