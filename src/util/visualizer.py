@@ -178,30 +178,33 @@ def plot_emission_control_rate(
     return fig, data
 
 
-def plot_baseline_emission_comparison(
-    data_paths=[],
-    labels=[],
-    fill=["none", "none", "tozeroy"],
-    path_to_output="./data/plots",
-    xaxis_title=None,
-    yaxis_title=None,
-    linewidth=3,
-    colour_palette=px.colors.qualitative.Dark2,
-    template="plotly_white",
-    yaxis_upper_limit=0.7,
-    visualization_start_year=2025,
-    visualization_end_year=2100,
-    title_x=0.5,
-    width=1000,
-    height=800,
-    fontsize=15,
+def plot_emissions_comparison_with_boxplots(
+    data_paths,  # List of paths for the data
+    start_year,
+    end_year,
+    data_timestep,
+    timestep,
+    visualization_start_year,
+    visualization_end_year,
+    yaxis_range,
+    opacity,
+    plot_title,
+    xaxis_title,
+    yaxis_title,
+    template,
+    width,
+    height,
+    baseline_path=None,
+    colors=["coral", "lightgreen"],
+    median_colors=["red", "green"],
+    baseline_color="gray",
+    fontsize=18,
+    column_widths=[0.8, 0.2],
+    output_path=None,
     saving=False,
-    start_year=2015,
-    end_year=2300,
-    data_timestep=5,
-    timestep=1,
 ):
 
+    # Set the time horizon
     time_horizon = TimeHorizon(
         start_year=start_year,
         end_year=end_year,
@@ -210,8 +213,19 @@ def plot_baseline_emission_comparison(
     )
     list_of_years = time_horizon.model_time_horizon
 
+    # Load baseline data if provided
+    if baseline_path:
+        baseline = np.load(baseline_path)
+        if len(baseline.shape) == 3:
+            baseline = np.sum(baseline, axis=0)
+        baseline = pd.DataFrame(baseline.T, columns=list_of_years)
+        baseline = baseline.loc[:, visualization_start_year:visualization_end_year]
+        baseline = baseline.T
+        baseline = baseline.mean(axis=1)
+
+    # Load the data and create dataframes
     data_frames = []
-    for idx, path in enumerate(data_paths):
+    for path in data_paths:
         filetype = os.path.splitext(path)[1]
         if filetype == ".npy":
             data = np.load(path)
@@ -221,7 +235,7 @@ def plot_baseline_emission_comparison(
         elif filetype == ".csv":
             data = pd.read_csv(path)
 
-        # Check if data is 3D. Then take the mean across the first dimension
+        # Only sum over regions if the data is 3D
         if len(data.shape) == 3:
             data = np.sum(data, axis=0)
 
@@ -229,60 +243,181 @@ def plot_baseline_emission_comparison(
         df = pd.DataFrame(data, columns=list_of_years).loc[
             :, visualization_start_year:visualization_end_year
         ]
+        data_frames.append(df.T)
 
-        # Calculate the median across the rows
-        median = df.median()
-
-        data_frames.append(median)
-
-    fig = go.Figure()
-    # Enumerate through the data_frames and plot the line plots in the same figure
-    for idx, median in enumerate(data_frames):
-        fig.add_trace(
-            go.Scatter(
-                x=median.index,
-                y=median.values,
-                fill=fill[idx],
-                mode="lines",
-                line=dict(
-                    color=colour_palette[idx % len(colour_palette)],
-                    width=linewidth,
-                ),
-                name=labels[idx],
-            )
-        )
-
-    # Set the chart title and axis labels
-    fig.update_layout(
-        xaxis_title=xaxis_title,
-        yaxis_title=yaxis_title,
-        width=width,
-        height=height,
-        template=template,
-        yaxis_range=[
-            0.01,
-            yaxis_upper_limit,
-        ],  # 0.01 is purely cosmetic to avoid the y-axis starting at 0
-        title_x=title_x,
-        font=dict(size=fontsize),
+    # Create subplots: 1 row, 2 columns
+    fig = make_subplots(
+        rows=1, cols=2, column_widths=column_widths, subplot_titles=[plot_title, " "]
     )
 
+    # Loop through data frames and add subplots for each
+    for idx, emissions in enumerate(data_frames):
+        color = colors[idx]
+        median_color = median_colors[idx]
+
+        # Calculate the percentiles
+        max_percentile = np.percentile(emissions, 100, axis=1)
+        min_percentile = np.percentile(emissions, 0, axis=1)
+        p75 = np.percentile(emissions, 75, axis=1)
+        p25 = np.percentile(emissions, 25, axis=1)
+
+        # Add traces for the envelopes
+        fig.add_trace(
+            go.Scatter(
+                x=emissions.index,
+                y=max_percentile,
+                mode="lines",
+                line=dict(color=color, width=0.5),
+                fill=None,
+                showlegend=False,
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=emissions.index,
+                y=min_percentile,
+                mode="lines",
+                line=dict(color=color, width=0.5),
+                fill="tonexty",
+                opacity=opacity * 0.01,  # make it more transparent
+                showlegend=False,
+            ),
+            row=1,
+            col=1,
+        )
+
+        # Add traces for the 25th to 75th percentile envelope
+        fig.add_trace(
+            go.Scatter(
+                x=emissions.index,
+                y=p75,
+                mode="lines",
+                line=dict(color=color, width=0.5),
+                fill=None,
+                showlegend=False,
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=emissions.index,
+                y=p25,
+                mode="lines",
+                line=dict(color=color, width=0.5),
+                fill="tonexty",
+                opacity=opacity,
+                showlegend=False,
+            ),
+            row=1,
+            col=1,
+        )
+
+        # Add trace for the median emissions
+        fig.add_trace(
+            go.Scatter(
+                x=emissions.index,
+                y=emissions.median(axis=1),
+                mode="lines",
+                line=dict(color=median_color, width=2),
+                name=f"Median {idx+1}",
+            ),
+            row=1,
+            col=1,
+        )
+
+        # Add box plot for the last year's data
+        last_year_data = emissions.iloc[-1]
+        filename = data_paths[idx].split("/")[-1].split(".")[0]
+        # Now split the "_" and take the first part
+        filename = filename.split("_")[0]
+        fig.add_trace(
+            go.Box(
+                y=last_year_data,
+                name=filename,
+                marker=dict(color=median_color),
+                width=0.1,
+            ),
+            row=1,
+            col=2,
+        )
+
+    # Add baseline if provided
+    if baseline_path:
+        fig.add_trace(
+            go.Scatter(
+                x=emissions.index,
+                y=baseline,
+                mode="lines",
+                line=dict(color=baseline_color, width=2, dash="dash"),
+                name="Baseline",
+            ),
+            row=1,
+            col=1,
+        )
+
+    # Styling the box plots
+    fig.update_traces(
+        marker=dict(line=dict(width=0.3, color=baseline_color)), row=1, col=2
+    )
+
+    # Update layout
+    fig.update_layout(
+        title=plot_title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        template=template,
+        height=height,
+        width=width,
+    )
+
+    # Align the y-axes for both subplots
+    fig.update_yaxes(
+        title_text=yaxis_title, range=yaxis_range, showgrid=False, row=1, col=1
+    )
+    fig.update_yaxes(
+        range=yaxis_range, showticklabels=False, showgrid=False, row=1, col=2
+    )
+
+    # Update x-axis for the line plot
+    fig.update_xaxes(title_text=xaxis_title, showgrid=False, row=1, col=1)
+
+    # Update font size
+    fig.update_layout(font=dict(size=fontsize))
+
+    # Adjust the width of the first subplot (column=1) to be more than the second subplot (column=2)
+    fig.update_layout(
+        xaxis=dict(domain=[0, 0.8]),  # First subplot takes 80% of the width
+        xaxis2=dict(
+            domain=[0.95, 1]
+        ),  # Second subplot takes the remaining 10% of the width
+    )
+
+    fig.update_xaxes(
+        showline=True, linewidth=1, linecolor="black", ticks="outside", row=1, col=1
+    )
+    fig.update_yaxes(
+        showline=True, linewidth=1, linecolor="black", ticks="outside", row=1, col=1
+    )
+
+    # Show the figure
     fig.show()
 
     if saving:
-        if not os.path.exists(path_to_output):
-            os.makedirs(path_to_output)
-
-        # Loop through labels and append them to the output file name
-        output_file_name = "emission_comparison_" + "_".join(labels)
-        fig.write_image(path_to_output + "/" + output_file_name + ".png")
-
-    return fig, data_frames
+        filename = "_".join(
+            [os.path.splitext(os.path.basename(path))[0] for path in data_paths]
+        )
+        # Save the plot
+        fig.write_image(f"{output_path}/{filename}.svg")
 
 
-# Function to calculate statistics
-def calc_stats(df):
-    return df.median(), df.min(), df.max()
+# # Function to calculate statistics
+# def calc_stats(df):
+#     return df.median(), df.min(), df.max()
 
 
 def plot_comparison_with_boxplots(
@@ -309,8 +444,10 @@ def plot_comparison_with_boxplots(
         "rgba(0, 0, 255, 0.2)",
         "rgba(255, 165, 0, 0.2)",
     ],
-    show_red_dashed_line=True,
+    show_red_dashed_line=False,
     saving=False,
+    fontsize=18,
+    show_interquartile_range=True,
 ):
     # Set the time horizon
     time_horizon = TimeHorizon(
@@ -342,19 +479,27 @@ def plot_comparison_with_boxplots(
         ]
         data_frames.append(df)
 
-    # Create plot
-    fig = go.Figure()
+    # Function to calculate statistics
+    def calc_stats(df):
+        median = df.median(axis=0)
+        min_vals = df.min(axis=0)
+        max_vals = df.max(axis=0)
+        percentile_25 = df.quantile(0.25, axis=0)
+        percentile_75 = df.quantile(0.75, axis=0)
+        return median, min_vals, max_vals, percentile_25, percentile_75
+
+    # Calculate statistics for each dataframe
+    stats = [calc_stats(df) for df in data_frames]
 
     # Create subplots: 1 row, 2 columns
     fig = make_subplots(
         rows=1, cols=2, column_widths=[0.7, 0.3], subplot_titles=[plot_title, " "]
     )
 
-    # Calculate statistics for each dataframe
-    stats = [calc_stats(df) for df in data_frames]
-
-    # Function to create traces for line plot
-    def add_traces(fig, median, min_vals, max_vals, name, color, linecolor, col):
+    # Function to create traces for the line plot, including 25-75 envelope
+    def add_traces(
+        fig, median, min_vals, max_vals, p25, p75, name, color, linecolor, col
+    ):
         fig.add_trace(
             go.Scatter(
                 x=median.index,
@@ -392,12 +537,42 @@ def plot_comparison_with_boxplots(
             col=col,
         )
 
-    for i, (median, min_vals, max_vals) in enumerate(stats):
+        if show_interquartile_range:
+            # Add traces for the 25-75 percentile envelope
+            fig.add_trace(
+                go.Scatter(
+                    x=median.index,
+                    y=p75.values,
+                    mode="lines",
+                    line=dict(width=0),
+                    fillcolor=color.replace("0.2", "0.5"),  # Make 25-75 more visible
+                    showlegend=False,
+                ),
+                row=1,
+                col=col,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=median.index,
+                    y=p25.values,
+                    mode="lines",
+                    fill="tonexty",
+                    fillcolor=color.replace("0.2", "0.5"),
+                    line=dict(width=0),
+                    showlegend=False,
+                ),
+                row=1,
+                col=col,
+            )
+
+    for i, (median, min_vals, max_vals, p25, p75) in enumerate(stats):
         add_traces(
             fig,
             median,
             min_vals,
             max_vals,
+            p25,
+            p75,
             labels[i],
             colors[i % len(colors)],
             linecolors[i % len(linecolors)],
@@ -473,10 +648,27 @@ def plot_comparison_with_boxplots(
 
     # Adjust the width of the first subplot (column=1) to be more than the second subplot (column=2)
     fig.update_layout(
-        xaxis=dict(domain=[0, 0.7]),  # First subplot takes 65% of the width
+        xaxis=dict(domain=[0, 0.8]),  # First subplot takes 70% of the width
         xaxis2=dict(
-            domain=[0.75, 1]
-        ),  # Second subplot takes the remaining 30% of the width
+            domain=[0.95, 1]
+        ),  # Second subplot takes the remaining 25% of the width
+    )
+
+    # Update font size
+    fig.update_layout(font=dict(size=fontsize))
+
+    # Remove gridlines
+    fig.update_xaxes(showgrid=False, row=1, col=1)
+    fig.update_xaxes(showgrid=False, row=1, col=2)
+    fig.update_yaxes(showgrid=False, row=1, col=1)
+    fig.update_yaxes(showgrid=False, row=1, col=2)
+
+    # Ticks
+    fig.update_xaxes(
+        showline=True, linewidth=1, linecolor="black", ticks="outside", row=1, col=1
+    )
+    fig.update_yaxes(
+        showline=True, linewidth=1, linecolor="black", ticks="outside", row=1, col=1
     )
 
     # Show the plot
@@ -484,267 +676,6 @@ def plot_comparison_with_boxplots(
 
     if saving:
         filename = data_paths[0].split("/")[-1].split(".")[0]
-        # Save the plot
-        fig.write_image(f"{output_path}/{filename}.svg")
-
-
-def plot_emissions_comparison_with_boxplots(
-    utilitarian_path,
-    prioritarian_path,
-    start_year,
-    end_year,
-    data_timestep,
-    timestep,
-    visualization_start_year,
-    visualization_end_year,
-    yaxis_range,
-    opacity,
-    plot_title,
-    xaxis_title,
-    yaxis_title,
-    template,
-    width,
-    height,
-    baseline_path=None,
-    utilitarian_color="coral",
-    prioritarian_color="lightgreen",
-    median_utilitarian_color="red",
-    median_prioritarian_color="green",
-    baseline_color="gray",
-    fontsize=18,
-    column_widths=[0.8, 0.2],
-    output_path=None,
-    saving=False,
-):
-
-    # NOTE: Rough Implementation. Needs to be refactored and cleaned up.
-
-    # Set the time horizon
-    time_horizon = TimeHorizon(
-        start_year=start_year,
-        end_year=end_year,
-        data_timestep=data_timestep,
-        timestep=timestep,
-    )
-    list_of_years = time_horizon.model_time_horizon
-
-    if baseline_path:
-        baseline = np.load(baseline_path)
-        if len(baseline.shape) == 3:
-            baseline = np.sum(baseline, axis=0)
-        baseline = pd.DataFrame(baseline.T, columns=list_of_years)
-        baseline = baseline.loc[:, visualization_start_year:visualization_end_year]
-        baseline = baseline.T
-        # Take average over all ensemble members
-        baseline = baseline.mean(axis=1)
-
-    # Load and process the data
-    with open(utilitarian_path, "rb") as f:
-        emissions_utilitarian = pickle.load(f)
-
-    with open(prioritarian_path, "rb") as f:
-        emissions_prioritarian = pickle.load(f)
-
-    # only sum over regions if the data is 3D
-    if len(emissions_utilitarian.shape) == 3:
-        # Sum over the regions
-        emissions_utilitarian = np.sum(emissions_utilitarian, axis=0)
-        emissions_prioritarian = np.sum(emissions_prioritarian, axis=0)
-
-    # Convert to dataframe with years as columns
-    emissions_utilitarian = pd.DataFrame(emissions_utilitarian.T, columns=list_of_years)
-    emissions_prioritarian = pd.DataFrame(
-        emissions_prioritarian.T, columns=list_of_years
-    )
-
-    # Only select up to visualization_end_year columns
-    emissions_utilitarian = emissions_utilitarian.loc[
-        :, visualization_start_year:visualization_end_year
-    ]
-    emissions_prioritarian = emissions_prioritarian.loc[
-        :, visualization_start_year:visualization_end_year
-    ]
-
-    emissions_utilitarian = emissions_utilitarian.T
-    emissions_prioritarian = emissions_prioritarian.T
-
-    # Create subplots: 1 row, 2 columns
-    fig = make_subplots(
-        rows=1, cols=2, column_widths=column_widths, subplot_titles=[plot_title, " "]
-    )
-    # Calculate the envelope for utilitarian emissions
-    utilitarian_max = np.percentile(emissions_utilitarian, 100, axis=1)
-    utilitarian_min = np.percentile(emissions_utilitarian, 0, axis=1)
-    prioritarian_max = np.percentile(emissions_prioritarian, 100, axis=1)
-    prioritarian_min = np.percentile(emissions_prioritarian, 0, axis=1)
-
-    # Add trace for the utilitarian envelope
-    fig.add_trace(
-        go.Scatter(
-            x=emissions_utilitarian.index,
-            y=utilitarian_max,
-            mode="lines",
-            line=dict(color=utilitarian_color, width=0.5),
-            fill=None,
-            showlegend=False,
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=emissions_utilitarian.index,
-            y=utilitarian_min,
-            mode="lines",
-            line=dict(color=utilitarian_color, width=0.5),
-            fill="tonexty",
-            opacity=opacity,
-            showlegend=False,
-        ),
-        row=1,
-        col=1,
-    )
-
-    # Add trace for the prioritarian envelope
-    fig.add_trace(
-        go.Scatter(
-            x=emissions_prioritarian.index,
-            y=prioritarian_max,
-            mode="lines",
-            line=dict(color=prioritarian_color, width=0.5),
-            fill=None,
-            showlegend=False,
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=emissions_prioritarian.index,
-            y=prioritarian_min,
-            mode="lines",
-            line=dict(color=prioritarian_color, width=0.5),
-            fill="tonexty",
-            opacity=opacity,
-            showlegend=False,
-        ),
-        row=1,
-        col=1,
-    )
-
-    # Add trace for the median prioritarian emissions
-    fig.add_trace(
-        go.Scatter(
-            x=emissions_prioritarian.index,
-            y=emissions_prioritarian.median(axis=1),
-            mode="lines",
-            line=dict(color=median_prioritarian_color, width=2),
-            name="Prioritarian Median",
-        ),
-        row=1,
-        col=1,
-    )
-
-    # Add trace for the median utilitarian emissions
-    fig.add_trace(
-        go.Scatter(
-            x=emissions_utilitarian.index,
-            y=emissions_utilitarian.median(axis=1),
-            mode="lines",
-            line=dict(color=median_utilitarian_color, width=2),
-            name="Utilitarian Median",
-        ),
-        row=1,
-        col=1,
-    )
-
-    if baseline_path:
-        fig.add_trace(
-            go.Scatter(
-                x=emissions_utilitarian.index,
-                y=baseline,
-                mode="lines",
-                line=dict(color=baseline_color, width=2, dash="dash"),
-                name="Baseline",
-            ),
-            row=1,
-            col=1,
-        )
-
-    # Add box plots for the last year
-    utilitarian_last_year_data = emissions_utilitarian.iloc[-1]
-    prioritarian_last_year_data = emissions_prioritarian.iloc[-1]
-
-    fig.add_trace(
-        go.Box(
-            y=utilitarian_last_year_data,
-            name="Utilitarian",
-            marker=dict(color=median_utilitarian_color),
-            width=0.1,
-        ),
-        row=1,
-        col=2,
-    )
-
-    fig.add_trace(
-        go.Box(
-            y=prioritarian_last_year_data,
-            name="Prioritarian",
-            marker=dict(color=median_prioritarian_color),
-            width=0.1,
-        ),
-        row=1,
-        col=2,
-    )
-
-    # Styling the box plot
-    fig.update_traces(
-        marker=dict(line=dict(width=0.3, color=baseline_color)), row=1, col=2
-    )
-
-    # Update layout
-    fig.update_layout(
-        title=plot_title,
-        xaxis_title=xaxis_title,
-        yaxis_title=yaxis_title,
-        template=template,
-        height=height,
-        width=width,
-    )
-
-    # Align the y-axes for both subplots
-    fig.update_yaxes(
-        title_text=yaxis_title, range=yaxis_range, showgrid=False, row=1, col=1
-    )
-    fig.update_yaxes(
-        range=yaxis_range, showticklabels=False, showgrid=False, row=1, col=2
-    )
-
-    # Update x-axis for the line plot
-    fig.update_xaxes(title_text=xaxis_title, showgrid=False, row=1, col=1)
-
-    # Update font size
-    fig.update_layout(font=dict(size=fontsize))
-
-    # Adjust the width of the first subplot (column=1) to be more than the second subplot (column=2)
-    fig.update_layout(
-        xaxis=dict(domain=[0, 0.8]),  # First subplot takes 65% of the width
-        xaxis2=dict(
-            domain=[0.9, 1]
-        ),  # Second subplot takes the remaining 30% of the width
-    )
-
-    # Show the figure
-    fig.show()
-
-    if saving:
-        filename = (
-            utilitarian_path.split("/")[-1].split(".")[0]
-            + "_"
-            + prioritarian_path.split("/")[-1].split(".")[0]
-        )
         # Save the plot
         fig.write_image(f"{output_path}/{filename}.svg")
 
@@ -1073,6 +1004,10 @@ def plot_stacked_area_chart_v2(
             if show_legend == False:
                 fig.update_layout(showlegend=False)
 
+            # Remove gridlines
+            fig.update_xaxes(showgrid=False)
+            fig.update_yaxes(showgrid=False)
+
             if saving:
                 # Save the figure
                 if not os.path.exists(path_to_output):
@@ -1082,7 +1017,7 @@ def plot_stacked_area_chart_v2(
                     variable_name + "_" + output_titles[idx] + "_" + scenario
                 )
                 print("Saving plot for: ", scenario, " - ", output_file_name)
-                fig.write_image(path_to_output + "/" + output_file_name + ".png")
+                fig.write_image(path_to_output + "/" + output_file_name + ".svg")
 
     return fig, data
 
@@ -2388,7 +2323,7 @@ def plot_stacked_area_chart(
     region_aggegation=True,
     region_dict=None,
     saving=False,
-    fontsize=15,
+    fontsize=16,
     yaxis_lower_limit=0,
     yaxis_upper_limit=25,
     show_legend=True,
@@ -2514,6 +2449,21 @@ def plot_stacked_area_chart(
             # Check if display legend is True
             if show_legend == False:
                 fig.update_layout(showlegend=False)
+
+            # Remove gridlines
+            fig.update_xaxes(showgrid=False)
+            fig.update_yaxes(showgrid=False)
+
+            # Show ticks on x and y axes with axis lines
+            fig.update_xaxes(
+                showline=True, linewidth=1, linecolor="black", ticks="outside"
+            )
+            fig.update_yaxes(
+                showline=False, linewidth=1, linecolor="black", ticks="outside"
+            )
+
+            # Set fontsize for tick labels
+            fig.update_xaxes(tickfont=dict(size=fontsize))
 
             if saving:
                 # Save the figure
