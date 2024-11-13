@@ -82,13 +82,22 @@ class Region:
         self.n_households = XML_init_values.dict["Region_n_households"]
         self.households = []
 
+        self.model_HK = XML_init_values.dict["model_HK"]
+        self.HK_influence_close = XML_init_values.dict["HK_influence_close"]
+        self.HK_epsilon_dmg = XML_init_values.dict["HK_epsilon_dmg"]
+        self.HK_epsilon_support = XML_init_values.dict["HK_epsilon_support"]
+
         # ------ Opinions Dynamics Parameters For Temperature Threshold -----
         self.opdyn_max_iter = XML_init_values.dict["Region_opdyn_max_iter"]
         # Only one iteration per step
-        self.opdyn_influence_close = XML_init_values.dict["Region_opdyn_influence_close"]
+        self.opdyn_influence_close = XML_init_values.dict[
+            "Region_opdyn_influence_close"
+        ]
         self.opdyn_influence_far = XML_init_values.dict["Region_opdyn_influence_far"]
         self.opdyn_agreement = XML_init_values.dict["Region_opdyn_agreement"]
-        self.opdyn_threshold_close = XML_init_values.dict["Region_opdyn_threshold_close"]
+        self.opdyn_threshold_close = XML_init_values.dict[
+            "Region_opdyn_threshold_close"
+        ]
         self.opdyn_threshold_far = XML_init_values.dict["Region_opdyn_threshold_far"]
 
         self.network = np.zeros((self.n_households, self.n_households))
@@ -122,11 +131,13 @@ class Region:
             self.n_households, [hh.emotion_economy for hh in self.households]
         )
 
-        self.regional_literacy = list_dicts[10][self.code]["At least once a week"]/100
+        self.regional_literacy = list_dicts[10][self.code]["At least once a week"] / 100
 
         self.relative_wealth = 0
         self.gini = 0
-        self.initial_responsibility = list_dicts[8][self.code]["Regardless of what other countries do"]/100
+        self.initial_responsibility = (
+            list_dicts[8][self.code]["Regardless of what other countries do"] / 100
+        )
 
         self.alpha1 = XML_init_values.dict["Region_alpha1"]
         self.alpha2 = XML_init_values.dict["Region_alpha2"]
@@ -148,20 +159,13 @@ class Region:
                 for hh in self.households
             ]
         )"""
-        array_utility = np.array(
-            [
-                (self.alpha1 * hh.expected_dmg_opinion + self.alpha2 * hh.literacy_opinion) + (self.beta1 * self.initial_responsibility + self.beta2 * hh.perceived_income_opinion) - (1-self.gini) + self.gamma * (self.relative_wealth-1)
-                for hh in self.households
-            ]
-        )
-        array_utility = np.clip(array_utility,a_min= -1, a_max=1)
+        array_utility = np.array([hh.policy_support - 1 / 2 for hh in self.households])
+        array_utility = np.clip(array_utility, a_min=-1, a_max=1)
 
-        print_log.f_opinion_and_trust[1].writerow(
+        print_log.f_HK_opinion_dynamics[1].writerow(
             [timestep, self.id]
-            + [hh.expected_dmg_opinion for hh in self.households]
-            + [hh.perceived_income_opinion for hh in self.households]
-            + [hh.literacy_opinion for hh in self.households]
-            + [self.initial_responsibility, self.gini,self.relative_wealth]
+            + [hh.policy_support for hh in self.households]
+            + [hh.damage_beliefs[1][0] for hh in self.households]
         )
 
         array_support = array_utility > 0.05
@@ -208,12 +212,8 @@ class Region:
 
     def update_regional_opinion(self, timestep):
         # Update on observations (uses FaIR-Perspectives ==> Understanding)
-        for hh in self.households:
-            hh.update_literacy_opinion()
-            hh.update_perceived_income_opinion()
-            hh.update_expected_dmg_opinion()
         self.update_from_information(timestep)
-        #self.update_from_interactions(timestep)
+        self.update_from_interactions(timestep)
 
     def update_from_interactions(self, timestep):
         print_log.write_log(
@@ -224,47 +224,170 @@ class Region:
         )
         # 5 steps per year (Ypolicy)
         if timestep % self.twolevelsgame_model.Y_policy == 0:
+            self.HK2D(timestep)
             for hh in self.households:
-                hh.update_emotion_opinion()
-
-        for rounds in range(5):
-            print_log.write_log(
-                LogFiles.MASKLOG_region,
-                "Region.py",
-                "update_from_interactions",
-                f"----- round {rounds} -----",
-            )
-
-            # self.spreading_climate_threshold()  #with interactions between agents
-            for hh in self.households:
-                hh.update_temperature_threshold()  # without interactions between agents (only convergence towards information)
-            self.opinion_climate_change.step()
-            self.opinion_economy.step()
-
-            """
-            print_log.f_household[1].writerow(
-                [timestep - 0.2 * (24 - rounds), self.id]
-                + [
-                    hh.threshold_expected_temperature_elevation
-                    for hh in self.households
-                ]
-                + [hh.emotion_climate_change.b0 for hh in self.households]
-                + [hh.emotion_climate_change.v for hh in self.households]
-                + [hh.emotion_climate_change.a for hh in self.households]
-                + [hh.emotion_economy.b0 for hh in self.households]
-                + [hh.emotion_economy.v for hh in self.households]
-                + [self.opinion_climate_change.h, self.opinion_economy.h],
-            )
-            """
+                if self.model_HK==1:
+                    hh.internal_HK_mode1()
+                elif self.model_HK==3:
+                    hh.internal_HK_mode3()
 
     def update_from_information(self, timestep):
         for hh in self.households:
-            hh.update_climate_distrib_beliefs(timestep)
+            hh.update_damage_distrib_beliefs(timestep)
+            # hh.update_climate_distrib_beliefs(timestep)
         return
 
     def update_state_policy_from_constituency(self, timestep):
         self.negotiator.shifting_policy(timestep)
         return
+
+    def HK2D(self, timestep):
+        n = len(self.households)
+        I = np.eye(n + 1)
+        k = 0
+
+        v1 = np.ones((n + 1, 1))
+
+        # Agents' mean expected economic damages
+        vect_expected_damages = np.array(
+            [[hh.damage_beliefs[1][0]] for hh in self.households]
+        )
+        vect_p_consider_information = np.array(
+            [[hh.p_consider_information] for hh in self.households]
+        )
+
+        # Agent's support for current policy
+        vect_support = np.array([[hh.policy_support] for hh in self.households])
+
+        # Adding the information agent
+        # Damages coming from INFORMATION model
+        year = Household.BELIEF_YEAR_OFFSET[-1]
+        i_max_temp = np.argmax(
+            self.twolevelsgame_model.justice_model.information_model.local_economic_damage_information[
+                0
+            ][
+                self.id
+            ][
+                timestep:year
+            ]
+        )
+        information = self.twolevelsgame_model.justice_model.information_model.local_economic_damage_information[
+            0
+        ][
+            self.id
+        ][
+            i_max_temp
+        ]
+        vect_expected_damages = np.concatenate(
+            (vect_expected_damages, [[information]]), axis=0
+        )
+        vect_support = np.concatenate((vect_support, [[information]]), axis=0)
+        # Filling to match size
+        vect_p_consider_information = np.concatenate(
+            (vect_p_consider_information, [[0]]), axis=0
+        )
+
+        # Resulting dispersion on damages
+        dispersion_damages = np.max(
+            np.abs(vect_expected_damages @ v1.T - v1 @ vect_expected_damages.T)
+        )
+        # Resulting dispersion on support
+        dispersion_support = np.max(np.abs(vect_support @ v1.T - v1 @ vect_support.T))
+
+        epsilon_damages = self.HK_epsilon_dmg
+        epsilon_support = self.HK_epsilon_support
+        agreement_threshold = 0.0000001
+        max_iter = 1
+        while (dispersion_support + dispersion_damages > agreement_threshold) & (
+            k < max_iter
+        ):
+            k += 1
+            # Create the network
+            # TODO: The networks can be constructed based on the distance for 1 of the dimensions, of for both of these dimensions.
+            L_dmg = (
+                np.abs(vect_expected_damages @ v1.T - (v1 @ vect_expected_damages.T))
+                <= epsilon_damages
+            ) - I
+
+            # The coefficient in front of self.n_households represents the trust in scientific information
+            # The parameter vect_p_consider_information represents the probability to be exposed to the scientific information
+            L_dmg[:, -1:] = 0 * (
+                1
+                / 2
+                * self.n_households
+                * (
+                    vect_p_consider_information
+                    > self.rng.random((self.n_households + 1, 1))
+                )
+            )
+
+            # For policy support, we put everything to 0: there is no influence of scientific information (in such a direct way)
+            L_support = (
+                np.abs(vect_support @ v1.T - (v1 @ vect_support.T)) <= epsilon_support
+            ) - I
+            L_support[:, -1:] = 0 * L_support[:, -1:]
+
+            L_dmgclose = np.diag(np.sum(L_dmg, 1)) - L_dmg
+            L_supportclose = np.diag(np.sum(L_support, 1)) - L_support
+
+            # Forcing information agent to be close to all, according to information access
+            # ==> Adding it at the end column of each row
+
+            L_dmg = (
+                np.abs(vect_expected_damages @ v1.T - (v1 @ vect_expected_damages.T))
+                > epsilon_damages
+            ) - I
+            L_support = (
+                np.abs(vect_support @ v1.T - (v1 @ vect_support.T)) > epsilon_support
+            ) - I
+
+            L_dmgfar = np.diag(np.sum(L_dmg, 1)) - L_dmg
+            L_supportfar = np.diag(np.sum(L_support, 1)) - L_support
+
+            # L = generateAdjacencyMatrix(n,'random', 1-lbd);
+            # Lalea_info = np.diag(np.sum(L,1))- L;
+
+            # Update thresholds
+            influence_close = 0.01
+            influence_far = 0
+            vect_expected_damages = np.clip(
+                (
+                    (I - self.HK_influence_close * L_dmgclose + influence_far * L_dmgfar)
+                    @ vect_expected_damages
+                ),
+                0,
+                100,
+            )
+            vect_support = np.clip(
+                (
+                    (
+                        I
+                        - self.HK_influence_close * L_supportclose
+                        + influence_far * L_supportfar
+                    )
+                    @ vect_support
+                ),
+                0,
+                100,
+            )
+
+            dispersion_damages = np.max(
+                np.abs(vect_expected_damages @ v1.T - v1 @ vect_expected_damages.T)
+            )
+            dispersion_support = np.max(
+                np.abs(vect_support @ v1.T - v1 @ vect_support.T)
+            )
+
+        if k != 0:
+            i = 0
+            N_damage = np.sum(L_dmgclose, 1)
+            N_support = np.sum(L_supportclose, 1)
+            for hh in self.households:
+                hh.damage_beliefs[1][0] = vect_expected_damages[i][0]
+                hh.policy_support = vect_support[i][0]
+                hh.neighbours_damage = N_damage[i]
+                hh.neighbours_support = N_support[i]
+                i = i + 1
 
     def spreading_climate_threshold(self):
         """
@@ -375,8 +498,6 @@ class Region:
         # TODO APN ge the timestep size from the model (it is not necessarily always 1 -  could be 5 years)
         policy = self.negotiator.policy
 
-        # End of can comment
-
         last_p_year = start_year
         last_pol = pol_at_start_year
 
@@ -394,8 +515,12 @@ class Region:
             np.matrix(np.clip(ecr_projection, 0, 1)).T,
             self.twolevelsgame_model.justice_model.no_of_ensembles,
         )
+
     def compute_gini(self):
-        cumulative_quintile = np.cumsum(self.disaggregated_post_costs_consumption/np.sum(self.disaggregated_post_costs_consumption))
+        cumulative_quintile = np.cumsum(
+            self.disaggregated_post_costs_consumption
+            / np.sum(self.disaggregated_post_costs_consumption)
+        )
         cumulative_quintile = np.insert(cumulative_quintile, 0, 0)
-        area = sum((cumulative_quintile[:-1]+cumulative_quintile[1:]) * 0.2 / 2)
+        area = sum((cumulative_quintile[:-1] + cumulative_quintile[1:]) * 0.2 / 2)
         self.gini = 1 - 2 * area

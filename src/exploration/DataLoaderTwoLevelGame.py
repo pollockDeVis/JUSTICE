@@ -11,6 +11,12 @@ class DataLoaderTwoLevelGame:
         self.dict["seed"] = self.get_value(
             'Class/[@name="General"]/Attribute/[@name="seed"]'
         )
+        self.dict["model_HK"] = self.get_value(
+            'Class/[@name="General"]/Attribute/[@name="model_HK"]'
+        )
+        self.dict["loss_and_damages_neutral"] = self.get_value(
+            'Class/[@name="General"]/Attribute/[@name="loss_and_damages_neutral"]'
+        )
 
         self.dict["TwoLevelsGame_Y_nego"] = self.get_value(
             'Class/[@name="TwoLevelsGame"]/Attribute/[@name="Y_nego"]'
@@ -120,6 +126,21 @@ class DataLoaderTwoLevelGame:
         )
         self.dict["IPCC_report_period"] = self.get_value(
             'Class/[@name="TwoLevelsGame"]/Attribute/[@name="IPCC_report_period"]'
+        )
+        self.dict["weight_info_dmg_local"] = self.get_value(
+            'Class/[@name="Household"]/Attribute/[@name="weight_info_dmg_local"]'
+        )
+        self.dict["factor_conflict_coefficient"] = self.get_value(
+            'Class/[@name="Household"]/Attribute/[@name="factor_conflict_coefficient"]'
+        )
+        self.dict["HK_epsilon_dmg"] = self.get_value(
+            'Class/[@name="Region"]/Attribute/[@name="HK_epsilon_dmg"]'
+        )
+        self.dict["HK_epsilon_support"] = self.get_value(
+            'Class/[@name="Region"]/Attribute/[@name="HK_epsilon_support"]'
+        )
+        self.dict["HK_influence_close"] = self.get_value(
+            'Class/[@name="Region"]/Attribute/[@name="HK_influence_close"]'
         )
 
     def get_value(self, expression):

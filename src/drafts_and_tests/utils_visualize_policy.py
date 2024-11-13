@@ -24,8 +24,15 @@ def visualize_policy(directory, region):
         years_colums = df[df.columns[8:11]]
         current_time_colums = df[df.columns[1]]
         max_possible_shift = df[df.columns[3]]
+        feedback_policy_support = df["feedback shift to policy support"]
         year_shift = df[df.columns[4]]
-        support_shares = df[df.columns[11:-2]]
+        support_shares = df[["share_opposition",
+                "share_neutral",
+                "share_support"]]
+
+
+        plt.figure()
+        plt.plot(current_time_colums[region_mask], feedback_policy_support[region_mask],'*')
 
         plt.figure()
         plt.plot(current_time_colums[region_mask], year_shift[region_mask], "*")
@@ -225,15 +232,20 @@ def superpose_policies(directory):
     for save_path in path_list:
 
         f = open(save_path + "\parameters.txt", "r")
+        print(f.read())
+        df = pd.read_csv(save_path + "\emissions.csv", header=None, sep=",")
 
-        df = pd.read_csv(save_path + "\policy.csv", header=0, dtype="float64")
-        years_colums = df["Timestep"]
-        emissions_colums = df["ECR current"]
+        years_colums = np.linspace(2015, 2300, num=286)
+        emissions_colums = df[df.columns[1:]]
         plt.figure()
-        for region in range(57):
-            plt.plot(years_colums[df["Region ID"].isin([region])], emissions_colums[df["Region ID"].isin([region])])
-            plt.legend(["Final emission cutting rate pathway"])
-            plt.title("Final Policy for All Regions")
+        #range 1 to 58 because we want to start a -1 and end a -57
+        #if we started at 0, then -0 is zero and we print the first policy plan for one of the regions.
+        for region in range(1,58):
+            plt.plot(
+                years_colums,
+                emissions_colums.iloc[-region],
+            )
+            plt.title("Final ECR pathways for all Regions")
         plt.xlabel("years")
         plt.ylabel("emission control rate")
         ax = plt.gca()
@@ -243,4 +255,4 @@ def superpose_policies(directory):
 
 
 # visualize_policy("../../data/output/SAVE_2024_10_09_1403", 32)
-superpose_policies("../../data/output/SAVE_2024_10_09_1758")
+superpose_policies("../../data/output/SAVE_2024_11_12_1301")

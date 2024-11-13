@@ -104,6 +104,12 @@ class Negotiator:
 
             max_cutting_rate_gradient = self.max_cutting_rate_gradient
 
+            # Comparing old to new slope to net-zero year
+            old_slope = (self.policy[1, 2] - self.policy[1, 1])/(self.policy[0, 2] - self.policy[0, 1])
+            new_slope = (self.policy[1, 2] - min(delta_shift + self.policy[1, 1], 1))/(self.policy[0, 2] - self.policy[0, 1])
+            for hh in self.region_model.households:
+                hh.policy_support = hh.policy_support - (new_slope - old_slope)
+
             # Shifting policy target
             self.policy[1, 1] = min(delta_shift + self.policy[1, 1], 1)
 
@@ -118,7 +124,9 @@ class Negotiator:
                 + [p for p in self.policy[1]]
                 + [y for y in self.policy[0]]
                 + [s for s in support]
-                + [self.region_model.twolevelsgame_model.first_year_region_net_zero]
+                + [self.region_model.twolevelsgame_model.first_year_region_net_zero,
+                   - (new_slope - old_slope)]
+
             )
 
             # Verifying new target compatibility with end goal
@@ -133,6 +141,7 @@ class Negotiator:
                 self.regional_pressure_later_ecr = np.maximum(
                     self.regional_pressure_later_ecr, earliest_possible_target
                 )
+
         elif (
             self.policy[1, 1] == 1
             and self.region_model.twolevelsgame_model.first_year_region_net_zero == -1
@@ -150,7 +159,7 @@ class Negotiator:
                 ]
                 + [p for p in self.policy[1]]
                 + [y for y in self.policy[0]]
-                + [s for s in [0,0,0,0,0,0]]
+                + [s for s in [0, 0, 0, 0, 0, 0]]
                 + [self.region_model.twolevelsgame_model.first_year_region_net_zero]
             )
 

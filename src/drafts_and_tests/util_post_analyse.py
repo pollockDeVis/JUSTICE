@@ -10,13 +10,18 @@ import seaborn as sns
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-parameters_files = glob.glob("../../data/output/SAVE_2024_10_09*/parameters.txt")
-policies_files = glob.glob("../../data/output/SAVE_2024_10_09*/policy.csv")
+parameters_files = glob.glob("../../data/output/SAVE_2024_11_12*/parameters.txt")
+policies_files = glob.glob("../../data/output/SAVE_2024_11_12*/policy.csv")
+
+print(parameters_files)
 
 parameters = []
 for p in parameters_files:
+
+    if p < '../../data/output\\SAVE_2024_11_07_1315\\parameters.txt':
+        continue
     param = []
-    for i in range(32, 37):
+    for i in [40]:
         line = linecache.getline(p, i)
         x = line.split(" ")
         param.append(float(x[1]))
@@ -27,6 +32,8 @@ for p in parameters_files:
 policies = []
 policies_first = []
 for p in policies_files:
+    if p < '../../data/output\\SAVE_2024_11_07_1315\\policy.csv':
+        continue
     with open(p) as f:
         for last_line in f:
             pass
@@ -34,13 +41,12 @@ for p in policies_files:
         policies.append(float(last_line[10]))
         policies_first.append(float(last_line[-1]))
 
-policies_first[-6] = 2040
 print(policies_first)
 print(policies)
 input = parameters
 # output = [policies[p] - policies_first[p] for p in range(len(policies))]
 output = policies
-input_labels = ["alpha1", "alpha2", "beta1", "beta2", "gamma"]
+input_labels = ["weight_info_dmg_local"]
 output_label = ["global net zero"]
 
 #####################################################
@@ -77,8 +83,9 @@ data["output"] = output
 correlation_matrix = data.corr()
 
 # Create a heatmap to visualize the correlations
-plt.figure(figsize=(10, 8))
-sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", fmt=".2f")
+plt.figure()
+ax = sns.heatmap(correlation_matrix[["output"]], annot=True, cmap="coolwarm", fmt=".2f" )
+ax.set_yticklabels(ax.get_yticklabels(), rotation=45)
 plt.title("Correlation Matrix between Input and Output")
 plt.show()
 
@@ -92,8 +99,8 @@ for label in input_labels:
 
 # TODO: get a more comprehensive view of the relationship between variables.
 # For example:
-# sns.pairplot(data)
-# plt.show()
+sns.pairplot(data)
+plt.show()
 
 plt.show()
 

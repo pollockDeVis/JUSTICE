@@ -23,7 +23,7 @@ class LogFiles:
         !!! WARNING: When adding a file for logs or to save some data, DO NOT FORGET to also add
         the corresponding line to CLOSE THE FILE at the end of the simulation!
         """
-        self.MASKLOG = 0x00000000 + LogFiles.MASKLOG_WARNING + LogFiles.MASKLOG_ERROR
+        self.MASKLOG = 0x00000004 + LogFiles.MASKLOG_WARNING + LogFiles.MASKLOG_ERROR
         # -> Create folder for current simulation
         self.path = "data/output/" + datetime.now().strftime("SAVE_%Y_%m_%d_%H%M") + "/"
         os.makedirs(self.path, exist_ok=True)
@@ -100,7 +100,8 @@ class LogFiles:
                 "strength_opposition",
                 "mean_utility",
                 "strength_support",
-                "first_year_region_net_zero"
+                "first_year_region_net_zero",
+                "feedback shift to policy support"
             ]
         )
 
@@ -115,6 +116,7 @@ class LogFiles:
             f4,
             csv.writer(f4, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
+        self.f_information[1].writerow(["Timestep", "Region"]+["temp. increase" for i in range(86)])
 
         f5 = open(self.path + "household.csv", "w", newline="")
         self.f_household = (
@@ -256,6 +258,25 @@ class LogFiles:
             + ["init. responsibility region", "gini region", "region relative_wealth"]
         )
 
+        f10 = open(self.path + "HK_opinion_dynamics.csv", "w", newline="")
+        self.f_HK_opinion_dynamics = (
+            f10,
+            csv.writer(f10, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
+        )
+        self.f_HK_opinion_dynamics[1].writerow(
+            [
+                "Timestep",
+                "Region",
+            ]
+            + [
+                "Support"
+                for i in range(XML_init_values.dict["Region_n_households"])
+            ]
+            + [
+                "Belief Damages"
+                for i in range(XML_init_values.dict["Region_n_households"])
+            ]
+        )
     def close_files(self):
         self.f_policy[0].close()
         self.f_region[0].close()
@@ -268,6 +289,7 @@ class LogFiles:
         self.f_share_opinions[0].close()
         self.f_output_fair[0].close()
         self.f_opinion_and_trust[0].close()
+        self.f_HK_opinion_dynamics[0].close()
         self.log.close()
         return
 

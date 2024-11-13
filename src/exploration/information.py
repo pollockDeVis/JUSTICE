@@ -54,8 +54,11 @@ class Information:
 
         # TODO APN: Change to numpy arrays
         self.global_temperature_information = []
-        # Last known forecast by FaIR (every 10 years) under the form [year; mean_temperature; var_temperature]
+        # Last known forecast by FaIR (every Y years) under the form [year; mean_temperature; var_temperature]
         self.local_temperature_information = []
+        # Last know forecast by JUSTICE
+        self.local_economic_damage_information = []
+        self.maximum_local_economic_damage_information = []
         # Last known downscaled forecast by FaIr (every 10 years) under the forme [year; mean_temperature; var_temperature] for each region
         self.global_distrib_flsi = np.empty(
             [
@@ -81,6 +84,7 @@ class Information:
             ]
             for r in range(57)
         ]
+
         # Estimations of future temperature elevation (ground) at local scale at future years BELIEF_YEAR_OFFSET
         # TODO APN: 57 is the number of regions: use global var or get from JUSTICE model
 
@@ -217,6 +221,9 @@ class Information:
         self.generate_climate_information(
             datasets["global_temperature"], datasets["regional_temperature"]
         )
+        self.generate_loss_and_damage_information(
+            datasets["economic_damage"], datasets["net_economic_output"]
+        )
 
         # print(datasets["consumption_per_capita"])
         return
@@ -242,29 +249,22 @@ class Information:
         # array of shape  2 * region * time_horizon
         return
 
-    def generate_projection_information(self, l_cons_per_cap, g_temp, l_temp):
-        # g_temp An array of time horizon * number of ensembles
-        # l_temp An array of size regions * time horizon * number of ensembles
+    def generate_loss_and_damage_information(self, l_dmg, l_net_gdp):
+        l_rel_dmg = l_dmg / (l_dmg + l_net_gdp)
+        mean_dmg = l_rel_dmg.mean(axis=2)
+        mean_dmg = mean_dmg[:][:86]
+        ind_worst_region = np.argmax(np.sum(mean_dmg, 1))
+        max_mean_dmg = mean_dmg[ind_worst_region][:]
+        std_dmg = l_rel_dmg.std(axis=2)
+        self.local_economic_damage_information = [mean_dmg, std_dmg[:][:86]]
+        self.maximum_local_economic_damage_information = [
+            max_mean_dmg,
+            std_dmg[ind_worst_region][:86],
+        ]
 
-        # Global Temperatures: expected means and variances
-        means_global_temp = g_temp.mean(axis=1)
-        # array of shape time horizon
-        std_global_temp = g_temp.std(axis=1)
-        # array of shape time horizon
-        self.global_temperature_projection = [means_global_temp, std_global_temp]
-        # array of shape  2 * time_horizon
-
-        # Local Temperatures: expected means and variances
-        means_local_temp = l_temp.mean(axis=2)
-        # array of shape region * time horizon
-        std_local_temp = l_temp.std(axis=2)
-        # array of shape region * time horizon
-        self.local_temperature_projection = [means_local_temp, std_local_temp]
-        # array of shape  2 * region * time_horizon
-
-        self.local_consumption_per_capita = l_cons_per_cap.mean(axis=2)
-
-        print(self.local_consumption_per_capita.shape())
+        for r in range(57):
+            dmg = self.local_economic_damage_information[0][r]
+            print_log.f_information[1].writerow([0, r] + [d for d in dmg])
         return
 
     def construct_flsi(self, timestep):

@@ -64,14 +64,7 @@ class Household:
         # freq_hear: Never, At most once a year, Several times a year, At least once a month, At least once a week, Don't know, Refused
         # Here I associate Never, Don't know and Refused with a probability of considering information = 0
         self.p_consider_information = (
-            1
-            / 100
-            * (
-                0.3 * list_dicts[10][region.code]["Once a year or less often"]
-                + 0.5 * list_dicts[10][region.code]["Several times a year"]
-                + 0.7 * list_dicts[10][region.code]["At least once a month"]
-                + 0.9 * list_dicts[10][region.code]["At least once a week"]
-            )
+            1 / 100 * (list_dicts[10][region.code]["At least once a week"])
         )
         # self.opdyn_threshold_sensitivity = self.p_consider_information * self.model_region.opdyn_influence_close + self.model_region.opdyn_influence_far
 
@@ -88,8 +81,8 @@ class Household:
         means_2200 = [
             2,
             0,
-            np.random.random() * 8,
-            np.random.random() * 8,
+            rng.random() * 8,
+            rng.random() * 8,
         ]  # Climate change is happening: "Yes, No, Don't know, refused"
         variances = [
             0.5,
@@ -106,8 +99,8 @@ class Household:
 
         self.climate_init_mean_beliefs = np.array(
             [
-                mean_now + variance * (np.random.random() - 0.5) * 2,
-                mean_2200 + variance * (np.random.random() - 0.5) * 2,
+                mean_now + variance * (rng.random() - 0.5) * 2,
+                mean_2200 + variance * (rng.random() - 0.5) * 2,
             ]
         )
         # -> Confidence in the expectation
@@ -127,7 +120,6 @@ class Household:
                 for i in range(self.N_CLIMATE_BELIEFS)
             ]
         )
-        # Here range(nb_beliefs) depending on the number of beliefs to be modelled
         norm_coeff = np.sum(distrib_beliefs, axis=1)
         self.climate_distrib_beliefs = np.array(
             [
@@ -136,13 +128,27 @@ class Household:
             ]
         )
 
-        # used in the opinion update
-        self.climate_old_distrib_beliefs = np.array(
+        self.damage_init_mean_beliefs = np.array(
             [
-                distrib_beliefs[i, :] / norm_coeff[i]
+                rng.random(),
+                rng.random(),
+            ]
+        )
+        # -> Confidence in the expectation
+        self.damage_init_var_beliefs = np.array(
+            [
+                0.1,
+                0.1,
+            ]
+        )
+        self.damage_beliefs = np.array(
+            [
+                [self.damage_init_mean_beliefs[i], self.climate_init_var_beliefs[i]]
                 for i in range(self.N_CLIMATE_BELIEFS)
             ]
         )
+
+        self.policy_support = rng.random()
 
         ###################################################
         ################## Sensitivities ##################
@@ -201,6 +207,11 @@ class Household:
         self.perceived_income_opinion = 0
         self.literacy_opinion = 0
 
+        self.neighbours_damage = 0
+        self.neighbours_support = 0
+        self.conflict_coefficient = XML_init_values.dict["factor_conflict_coefficient"]
+        self.weight_info_dmg_local = XML_init_values.dict["weight_info_dmg_local"]
+
     def update_expected_dmg_opinion(self):
         # Using DICE 2013R damage function and comparing to 10% GPD damages as 100% wanting more for mitigation policy
         self.expected_dmg_opinion = (
@@ -221,6 +232,23 @@ class Household:
         self.literacy_opinion = (
             self.model_region.regional_literacy + 0.025 * self.quintile_number
         )
+
+    def internal_HK_mode2(self):
+        """
+        Makes the sum of beliefs close to 1. This means the beliefs are being ranked (or is equivalent to the relative
+        probability of adopting one of the belief). This is NOT FITTED to our issue in which both belief are though to
+        be complementary rather than opposed.
+        """
+        c = 1 / 2 * abs(self.damage_beliefs[1][0] - self.policy_support)
+        A = (1 - c) * self.damage_beliefs[1][0] + c * self.damage_beliefs[1][0] / (
+            self.damage_beliefs[1][0] + self.policy_support
+        )
+        self.policy_support = (
+            1 - c
+        ) * self.policy_support + c * self.policy_support / (
+            self.damage_beliefs[1][0] + self.policy_support
+        )
+        self.damage_beliefs[1][0] = A
 
     def update_perceived_income_opinion(self):
         self.perceived_income_opinion = (
@@ -247,6 +275,170 @@ class Household:
         return (
             self.model_region.twolevelsgame_model.justice_model.information_model.global_distrib_flsi
         )
+
+    def internal_HK_mode1(self):
+        if (self.damage_beliefs[1][0]) != (self.policy_support):
+            c = (
+                self.conflict_coefficient
+                * abs(
+                    (self.damage_beliefs[1][0] - 1 / 2) - (self.policy_support - 1 / 2)
+                )
+            )
+            if abs(self.damage_beliefs[1][0] - 1 / 2) > abs(
+                self.policy_support - 1 / 2
+            ):
+                self.policy_support = (
+                    self.policy_support + np.sign(self.damage_beliefs[1][0] - 1 / 2) * c
+                )
+            elif abs(self.damage_beliefs[1][0] - 1 / 2) < abs(
+                self.policy_support - 1 / 2
+            ):
+                self.damage_beliefs[1][0] = (
+                    self.damage_beliefs[1][0] + np.sign(self.policy_support - 1 / 2) * c
+                )
+            else:
+                if self.rng.random() > 0.5:
+                    self.policy_support = (
+                        self.policy_support
+                        + np.sign(self.damage_beliefs[1][0] - 1 / 2) * c
+                    )
+                else:
+                    self.damage_beliefs[1][0] = (
+                        self.damage_beliefs[1][0]
+                        + np.sign(self.policy_support - 1 / 2) * c
+                    )
+
+    def damage_information(self, timestep):
+        year = Household.BELIEF_YEAR_OFFSET[-1]
+        i_max_temp = np.argmax(
+            self.model_region.twolevelsgame_model.justice_model.information_model.local_economic_damage_information[
+                0
+            ][
+                self.model_region.id
+            ][
+                timestep:year
+            ]
+        )
+
+        i_worst_temp = np.argmax(
+            self.model_region.twolevelsgame_model.justice_model.information_model.maximum_local_economic_damage_information[
+                0
+            ][
+                timestep:year
+            ]
+        )
+        # Multiplying the mean economic damages by 25 allows to bring 0.02 damages (ig. 2% of GDP) to 0.5 beliefs for damages (which is neutral)
+        # This parameters is extremely important as it refers to the level of damages the households are considering okay versus not-okay.
+        economic_dmg_normalized = (
+            self.model_region.twolevelsgame_model.justice_model.information_model.local_economic_damage_information[
+                0
+            ][
+                self.model_region.id
+            ][
+                i_max_temp
+            ]
+            * 0.5/XML_init_values.dict["loss_and_damages_neutral"]
+        )
+        economic_dmg_normalized = max(min(economic_dmg_normalized, 1), 0)
+
+        economic_worst_dmg_normalized = (
+            self.model_region.twolevelsgame_model.justice_model.information_model.maximum_local_economic_damage_information[
+                0
+            ][
+                i_worst_temp
+            ]
+            * 0.5/XML_init_values.dict["loss_and_damages_neutral"]
+        )
+        economic_dmg_worst_global_normalized = max(min(economic_dmg_normalized, 1), 0)
+
+        return [
+            economic_dmg_normalized,
+            max(
+                0.01,
+                self.model_region.twolevelsgame_model.justice_model.information_model.local_economic_damage_information[
+                    1
+                ][
+                    self.model_region.id
+                ][
+                    i_max_temp
+                ]
+                * 0.5/XML_init_values.dict["loss_and_damages_neutral"],
+            ),
+            economic_dmg_worst_global_normalized,
+            0.01
+        ]
+
+    def internal_HK_mode3(self):
+        """
+        Influence according to the number of neighbours
+        """
+        if (self.damage_beliefs[1][0]) != (self.policy_support):
+            c = (
+                self.conflict_coefficient
+                * abs(
+                    (self.damage_beliefs[1][0] - 1 / 2) - (self.policy_support - 1 / 2)
+                )
+            )
+
+            if self.neighbours_damage > self.neighbours_support:
+                self.policy_support = (
+                    self.policy_support + np.sign(self.damage_beliefs[1][0] - 1 / 2) * c
+                )
+            elif self.neighbours_damage < self.neighbours_support:
+                self.damage_beliefs[1][0] = (
+                    self.damage_beliefs[1][0] + np.sign(self.policy_support) * c
+                )
+            else:
+                if self.rng.random() > 0.5:
+                    self.policy_support = (
+                        self.policy_support
+                        + np.sign(self.damage_beliefs[1][0] - 1 / 2) * c
+                    )
+                else:
+                    self.damage_beliefs[1][0] = (
+                        self.damage_beliefs[1][0] + np.sign(self.policy_support) * c
+                    )
+
+    def update_damage_distrib_beliefs(self, timestep):
+        p = self.rng.random()
+        if p < self.p_consider_information:
+            # Updating from information module: Expectation about temperature elevation
+            if self.model_region.id == 54:
+                print_log.write_log(
+                    print_log.MASKLOG_Household,
+                    "household.py",
+                    "update_damage_distrib_beliefs",
+                    f"BEFORE update with information --> {self.damage_beliefs[1]}",
+                )
+
+            damage_information = self.damage_information(timestep)
+
+            if self.model_region.id == 54:
+                print_log.write_log(
+                    print_log.MASKLOG_Household,
+                    "household.py",
+                    "update_damage_distrib_beliefs",
+                    f"Information is --> {damage_information}",
+                )
+
+            new_mean = (
+                 (damage_information[1]) ** 2 * self.damage_beliefs[1][0]
+                + self.damage_beliefs[1][1] ** 2 * (self.weight_info_dmg_local*damage_information[0] + (1-self.weight_info_dmg_local)*damage_information[2])
+            )
+            new_std = max(
+                0.001, damage_information[1] ** 2 * self.damage_beliefs[1][1] ** 2
+            )
+            self.damage_beliefs[1] = [new_mean, new_std] / (
+                damage_information[1] ** 2 + self.damage_beliefs[1][1] ** 2
+            )
+
+            if self.model_region.id == 54:
+                print_log.write_log(
+                    print_log.MASKLOG_Household,
+                    "household.py",
+                    "update_damage_distrib_beliefs",
+                    f"AFTER update with information --> {self.damage_beliefs[1]}",
+                )
 
     def update_climate_distrib_beliefs(self, timestep):
         """
@@ -315,72 +507,6 @@ class Household:
             ) + 1 / 5 * 1 / (
                 1 + np.exp(abs(self.threshold_expected_temperature_elevation - 1.5))
             ) * 1.5
-
-    def update_emotion_opinion(self):
-        """
-        Compute the Utility equivalent of the current policy. If U is positive, then the agent is pushing for more stringent emission reductions;
-        Else, the agent if pushing for less stringent policy.
-        Gets called once every Y_policy years (see attribute value in XML_init_values)
-
-        Returns
-        -------
-        U : TYPE
-            DESCRIPTION.
-
-        """
-
-        # return
-
-        #######################################
-        ### EXTERNAL INFLUENCES ON EMOTIONS ###
-        #######################################
-        # >>> INFLUENCES ON SATISFACTION RELATIVE TO CLIMATE CHANGE, answering the question "Is your expected temperature increase worrying to you?"
-        # -> Expected Temperature Elevation
-        expected_temp_elevation_2200 = Household.mean_distribution(
-            self.climate_distrib_beliefs[-1]
-        )
-        if (
-            expected_temp_elevation_2200
-            >= self.threshold_expected_temperature_elevation + 1
-        ):
-            # Worried!, no we are not mitigating enough
-            self.emotion_climate_change.b0 = min(
-                self.emotion_climate_change.b0 + 0.1, 0.5
-            )
-
-        elif (
-            expected_temp_elevation_2200
-            <= self.threshold_expected_temperature_elevation
-        ):
-            # Not worried,
-            self.emotion_climate_change.b0 = max(
-                self.emotion_climate_change.b0 - 0.1, -0.5
-            )
-
-        # >>> INFLUENCES ON SATISFACTION RELATIVE TO THE ECONOMY, Do I wish to pay for mitigation?
-        # -> Experienced climate damages and mitigation costs
-        loss_and_damages = self.model_region.distribution_cost_damages[self.quintile]
-        mitigation_costs = self.model_region.distribution_cost_mitigation[self.quintile]
-        consumption = self.model_region.disaggregated_post_costs_consumption[
-            self.quintile
-        ]
-        print_log.write_log(
-            LogFiles.MASKLOG_Household,
-            "household.py",
-            "update_emotion_opinion",
-            f"ratio loss_and_damages / consumption = {loss_and_damages / consumption:.4f}",
-        )
-        if loss_and_damages / consumption > 0.05:
-            # Damages from climate change exceed 5% of the final consumption in my quintile, I will pay
-            self.emotion_economy.b0 = min(self.emotion_economy.b0 + 0.1, 0.5)
-
-        elif loss_and_damages / consumption < 0.01:
-            # Loss and damages do not exceed 10% of my quintile consumption, I will NOT pay
-            self.emotion_economy.b0 = max(self.emotion_economy.b0 - 0.1, -0.5)
-
-        #######################################
-        ### EXTERNAL INFLUENCES ON OPINIONS ###
-        #######################################
 
     ###########################################################################
     ###                                 UTILS

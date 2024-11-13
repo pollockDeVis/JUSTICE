@@ -88,12 +88,7 @@ temp = datasets["global_temperature"]  # (286, 1001)
 damages = datasets["economic_damage"]  # (57, 286, 1001)
 abatecost = datasets["abatement_cost"]  # (57, 286, 1001)
 disentangled_utility = datasets["disentangled_utility"]  # (57, 286, 1001)
-welfare_utilitarian = datasets["welfare_utilitarian"]  # (1001,)
-welfare_utilitarian_temporal = datasets["welfare_utilitarian_temporal"]  # (286, 1001)
-welfare_utilitarian_regional = datasets["welfare_utilitarian_regional"]  # (57, 1001)
-welfare_utilitarian_regional_temporal = datasets[
-    "welfare_utilitarian_regional_temporal"
-]  # (57, 286, 1001)
+
 
 emission_cutting_rate_temporal = datasets["emission_cutting_rate"]
 print("   OK")

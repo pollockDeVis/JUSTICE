@@ -25,6 +25,7 @@ class AbmJustice(JUSTICE):
 
         #If **kwargs exist, then modify the paramters accordingly
         XML_init_values.modify(kwargs)
+        XML_init_values.dict['seed'] = seed
         # Save simulation parameters
         print_log.f_parameters.write("scenario: "+str(scenario)+"\n")
         for key, value in XML_init_values.dict.items():
