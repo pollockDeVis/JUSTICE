@@ -415,9 +415,112 @@ def plot_emissions_comparison_with_boxplots(
         fig.write_image(f"{output_path}/{filename}.svg")
 
 
-# # Function to calculate statistics
-# def calc_stats(df):
-#     return df.median(), df.min(), df.max()
+def plot_median_emission_comparison_with_baseline(
+    data_paths=[],
+    labels=[],
+    fill=["none", "none", "tozeroy"],
+    path_to_output="./data/plots",
+    xaxis_title=None,
+    yaxis_title=None,
+    linewidth=3,
+    colour_palette=px.colors.qualitative.Dark2,
+    template="plotly_white",
+    yaxis_upper_limit=0.7,
+    visualization_start_year=2025,
+    visualization_end_year=2100,
+    title_x=0.5,
+    width=1000,
+    height=800,
+    fontsize=15,
+    saving=False,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+):
+
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    data_frames = []
+    for idx, path in enumerate(data_paths):
+        filetype = os.path.splitext(path)[1]
+        if filetype == ".npy":
+            data = np.load(path)
+        elif filetype == ".pkl":
+            with open(path, "rb") as f:
+                data = pickle.load(f)
+        elif filetype == ".csv":
+            data = pd.read_csv(path)
+
+        # Check if data is 3D. Then take the mean across the first dimension
+        if len(data.shape) == 3:
+            data = np.sum(data, axis=0)
+
+        data = data.T
+        df = pd.DataFrame(data, columns=list_of_years).loc[
+            :, visualization_start_year:visualization_end_year
+        ]
+
+        # Calculate the median across the rows
+        median = df.median()
+
+        data_frames.append(median)
+
+    fig = go.Figure()
+    # Enumerate through the data_frames and plot the line plots in the same figure
+    for idx, median in enumerate(data_frames):
+        line_dash = "dash" if idx == 0 else "solid"
+        fig.add_trace(
+            go.Scatter(
+                x=median.index,
+                y=median.values,
+                fill=fill[idx],
+                mode="lines",
+                line=dict(
+                    color=colour_palette[idx % len(colour_palette)],
+                    width=linewidth,
+                    dash=line_dash,
+                ),
+                name=labels[idx],
+            )
+        )
+
+    # Set the chart title and axis labels
+    fig.update_layout(
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        width=width,
+        height=height,
+        template=template,
+        yaxis_range=[
+            0.01,
+            yaxis_upper_limit,
+        ],  # 0.01 is purely cosmetic to avoid the y-axis starting at 0
+        title_x=title_x,
+        font=dict(size=fontsize),
+    )
+
+    # get rid of gridlines
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=False)
+
+    fig.show()
+
+    if saving:
+        if not os.path.exists(path_to_output):
+            os.makedirs(path_to_output)
+
+        # Loop through labels and append them to the output file name
+        output_file_name = "emission_comparison_" + "_".join(labels)
+        fig.write_image(path_to_output + "/" + output_file_name + ".svg")
+
+    return fig, data_frames
 
 
 def plot_comparison_with_boxplots(
@@ -448,6 +551,8 @@ def plot_comparison_with_boxplots(
     saving=False,
     fontsize=18,
     show_interquartile_range=True,
+    first_plot_proportion=[0, 0.8],
+    second_plot_proportion=[0.95, 1],
 ):
     # Set the time horizon
     time_horizon = TimeHorizon(
@@ -648,9 +753,11 @@ def plot_comparison_with_boxplots(
 
     # Adjust the width of the first subplot (column=1) to be more than the second subplot (column=2)
     fig.update_layout(
-        xaxis=dict(domain=[0, 0.8]),  # First subplot takes 70% of the width
+        xaxis=dict(
+            domain=first_plot_proportion
+        ),  # First subplot takes 70% of the width first_plot_proportion=[0, 0.8]second_plot_proportion=[0.95, 1]
         xaxis2=dict(
-            domain=[0.95, 1]
+            domain=second_plot_proportion  #
         ),  # Second subplot takes the remaining 25% of the width
     )
 
@@ -1199,12 +1306,14 @@ def visualize_tradeoffs(
             "tradeoffs_"
             + "_".join([file.split("_")[0] for file in input_data])
             + "_"
-            + ".png"
+            + ".svg"
         )
         # Save the figure
         if not os.path.exists(path_to_output):
             os.makedirs(path_to_output)
+        # Save the plot as svg
         plt.savefig(path_to_output + "/" + output_file_name, dpi=300)
+        # plt.savefig(path_to_output + "/" + output_file_name, dpi=300)
 
     # Show the plot
     plt.show()
