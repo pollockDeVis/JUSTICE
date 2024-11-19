@@ -58,7 +58,7 @@ class Information:
         self.local_temperature_information = []
         # Last know forecast by JUSTICE
         self.local_economic_damage_information = []
-        self.maximum_local_economic_damage_information = []
+        self.maximum_damage_information = []
         # Last known downscaled forecast by FaIr (every 10 years) under the forme [year; mean_temperature; var_temperature] for each region
         self.global_distrib_flsi = np.empty(
             [
@@ -252,12 +252,12 @@ class Information:
     def generate_loss_and_damage_information(self, l_dmg, l_net_gdp):
         l_rel_dmg = l_dmg / (l_dmg + l_net_gdp)
         mean_dmg = l_rel_dmg.mean(axis=2)
-        mean_dmg = mean_dmg[:][:86]
-        ind_worst_region = np.argmax(np.sum(mean_dmg, 1))
-        max_mean_dmg = mean_dmg[ind_worst_region][:]
+        mean_dmg_truncated = mean_dmg[:][:86]
+        ind_worst_region = np.argmax(np.sum(mean_dmg_truncated, 1))
+        max_mean_dmg = mean_dmg_truncated[ind_worst_region][:]
         std_dmg = l_rel_dmg.std(axis=2)
-        self.local_economic_damage_information = [mean_dmg, std_dmg[:][:86]]
-        self.maximum_local_economic_damage_information = [
+        self.local_economic_damage_information = [mean_dmg_truncated, std_dmg[:][:86]]
+        self.maximum_damage_information = [
             max_mean_dmg,
             std_dmg[ind_worst_region][:86],
         ]

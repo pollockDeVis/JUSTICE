@@ -17,7 +17,7 @@ from scipy.stats import qmc
 
 
 def full_run_justice_abm(
-    seed
+    loss_and_damages_neutral, HK_influence_close, HK_epsilon_dmg, HK_epsilon_support, factor_conflict_coefficient, weight_info_dmg_local
 ):
     scenarios = 7
     print_log.__init__()
@@ -34,8 +34,13 @@ def full_run_justice_abm(
         # Declaring for endogenous fixed savings rate
         elasticity_of_marginal_utility_of_consumption=1.45,
         pure_rate_of_social_time_preference=0.015,
-        seed=seed,
-        weight_info_dmg_local = 0.5,
+        seed=12345,
+        loss_and_damages_neutral=loss_and_damages_neutral,
+        HK_influence_close=HK_influence_close,
+        HK_epsilon_dmg=HK_epsilon_dmg,
+        HK_epsilon_support=HK_epsilon_support,
+        factor_conflict_coefficient=factor_conflict_coefficient,
+        weight_info_dmg_local = weight_info_dmg_local,
     )
 
     ###############################################################################
@@ -50,17 +55,17 @@ def full_run_justice_abm(
     return {"year_global_net_zero": model.two_levels_game.year_global_net_zero}
 
 
-sampler = qmc.LatinHypercube(d=1)
-sample = sampler.random(n=10)
-l_bounds = [0]
-u_bounds = [1]
+sampler = qmc.LatinHypercube(d=6)
+sample = sampler.random(n=100)
+l_bounds = [0.01, 0.02, 0.01, 0.01, 0.05, 0]
+u_bounds = [0.05, 0.1, 1, 1, 0.5, 1]
 sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
 results = []
 i = 1
 for sample in sample_scaled:
-    #weight_info_dmg_local
+    #loss_and_damages_neutral, HK_influence_close, HK_esilon_dmg, HK_epsilon_support, factor_conflict_coefficient, weight_info_dmg_local
     results.append(full_run_justice_abm(
-                        i
+                        sample[0], sample[1], sample[2], sample[3], sample[4], sample[5]
                     )
     )
     i += 1

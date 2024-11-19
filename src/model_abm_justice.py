@@ -23,11 +23,11 @@ class AbmJustice(JUSTICE):
         **kwargs,
     ):
 
-        #If **kwargs exist, then modify the paramters accordingly
+        # If **kwargs exist, then modify the paramters accordingly
         XML_init_values.modify(kwargs)
-        XML_init_values.dict['seed'] = seed
+        XML_init_values.dict["seed"] = seed
         # Save simulation parameters
-        print_log.f_parameters.write("scenario: "+str(scenario)+"\n")
+        print_log.f_parameters.write("scenario: " + str(scenario) + "\n")
         for key, value in XML_init_values.dict.items():
             print_log.f_parameters.write(f"{key}: {value}\n")
 
@@ -103,9 +103,14 @@ class AbmJustice(JUSTICE):
             if timestep % 5 == 0:
                 print("      >>> ", timestep, "of ", max_time_steps)
 
+        print_log.f_outputs.write("last_net_zero_year: " + str(self.two_levels_game.first_year_region_net_zero) + "\n")
+        print_log.f_outputs.write("first_net_zero_year: " + str(self.two_levels_game.year_global_net_zero) + "\n")
+        print_log.f_outputs.write(
+            "global_temperature_increase: " + str(self.data["global_temperature"][(timestep), :].tolist()) + "\n"
+        )
+        print_log.f_outputs.write("cumulative_emissions: " + str(np.sum(self.emissions.emissions[:, 0:timestep, :], axis=(0, 1)).tolist()) + "\n")
         self.close_files()
         print("DONE! :D")
 
     def close_files(self):
         print_log.close_files()
-

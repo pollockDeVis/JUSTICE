@@ -278,11 +278,8 @@ class Household:
 
     def internal_HK_mode1(self):
         if (self.damage_beliefs[1][0]) != (self.policy_support):
-            c = (
-                self.conflict_coefficient
-                * abs(
-                    (self.damage_beliefs[1][0] - 1 / 2) - (self.policy_support - 1 / 2)
-                )
+            c = self.conflict_coefficient * abs(
+                (self.damage_beliefs[1][0] - 1 / 2) - (self.policy_support - 1 / 2)
             )
             if abs(self.damage_beliefs[1][0] - 1 / 2) > abs(
                 self.policy_support - 1 / 2
@@ -321,7 +318,7 @@ class Household:
         )
 
         i_worst_temp = np.argmax(
-            self.model_region.twolevelsgame_model.justice_model.information_model.maximum_local_economic_damage_information[
+            self.model_region.twolevelsgame_model.justice_model.information_model.maximum_damage_information[
                 0
             ][
                 timestep:year
@@ -337,35 +334,40 @@ class Household:
             ][
                 i_max_temp
             ]
-            * 0.5/XML_init_values.dict["loss_and_damages_neutral"]
+            * 0.5
+            / XML_init_values.dict["loss_and_damages_neutral"]
         )
         economic_dmg_normalized = max(min(economic_dmg_normalized, 1), 0)
+        economic_dmg_normalized_std = (
+            self.model_region.twolevelsgame_model.justice_model.information_model.local_economic_damage_information[
+                1
+            ][
+                self.model_region.id
+            ][
+                i_max_temp
+            ]
+            * 0.5
+            / XML_init_values.dict["loss_and_damages_neutral"]
+        )
 
         economic_worst_dmg_normalized = (
-            self.model_region.twolevelsgame_model.justice_model.information_model.maximum_local_economic_damage_information[
+            self.model_region.twolevelsgame_model.justice_model.information_model.maximum_damage_information[
                 0
             ][
                 i_worst_temp
             ]
-            * 0.5/XML_init_values.dict["loss_and_damages_neutral"]
+            * 0.5
+            / XML_init_values.dict["loss_and_damages_neutral"]
         )
-        economic_dmg_worst_global_normalized = max(min(economic_dmg_normalized, 1), 0)
+        economic_dmg_worst_global_normalized = max(
+            min(economic_worst_dmg_normalized, 1), 0
+        )
 
         return [
             economic_dmg_normalized,
-            max(
-                0.01,
-                self.model_region.twolevelsgame_model.justice_model.information_model.local_economic_damage_information[
-                    1
-                ][
-                    self.model_region.id
-                ][
-                    i_max_temp
-                ]
-                * 0.5/XML_init_values.dict["loss_and_damages_neutral"],
-            ),
+            max(0.01, economic_dmg_normalized_std),
             economic_dmg_worst_global_normalized,
-            0.01
+            max(0.01, economic_dmg_normalized_std),
         ]
 
     def internal_HK_mode3(self):
@@ -373,11 +375,8 @@ class Household:
         Influence according to the number of neighbours
         """
         if (self.damage_beliefs[1][0]) != (self.policy_support):
-            c = (
-                self.conflict_coefficient
-                * abs(
-                    (self.damage_beliefs[1][0] - 1 / 2) - (self.policy_support - 1 / 2)
-                )
+            c = self.conflict_coefficient * abs(
+                (self.damage_beliefs[1][0] - 1 / 2) - (self.policy_support - 1 / 2)
             )
 
             if self.neighbours_damage > self.neighbours_support:
@@ -421,12 +420,14 @@ class Household:
                     f"Information is --> {damage_information}",
                 )
 
-            new_mean = (
-                 (damage_information[1]) ** 2 * self.damage_beliefs[1][0]
-                + self.damage_beliefs[1][1] ** 2 * (self.weight_info_dmg_local*damage_information[0] + (1-self.weight_info_dmg_local)*damage_information[2])
+            new_mean = (damage_information[1]) ** 2 * self.damage_beliefs[1][
+                0
+            ] + self.damage_beliefs[1][1] ** 2 * (
+                self.weight_info_dmg_local * damage_information[0]
+                + (1 - self.weight_info_dmg_local) * damage_information[2]
             )
             new_std = max(
-                0.001, damage_information[1] ** 2 * self.damage_beliefs[1][1] ** 2
+                0.1, damage_information[1] ** 2 * self.damage_beliefs[1][1] ** 2
             )
             self.damage_beliefs[1] = [new_mean, new_std] / (
                 damage_information[1] ** 2 + self.damage_beliefs[1][1] ** 2

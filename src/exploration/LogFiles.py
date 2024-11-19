@@ -31,6 +31,7 @@ class LogFiles:
         # general logs
         self.log = open(self.path + "log.log", "w", newline="")
         self.f_parameters = open(self.path + "parameters.txt", "w", newline="")
+        self.f_outputs = open(self.path + "outputs.txt", "w", newline="")
 
         # average net consumption, loss and damage per quintile, abatement costs per quintile, post-damage concumption per quintile, average of post damage concumption per quintile
         f1 = open(self.path + "regions.csv", "w", newline="")
@@ -101,7 +102,7 @@ class LogFiles:
                 "mean_utility",
                 "strength_support",
                 "first_year_region_net_zero",
-                "feedback shift to policy support"
+                "feedback shift to policy support",
             ]
         )
 
@@ -116,7 +117,9 @@ class LogFiles:
             f4,
             csv.writer(f4, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL),
         )
-        self.f_information[1].writerow(["Timestep", "Region"]+["temp. increase" for i in range(86)])
+        self.f_information[1].writerow(
+            ["Timestep", "Region"] + ["temp. increase" for i in range(86)]
+        )
 
         f5 = open(self.path + "household.csv", "w", newline="")
         self.f_household = (
@@ -268,15 +271,13 @@ class LogFiles:
                 "Timestep",
                 "Region",
             ]
-            + [
-                "Support"
-                for i in range(XML_init_values.dict["Region_n_households"])
-            ]
+            + ["Support" for i in range(XML_init_values.dict["Region_n_households"])]
             + [
                 "Belief Damages"
                 for i in range(XML_init_values.dict["Region_n_households"])
             ]
         )
+
     def close_files(self):
         self.f_policy[0].close()
         self.f_region[0].close()
