@@ -1102,9 +1102,9 @@ class CoupledFAIR(FAIR):
         if climate_ensembles is not None:
             for ce in climate_ensembles:
                 assert (
-                    climate_ensembles >= 1
+                    ce >= 1
                 ), "climate_ensembles must be greater than or equal to 1"
-                assert climate_ensembles <= len(
+                assert ce <= len(
                     df_configs.index
                 ), "climate_ensembles must be less than or equal to the number of ensembles"
 
