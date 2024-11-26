@@ -1100,16 +1100,20 @@ class CoupledFAIR(FAIR):
         )
 
         if climate_ensembles is not None:
-            for ce in climate_ensembles:
-                assert (
-                    ce >= 1
-                ), "climate_ensembles must be greater than or equal to 1"
-                assert ce <= len(
-                    df_configs.index
-                ), "climate_ensembles must be less than or equal to the number of ensembles"
 
-            # Take only one specific row from df_configs
-            df_configs = df_configs.iloc[[ce - 1 for ce in climate_ensembles]]
+            climate_ensembles = np.array(climate_ensembles)
+
+            assert np.all(
+                climate_ensembles >= 1
+            ), "climate_ensembles must be greater than or equal to 1"
+            assert np.all(
+                climate_ensembles <= len(df_configs.index)
+            ), "climate_ensembles must be less than or equal to the number of ensembles"
+
+            # Subtract 1 from climate_ensembles to get the correct index using vectorized operations
+            ensemble_indices = climate_ensembles - 1
+
+            df_configs = df_configs.iloc[ensemble_indices]
 
         self.define_configs(df_configs.index)
         self.number_of_ensembles = len(df_configs.index)
