@@ -2176,6 +2176,8 @@ def process_economic_data_for_barchart(
 
 def plot_comparison_bar_chart_sorted(
     input_data_paths,
+    path_to_output,
+    output_file_name,
     region_mapping_path,
     rice_region_dict_path,
     start_year,
@@ -2192,6 +2194,7 @@ def plot_comparison_bar_chart_sorted(
     plot_title=None,
     x_axis_title=None,
     y_axis_title=None,
+    saving=False,
 ):
     """
     Plot a comparison bar chart for economic data between two different scenarios.
@@ -2267,9 +2270,28 @@ def plot_comparison_bar_chart_sorted(
         xaxis_tickangle=-45,
         template="plotly_white",
     )
+    # Remove gridlines
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=False)
 
+    # Show y axis with out ticks
+    fig.update_yaxes(
+        showticklabels=True,
+        showline=True,
+        linewidth=1,
+        linecolor="black",
+        ticks="outside",
+    )
     # Set the figure size
     fig.update_layout(width=plot_width, height=plot_height)
+
+    # Save the plot
+    if saving:
+        # Assert if path_to_output and output_file_name is None
+        assert path_to_output, "No path to output provided for saving."
+        assert output_file_name, "No output file name provided for saving."
+
+        fig.write_image(path_to_output + "/" + output_file_name + ".svg")
 
     return fig
 
@@ -2358,7 +2380,9 @@ def plot_comparison_bar_chart(
         xaxis_tickangle=-45,
         template="plotly_white",
     )
-
+    # Remove gridlines
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=False)
     # Set the figure size
     fig.update_layout(width=plot_width, height=plot_height)
 
