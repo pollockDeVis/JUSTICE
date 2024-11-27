@@ -2174,6 +2174,106 @@ def process_economic_data_for_barchart(
     return aggregated_dataframes
 
 
+def plot_comparison_bar_chart_sorted(
+    input_data_paths,
+    region_mapping_path,
+    rice_region_dict_path,
+    start_year,
+    end_year,
+    splice_start_year,
+    splice_end_year,
+    data_timestep=5,
+    timestep=1,
+    bar_width=0.35,
+    plot_height=600,
+    plot_width=1200,
+    color_palette=["salmon", "lightblue", "lightgreen", "orange", "purple"],
+    datanames=["Utilitarian", "Prioritarian", "Egalitarian", "Sufficientarian"],
+    plot_title=None,
+    x_axis_title=None,
+    y_axis_title=None,
+):
+    """
+    Plot a comparison bar chart for economic data between two different scenarios.
+
+    Args:
+        economic_dataframes (list): List of pandas DataFrames containing the economic data for each scenario.
+        region_mapping_path (str): File path for the region mapping JSON.
+        rice_region_dict_path (str): File path for the rice region dictionary JSON.
+        start_year (int): The start year for the model time horizon.
+        end_year (int): The end year for the model time horizon.
+        splice_start_year (int): The start year for splicing the data.
+        splice_end_year (int): The end year for splicing the data.
+        data_timestep (int): The data time step, default is 5.
+        timestep (int): The time step for year-to-timestep conversion, default is 1.
+    """
+
+    economic_dataframes = process_economic_data_for_barchart(
+        input_data_paths=input_data_paths,
+        region_mapping_path=region_mapping_path,
+        rice_region_dict_path=rice_region_dict_path,
+        start_year=start_year,
+        end_year=end_year,
+        splice_start_year=splice_start_year,
+        splice_end_year=splice_end_year,
+    )
+
+    # Loop through the economic dataframes to calculate means and standard deviations
+    means = []
+    stds = []
+
+    for idx, economic_data in enumerate(economic_dataframes):
+        # Calculate mean and standard deviation for each region
+        mean = economic_data.mean(axis=0)
+        std = economic_data.std(axis=0)
+
+        # Append to the lists
+        means.append(mean)
+        stds.append(std)
+
+    # Define the regions
+    regions = means[0].index
+
+    # Calculate the differences for sorting
+    max_min_diffs = np.max(means, axis=0) - np.min(means, axis=0)
+    sorted_indices = np.argsort(-max_min_diffs)
+    sorted_regions = regions[sorted_indices]
+
+    # Sort means and stds according to the sorted region indices
+    sorted_means = [mean.iloc[sorted_indices] for mean in means]
+    sorted_stds = [std.iloc[sorted_indices] for std in stds]
+
+    # Create the figure by looping through the dataframes and add_trace for each formulation
+    fig = go.Figure()
+
+    for idx, sorted_mean in enumerate(sorted_means):
+        # Add bars for the mean
+        fig.add_trace(
+            go.Bar(
+                x=sorted_regions,
+                y=sorted_mean,
+                error_y=dict(type="data", array=sorted_stds[idx]),
+                name=datanames[idx],
+                marker_color=color_palette[idx],
+            )
+        )
+
+    # Update layout
+    fig.update_layout(
+        title=plot_title,
+        xaxis_title=x_axis_title,
+        yaxis_title=y_axis_title,
+        barmode="group",
+        xaxis_tickangle=-45,
+        template="plotly_white",
+    )
+
+    # Set the figure size
+    fig.update_layout(width=plot_width, height=plot_height)
+
+    return fig
+
+
 def plot_comparison_bar_chart(
     input_data_paths,
     region_mapping_path,
