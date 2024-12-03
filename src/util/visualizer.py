@@ -1230,6 +1230,12 @@ def visualize_tradeoffs(
                 top_indices[file] = [index]
 
     if scaling:
+        # Printing min max values of the objectives
+        print("Min and Max values of the objectives", list_of_objectives)
+        print(concatenated_df[list_of_objectives].min())
+        print(concatenated_df[list_of_objectives].max())
+
+        # Scale the data
         scaler = MinMaxScaler(feature_range=feature_range)
         concatenated_df[list_of_objectives] = scaler.fit_transform(
             concatenated_df[list_of_objectives]
