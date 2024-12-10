@@ -510,6 +510,10 @@ def plot_median_emission_comparison_with_baseline(
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(showgrid=False)
 
+    # Show x and y axis line with ticks outside
+    fig.update_xaxes(showline=True, linewidth=1, linecolor="black", ticks="outside")
+    fig.update_yaxes(showline=True, linewidth=1, linecolor="black", ticks="outside")
+
     fig.show()
 
     if saving:
@@ -518,7 +522,7 @@ def plot_median_emission_comparison_with_baseline(
 
         # Loop through labels and append them to the output file name
         output_file_name = "emission_comparison_" + "_".join(labels)
-        fig.write_image(path_to_output + "/" + output_file_name + ".svg")
+        fig.write_image(path_to_output + "/" + output_file_name + "colorblind" + ".svg")
 
     return fig, data_frames
 
@@ -2698,7 +2702,7 @@ def plot_stacked_area_chart(
                 showline=True, linewidth=1, linecolor="black", ticks="outside"
             )
             fig.update_yaxes(
-                showline=False, linewidth=1, linecolor="black", ticks="outside"
+                showline=True, linewidth=1, linecolor="black", ticks="outside"
             )
 
             # Set fontsize for tick labels
@@ -2713,7 +2717,9 @@ def plot_stacked_area_chart(
                     variable_name + "_" + output_titles[idx] + "_" + scenario
                 )
                 print("Saving plot for: ", scenario, " - ", output_file_name)
-                fig.write_image(path_to_output + "/" + output_file_name + ".svg")
+                fig.write_image(
+                    path_to_output + "/" + output_file_name + "_v1" + ".svg"
+                )
 
     return fig
 
