@@ -81,7 +81,7 @@ class DamageKalkuhl:
 
         # Create an damage array of shape (region_list, damage window, climate_ensembles)
         # The window is of shape 2, to hold values for current and previous timestep
-        self.damage_coefficient = np.zeros(
+        self.damage_specification = np.zeros(
             (len(self.region_list), self.damage_window, self.climate_ensembles)
         )
 
@@ -137,8 +137,8 @@ class DamageKalkuhl:
                 self.temperature_array[:, 1, :] - self.temperature_array[:, 0, :]
             )
 
-            # Calculate the damage coefficient. Damage coefficient for current timestep is based on previous temperature #BIMPACT
-            self.damage_coefficient[:, 1, :] = (
+            # Calculate the damage specification based on Kalkuhl params. Damage coefficient for current timestep is based on previous temperature #BIMPACT
+            self.damage_specification[:, 1, :] = (
                 self.coefficient_a * temperature_difference
                 + self.coefficient_b
                 * temperature_difference
@@ -149,7 +149,7 @@ class DamageKalkuhl:
             np.divide(
                 (1 + (self.economic_damage_factor[:, timestep - 1, :])),
                 np.power(
-                    (1 + self.damage_coefficient[:, 0, :]), self.model_timestep
+                    (1 + self.damage_specification[:, 0, :]), self.model_timestep
                 ),  # self.data_timestep
                 out=self.economic_damage_factor[:, timestep, :],
             )
@@ -190,7 +190,7 @@ class DamageKalkuhl:
 
             # Update the first column of the temperature array and damage coefficient array for the next timestep
             self.temperature_array[:, 0, :] = self.temperature_array[:, 1, :]
-            self.damage_coefficient[:, 0, :] = self.damage_coefficient[:, 1, :]
+            self.damage_specification[:, 0, :] = self.damage_specification[:, 1, :]
 
         return self.total_damage_fraction
 
