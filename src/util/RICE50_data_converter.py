@@ -3,10 +3,142 @@
 # export PYTHONPATH=$PYTHONPATH:/Users/palokbiswas/Desktop/pollockdevis_git/JUSTICE/src
 
 import pandas as pd
-
+import os
 from src.util.data_loader import DataLoader
-
+from scipy.interpolate import interp1d
 from src.util.model_time import TimeHorizon
+import numpy as np
+from src.util.regional_configuration import justice_region_aggregator
+import json
+
+
+def data_interpolator(
+    input_filepath,
+    output_filepath,
+    filename,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    aggregate_regions=True,
+    region_mapping_json_path="data/input/rice_12_regions_dict.json",
+):
+    RICE50_data = pd.read_excel(os.path.join(input_filepath, filename))
+
+    # Remove the first column
+    RICE50_data = RICE50_data.iloc[:, 1:]
+    # Print shape of the dataframe
+    print(RICE50_data.shape)
+    # Convert to numpy array
+    RICE50_data = RICE50_data.to_numpy()
+
+    # Instantiate the TimeHorizon class
+    time_horizon = TimeHorizon(start_year, end_year, data_timestep, timestep)
+    data_loader = DataLoader()
+    region_list = data_loader.REGION_LIST
+    print("Original regions: ", region_list)
+    interp_data = np.zeros(
+        (
+            RICE50_data.shape[0],
+            len(time_horizon.model_time_horizon),
+        )
+    )
+
+    for i in range(RICE50_data.shape[0]):
+        f = interp1d(
+            time_horizon.data_time_horizon,
+            RICE50_data[i, :],
+            kind="linear",
+        )
+        interp_data[i, :] = f(time_horizon.model_time_horizon)
+
+    if aggregate_regions:
+        # Add a third dimension to the data by broadcasting it along the third axis. So that the shape changes from (57, 286) to (57, 286, 1)
+        interp_data = np.expand_dims(interp_data, axis=2)
+
+        # Load the dictionary from the json file
+        with open(region_mapping_json_path, "r") as f:
+            region_mapping_json = json.load(f)
+
+        aggregated_region_list, interp_data = justice_region_aggregator(
+            data_loader=data_loader, region_config=region_mapping_json, data=interp_data
+        )
+
+        # Drop the third dimension
+        interp_data = np.squeeze(interp_data, axis=2)
+        print("Aggregated regions: ", aggregated_region_list)
+
+        interpolated_df = pd.DataFrame(
+            interp_data,
+            index=aggregated_region_list,
+            columns=time_horizon.model_time_horizon,
+        )
+
+        interpolated_filename = (
+            os.path.splitext(filename)[0] + "_aggregated_interpolated.xlsx"
+        )
+        interpolated_df.to_excel(os.path.join(output_filepath, interpolated_filename))
+    else:
+        interpolated_df = pd.DataFrame(
+            interp_data,
+            index=region_list,
+            columns=time_horizon.model_time_horizon,
+        )
+
+        interpolated_filename = os.path.splitext(filename)[0] + "_interpolated.xlsx"
+
+        interpolated_df.to_excel(os.path.join(output_filepath, interpolated_filename))
+
+
+def temperature_interpolator(
+    input_filepath,
+    output_filepath,
+    filename,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+):
+    RICE50_data = pd.read_excel(os.path.join(input_filepath, filename))
+
+    # Only Keep the 'level' column
+    RICE50_data = RICE50_data["level"]
+
+    # Convert to numpy array
+    RICE50_data = RICE50_data.to_numpy()
+
+    # Transpose the numpy array
+    RICE50_data = RICE50_data.reshape(1, -1)
+
+    # Print shape of the dataframe
+    print(RICE50_data.shape)
+
+    # Instantiate the TimeHorizon class
+    time_horizon = TimeHorizon(start_year, end_year, data_timestep, timestep)
+
+    interp_data = np.zeros(
+        (
+            RICE50_data.shape[0],
+            len(time_horizon.model_time_horizon),
+        )
+    )
+
+    for i in range(RICE50_data.shape[0]):
+        f = interp1d(
+            time_horizon.data_time_horizon,
+            RICE50_data[i, :],
+            kind="linear",
+            fill_value="extrapolate",
+        )
+        interp_data[i, :] = f(time_horizon.model_time_horizon)
+
+    interpolated_df = pd.DataFrame(
+        interp_data,
+        columns=time_horizon.model_time_horizon,
+    )
+
+    interpolated_filename = os.path.splitext(filename)[0] + "_interpolated.xlsx"
+    interpolated_df.to_excel(os.path.join(output_filepath, interpolated_filename))
 
 
 def RICE50_regional_SSP_data_converter(
@@ -160,25 +292,60 @@ def RICE50_regional_data_converter(
 
     # Now save these different SSP pivot dataframes in single excel file with different sheets
     with pd.ExcelWriter(
-        output_filepath + "RICE50_regional_" + data_label + "_data.xlsx"
+        output_filepath + "RICE50_regional_" + variable_name + "_data.xlsx"
     ) as writer:
         RICE50_data.to_excel(writer, sheet_name="RICE50")
     print(filename + " has been converted successfully")
+    # Print the output filepath
+    current_dir = os.getcwd()
+    print(
+        current_dir
+        + "/"
+        + output_filepath
+        + "RICE50_regional_"
+        + data_label
+        + "_data.xlsx"
+    )
 
 
 if __name__ == "__main__":
 
+    # Print the working directory
+    print(os.getcwd())
+
     # Convert regional data for each SSP scenario from RICE50 to a format that can be used in the model
-    RICE50_regional_data_converter(
-        input_filepath="tests/raw_data/",
+    # RICE50_regional_data_converter(
+    #     input_filepath="tests/raw_data/",
+    #     output_filepath="tests/verification_data/",
+    #     filename="results_ssp2_cba_coop_flex_sr_ecr10_2015_export.xlsx",
+    #     variable_name="TATM",
+    #     sheet_name=None,
+    #     cutout_columns=3,
+    #     column_names=["Timestep", "Regions", "data_label"],
+    #     start_year=2015,
+    #     end_year=2300,
+    #     data_timestep=5,
+    #     timestep=1,
+    # )
+
+    data_interpolator(
+        input_filepath="tests/verification_data/",
         output_filepath="tests/verification_data/",
-        filename="damfrac_ssp1_cba_coop.xlsx",
-        variable_name="DAMFRAC",
-        sheet_name=None,
-        cutout_columns=3,
-        column_names=["Timestep", "Regions", "data_label"],
+        filename="RICE50_regional_MIU_data.xlsx",
         start_year=2015,
         end_year=2300,
         data_timestep=5,
         timestep=1,
+        aggregate_regions=False,
+        region_mapping_json_path="data/input/rice_12_regions_dict.json",
     )
+
+    # temperature_interpolator(
+    #     input_filepath="tests/verification_data/",
+    #     output_filepath="tests/verification_data/",
+    #     filename="RICE50_regional_TATM_data.xlsx",
+    #     start_year=2015,
+    #     end_year=2300,
+    #     data_timestep=5,
+    #     timestep=1,
+    # )
