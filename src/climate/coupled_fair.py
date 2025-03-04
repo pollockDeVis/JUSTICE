@@ -129,28 +129,32 @@ class CoupledFAIR(FAIR):
                 self._make_ebms()
 
         # create numpy arrays
-        self.alpha_lifetime_array = self.alpha_lifetime.data
-        self.airborne_emissions_array = self.airborne_emissions.data
-        self.baseline_concentration_array = self.species_configs[
+        self.alpha_lifetime_array = self.alpha_lifetime.data  # (551, 1, 1001, 64)
+        self.airborne_emissions_array = (
+            self.airborne_emissions.data
+        )  # (551, 1, 1001, 64)
+        self.baseline_concentration_array = self.species_configs[  # (1001, 64)
             "baseline_concentration"
         ].data
-        self.baseline_emissions_array = self.species_configs["baseline_emissions"].data
-        self.br_atoms_array = self.species_configs["br_atoms"].data
+        self.baseline_emissions_array = self.species_configs[
+            "baseline_emissions"
+        ].data  # (1001, 64)
+        self.br_atoms_array = self.species_configs["br_atoms"].data  # (64,)
         self.ch4_lifetime_chemical_sensitivity_array = self.species_configs[
             "ch4_lifetime_chemical_sensitivity"
-        ].data
-        self.lifetime_temperature_sensitivity_array = self.species_configs[
+        ].data  # (1001,64)
+        self.lifetime_temperature_sensitivity_array = self.species_configs[  # (1001,)
             "lifetime_temperature_sensitivity"
         ].data
-        self.cl_atoms_array = self.species_configs["cl_atoms"].data
-        self.concentration_array = self.concentration.data
-        self.concentration_per_emission_array = self.species_configs[
+        self.cl_atoms_array = self.species_configs["cl_atoms"].data  # (64,)
+        self.concentration_array = self.concentration.data  # (551, 1, 1001, 64)
+        self.concentration_per_emission_array = self.species_configs[  # (64,)
             "concentration_per_emission"
         ].data
-        self.contrails_radiative_efficiency_array = self.species_configs[
+        self.contrails_radiative_efficiency_array = self.species_configs[  # (1001, 64)
             "contrails_radiative_efficiency"
         ].data
-        self.cummins_state_array = (
+        self.cummins_state_array = (  # (551, 1, 1001, 64)
             np.ones(
                 (
                     self._n_timebounds,
@@ -162,27 +166,31 @@ class CoupledFAIR(FAIR):
             * np.nan
         )
 
-        self.deep_ocean_efficacy_array = self.climate_configs[
+        self.deep_ocean_efficacy_array = self.climate_configs[  # (1001,)
             "deep_ocean_efficacy"
         ].data
 
-        self.erfari_radiative_efficiency_array = self.species_configs[
+        self.erfari_radiative_efficiency_array = self.species_configs[  # (1001, 64)
             "erfari_radiative_efficiency"
         ].data
-        self.erfaci_scale_array = self.species_configs["aci_scale"].data
-        self.erfaci_shape_array = self.species_configs["aci_shape"].data
-        self.forcing_array = self.forcing.data
-        self.forcing_scale_array = self.species_configs["forcing_scale"].data * (
+        self.erfaci_scale_array = self.species_configs["aci_scale"].data  # (1001,)
+        self.erfaci_shape_array = self.species_configs["aci_shape"].data  # (1001, 64)
+        self.forcing_array = self.forcing.data  # (551, 1, 1001, 64)
+        self.forcing_scale_array = self.species_configs[
+            "forcing_scale"
+        ].data * (  # (1001, 64)
             1 + self.species_configs["tropospheric_adjustment"].data
         )
-        self.forcing_efficacy_array = self.species_configs["forcing_efficacy"].data
-        self.forcing_efficacy_sum_array = (
+        self.forcing_efficacy_array = self.species_configs[
+            "forcing_efficacy"
+        ].data  # (1001, 64)
+        self.forcing_efficacy_sum_array = (  # (551, 1, 1001)
             np.ones((self._n_timebounds, self._n_scenarios, self._n_configs)) * np.nan
         )
-        self.forcing_reference_concentration_array = self.species_configs[
+        self.forcing_reference_concentration_array = self.species_configs[  # (1001, 64)
             "forcing_reference_concentration"
         ].data
-        self.forcing_sum_array = self.forcing_sum.data
+        self.forcing_sum_array = self.forcing_sum.data  # (551, 1, 1001)
         self.forcing_temperature_feedback_array = self.species_configs[
             "forcing_temperature_feedback"
         ].data
@@ -289,21 +297,15 @@ class CoupledFAIR(FAIR):
             self.emissions.cumsum(dim="timepoints", skipna=False) * self.timestep
             + self.cumulative_emissions[0, ...]
         ).data
-        # purge emissions
 
-        # TODO: COMMENTED OUT
         self.cumulative_emissions_array = self.cumulative_emissions.data
 
-        # TODO: COMMENTED OUT
         self.emissions_array = self.emissions.data
-        # ADDED TILL HERE
 
         # Setting the index values for the CO2 values in emissions array of FAIR
         self.co2_idx = (np.where(self._co2_indices)[0]).item(0)
         self.co2_ffi_idx = (np.where(self._co2_ffi_indices)[0]).item(0)
         self.co2_afolu_idx = (np.where(self._co2_afolu_indices)[0]).item(0)
-
-        # TODO: self.purge_emissions(scenarios)
 
         # Run the historical temperature computation
 
@@ -575,7 +577,7 @@ class CoupledFAIR(FAIR):
             )[
                 0:1, ..., self._ghg_indices
             ]
-        if self.ghg_method == "meinshausen2020":
+        if self.ghg_method == "meinshausen2020":  # this one is used currently
             self.forcing_array[
                 i_timepoint + 1 : i_timepoint + 2, ..., self._ghg_indices
             ] = meinshausen2020(

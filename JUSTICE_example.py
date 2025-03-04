@@ -551,19 +551,22 @@ def setup_RBF_for_emission_control(
 
 
 if __name__ == "__main__":
-    # datasets = JUSTICE_run(
-    #     scenarios=2,
-    #     social_welfare_function=WelfareFunction.UTILITARIAN,
-    # )
-    datasets, _ = JUSTICE_stepwise_run(
+    datasets = JUSTICE_run(
         scenarios=2,
         social_welfare_function=WelfareFunction.UTILITARIAN,
-        rbf_policy_index=66,
-        path_to_rbf_weights="data/convergence_metrics/UTILITARIAN_reference_set.csv",
-        saving=True,
-        path_to_output="data/reevaluation/util_90_welfare_temp/",
-        output_file_name="UTILITARIAN",
     )
+
+    # Stepwise run
+    # datasets, _ = JUSTICE_stepwise_run(
+    #     scenarios=2,
+    #     social_welfare_function=WelfareFunction.UTILITARIAN,
+    #     rbf_policy_index=66,
+    #     path_to_rbf_weights="data/convergence_metrics/UTILITARIAN_reference_set.csv",
+    #     saving=False,
+    #     path_to_output="data/reevaluation/util_90_welfare_temp/",
+    #     output_file_name="UTILITARIAN",
+    # )
+
     # Print the keys of the datasets
     # print("Welfare", datasets["welfare"])
     # print("Welfare Utilitarian", datasets["welfare_utilitarian"])
