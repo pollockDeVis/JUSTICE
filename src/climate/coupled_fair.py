@@ -191,44 +191,58 @@ class CoupledFAIR(FAIR):
             "forcing_reference_concentration"
         ].data
         self.forcing_sum_array = self.forcing_sum.data  # (551, 1, 1001)
-        self.forcing_temperature_feedback_array = self.species_configs[
+        self.forcing_temperature_feedback_array = self.species_configs[  # (1001, 64)
             "forcing_temperature_feedback"
         ].data
-        self.fractional_release_array = self.species_configs["fractional_release"].data
-        self.g0_array = self.species_configs["g0"].data
-        self.g1_array = self.species_configs["g1"].data
-        self.gas_partitions_array = self.gas_partitions.data
-        self.greenhouse_gas_radiative_efficiency_array = self.species_configs[
-            "greenhouse_gas_radiative_efficiency"
-        ].data
-        self.h2o_stratospheric_factor_array = self.species_configs[
+        self.fractional_release_array = self.species_configs[
+            "fractional_release"
+        ].data  # (1001, 64)
+        self.g0_array = self.species_configs["g0"].data  # (1001, 64)
+        self.g1_array = self.species_configs["g1"].data  # (1001, 64)
+        self.gas_partitions_array = self.gas_partitions.data  # (1, 1001, 64, 4)
+        self.greenhouse_gas_radiative_efficiency_array = (
+            self.species_configs[  # (1001, 64)
+                "greenhouse_gas_radiative_efficiency"
+            ].data
+        )
+        self.h2o_stratospheric_factor_array = self.species_configs[  # (1001, 64)
             "h2o_stratospheric_factor"
         ].data
-        self.iirf_0_array = self.species_configs["iirf_0"].data
-        self.iirf_airborne_array = self.species_configs["iirf_airborne"].data
-        self.iirf_temperature_array = self.species_configs["iirf_temperature"].data
-        self.iirf_uptake_array = self.species_configs["iirf_uptake"].data
-        self.land_use_cumulative_emissions_to_forcing_array = self.species_configs[
-            "land_use_cumulative_emissions_to_forcing"
-        ].data
-        self.lapsi_radiative_efficiency_array = self.species_configs[
+        self.iirf_0_array = self.species_configs["iirf_0"].data  # (1001, 64)
+        self.iirf_airborne_array = self.species_configs[
+            "iirf_airborne"
+        ].data  # (1001, 64)
+        self.iirf_temperature_array = self.species_configs[
+            "iirf_temperature"
+        ].data  # (1001, 64)
+        self.iirf_uptake_array = self.species_configs["iirf_uptake"].data  # (1001, 64)
+        self.land_use_cumulative_emissions_to_forcing_array = (
+            self.species_configs[  # (1001, 64)
+                "land_use_cumulative_emissions_to_forcing"
+            ].data
+        )
+        self.lapsi_radiative_efficiency_array = self.species_configs[  # (1001, 64)
             "lapsi_radiative_efficiency"
         ].data
-        self.ocean_heat_transfer_array = self.climate_configs[
+        self.ocean_heat_transfer_array = self.climate_configs[  # (1001, 3)
             "ocean_heat_transfer"
         ].data
-        self.ozone_radiative_efficiency_array = self.species_configs[
+        self.ozone_radiative_efficiency_array = self.species_configs[  # (1001, 64)
             "ozone_radiative_efficiency"
         ].data
-        self.partition_fraction_array = self.species_configs["partition_fraction"].data
-        self.unperturbed_lifetime_array = self.species_configs[
+        self.partition_fraction_array = self.species_configs[
+            "partition_fraction"
+        ].data  # (1001, 64, 4)
+        self.unperturbed_lifetime_array = self.species_configs[  # (1001, 64, 4)
             "unperturbed_lifetime"
         ].data
 
         if self._routine_flags["temperature"]:
-            self.eb_matrix_d_array = self.ebms["eb_matrix_d"].data
-            self.forcing_vector_d_array = self.ebms["forcing_vector_d"].data
-            self.stochastic_d_array = self.ebms["stochastic_d"].data
+            self.eb_matrix_d_array = self.ebms["eb_matrix_d"].data  # (1001, 4, 4)
+            self.forcing_vector_d_array = self.ebms[
+                "forcing_vector_d"
+            ].data  # (1001, 4)
+            self.stochastic_d_array = self.ebms["stochastic_d"].data  # (551, 1001, 4)
 
         # forcing should be initialised so this should not be nan. We could check, or
         # allow silent fail as some species don't take forcings and would correctly be
@@ -238,7 +252,9 @@ class CoupledFAIR(FAIR):
         )
 
         # this is the most important state vector
-        self.cummins_state_array[0, ..., 0] = self.forcing_sum_array[0, ...]
+        self.cummins_state_array[0, ..., 0] = self.forcing_sum_array[
+            0, ...
+        ]  # (551, 1, 1001, 64)
         self.cummins_state_array[..., 1:] = self.temperature.data
 
         # non-linear forcing relationships need an offset. To save calculating
