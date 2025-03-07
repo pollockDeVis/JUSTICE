@@ -83,17 +83,6 @@ def JUSTICE_run(scenarios=2, climate_ensembles=None, social_welfare_function=Non
     # Get the results
     datasets = model.evaluate()
 
-    # Temp #TODO: Remove this
-    _, _, damages = model.welfare_function.calculate_welfare(
-        datasets["damage_cost_per_capita"], welfare_loss=True
-    )
-
-    print("Wloss Damage: ", damages)
-    _, _, abatement = model.welfare_function.calculate_welfare(
-        datasets["abatement_cost_per_capita"], welfare_loss=True
-    )
-    print("Wloss Abatement: ", abatement)
-
     return datasets
 
 
@@ -568,6 +557,6 @@ if __name__ == "__main__":
     # )
 
     # Print the keys of the datasets
-    # print("Welfare", datasets["welfare"])
+    print("Welfare", datasets["welfare"])
     # print("Welfare Utilitarian", datasets["welfare_utilitarian"])
     # print("Welfare Prioritarian", datasets["welfare_prioritarian"])

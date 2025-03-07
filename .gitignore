@@ -218,7 +218,7 @@ data/plots/*
 data/reevaluation/*
 data/convergence_metrics/*
 tests/raw_data/*
-tests/verification_data/*
+# tests/verification_data/*
 #Mac
 .DS_Store
 
