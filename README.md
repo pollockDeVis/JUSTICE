@@ -1,6 +1,10 @@
 # JUSTICE Integrated Assessment Framework
 
-JUSTICE (JUST Integrated Climate Economy) is an open-source Integrated Assessment Modeling Framework for Normative Uncertainty Analysis
+| Module         | Status                                                                                                                                                                  |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| JUSTICE Module | [![GitHub Actions build status](https://github.com/pollockDeVis/JUSTICE/workflows/Build%20JUSTICE%20Module/badge.svg)](https://github.com/pollockDeVis/JUSTICE/actions) |
+
+JUSTICE (JUST Integrated Climate Economy) is an open-source Integrated Assessment Modelling Framework for Normative Uncertainty Analysis
 
 JUSTICE is designed to explore the influence on distributive justice outcomes due to underlying modelling assumptions across model components and functions: the economy and climate components, emissions, abatement, damage and social welfare functions. JUSTICE is a simple IAM inspired by the long-established RICE, and RICE50+, and is designed to be a surrogate for more complex IAMs for eliciting normative insights.
 
@@ -31,38 +35,43 @@ The following is the repository structure. JUSTICE is modular and each module is
 ┃ ┗ 📂 output
 ┣ 📂 docs                  # Documentation using sphinx/read-the-docs
 ┃ ┗ 📂 source
-┣ 📂 tests                     # Unit tests 
-┣ 📜 .gitignore                
-┣ 📜 README.md                 
-┗ 📜 LICENSE.md                
+┣ 📂 tests                     # Unit tests
+┣ 📜 .gitignore
+┣ 📜 README.md
+┗ 📜 LICENSE.md
 ```
 
-# DICE/RICE Documentation 
+# DICE/RICE Documentation
+
 Compiled by: Palok Biswas \
 Date: 31st May 2023
 
 Resources:
+
 1. [DICE 2013R User Manual](https://yale.app.box.com/s/whlqcr7gtzdm4nxnrfhvap2hlzebuvvm/file/1044222401276)
 2. [DICE 2023 User Manual](https://yale.app.box.com/s/whlqcr7gtzdm4nxnrfhvap2hlzebuvvm/file/1254456088939)
 
- # Data of DICE/RICE
+# Data of DICE/RICE
 
- * DICE and RICE fundamentals are similar except the Output, Population, Emissions, Damages and abatement are disaggregated into Regions in RICE
- * Output, population, and emissions variables are built from national data. It is aggregated into major regions (US, China, EU, India etc). RICE projects these variables separately whereas it is aggregated in DICE 
- * Regional outputs adn capital stocks are aggregated using Purchasing Power Parity (PPP)
+- DICE and RICE fundamentals are similar except the Output, Population, Emissions, Damages and abatement are disaggregated into Regions in RICE
+- Output, population, and emissions variables are built from national data. It is aggregated into major regions (US, China, EU, India etc). RICE projects these variables separately whereas it is aggregated in DICE
+- Regional outputs adn capital stocks are aggregated using Purchasing Power Parity (PPP)
 
- ### Exogenous variable
+### Exogenous variable
+
 1. Technological Change
 2. Population Growth / Labour
 3. Carbon intensity at time t, σ(t)
 
- ### Endogenous variable
- 1. Capital Accumulation [neoclassical]
+### Endogenous variable
 
- # Submodels
- ### Economy
+1.  Capital Accumulation [neoclassical]
 
- Labour Population growth (Logistic Function)
+# Submodels
+
+### Economy
+
+Labour Population growth (Logistic Function)
 
 $$
 L(t) = L(t - 1)[1 + g_{L}(t)]
@@ -74,15 +83,15 @@ $$
 g_{L}(t) = g_{L}{(t - 1)}/(1 + \delta_{L})
 $$
 
+- Energy takes two forms
 
-* Energy takes two forms
-    * Carbon-based 
-    * non Carbon-based 
+  - Carbon-based
+  - non Carbon-based
 
-* Technological change takes two forms:
-    * Economy-wide technological change
-    * Carbon saving technological change
-Total Factor Productivity (TFP) represented by a logistic function and is represented by A(t). A(2010) is calibrated to gross world product in 2010 and g_{A} is set to 0.6% per 5 years. This leads to 1.9% consumption per capita growth from 2010-2100 and 0.9% per year from 2100 to 2200.
+- Technological change takes two forms:
+  _ Economy-wide technological change
+  _ Carbon saving technological change
+  Total Factor Productivity (TFP) represented by a logistic function and is represented by A(t). A(2010) is calibrated to gross world product in 2010 and g\_{A} is set to 0.6% per 5 years. This leads to 1.9% consumption per capita growth from 2010-2100 and 0.9% per year from 2100 to 2200.
 
 $$
 A(t) = A(t - 1)[1 + g_{A}(t)]
@@ -102,17 +111,16 @@ $$
 
 Here:
 
-
 - `Q(t)` represents the global output at time t,
 - `A(t)` is the total factor productivity at time t,
 - `K(t)` is the capital stock at time t,
-- `γ` 
+- `γ`
 - `L(t)` is the labor input at time t.
 
 - Ω(t) represents the damage function at time t,
 - λ(t) is the abatement cost at time t.
 
-Abatement cost is a function of emissions reduction rate $\mu(t). The backstop technology is introduced into the model by setting the time path of the parameters in the abatement-cost equation  so that the marginal cost of abatement at a control rate of 100 percent is equal to the backstop price for a given year. The backstop price is assumed to be initially high and to decline over time with carbon-saving technological change. Backstop price in DICE 2013R is $344 per ton CO2 at 100% removal. The cost of the backstop technology is assumed to decline at 0.5% per year.
+Abatement cost is a function of emissions reduction rate $\mu(t). The backstop technology is introduced into the model by setting the time path of the parameters in the abatement-cost equation so that the marginal cost of abatement at a control rate of 100 percent is equal to the backstop price for a given year. The backstop price is assumed to be initially high and to decline over time with carbon-saving technological change. Backstop price in DICE 2013R is $344 per ton CO2 at 100% removal. The cost of the backstop technology is assumed to decline at 0.5% per year.
 
 Marginal cost of emissions is calculated from the abatement cost equation by substituting output equations (?)
 
@@ -121,16 +129,16 @@ $$
 $$
 
 - $\Lambda(t)$ is the abatement cost at time t,
-- $\theta_{1}(t)$ is 
+- $\theta_{1}(t)$ is
 - $\mu(t)$ is the emissions reduction rate at time t,
-- $\theta_{2}$ is 
+- $\theta_{2}$ is
 
 #### Standard Economic Accounting Equations [Neoclassical]
 
 - Output, Q(t), is the sum of consumption, C(t), and gross investment, I(t).
 
 $$
-Q(t) = C(t) + I(t) 
+Q(t) = C(t) + I(t)
 $$
 
 - Per capita consumption, c(t), is the ratio of total consumption, C(t), to population, L(t).
@@ -149,17 +157,15 @@ Emissions: CO2 emissions are projected as a function of total Output, a time-var
 
 Cost of emission reduction is parameterized by a log-linear function and calibrated using [EMF](https://emf.stanford.edu/) 22 report by [Clarke et al. 2009](https://www.researchgate.net/profile/John-Weyant/publication/228944221_Overview_of_EMF_22_US_transition_scenarios/links/5a8887ab458515b8af920ebf/Overview-of-EMF-22-US-transition-scenarios.pdf)
 
-* Older versions of DICE/RICE used emissions control rate as the control variable in optimization. Newer versions incorporated carbon tax as a control variable. 
+- Older versions of DICE/RICE used emissions control rate as the control variable in optimization. Newer versions incorporated carbon tax as a control variable.
 
-The carbon price is determined by assuming that the price is equal to the marginal cost of emissions. Marginal cost is calculated from the abatement cost equation. 
+The carbon price is determined by assuming that the price is equal to the marginal cost of emissions. Marginal cost is calculated from the abatement cost equation.
 
 This equation represents the Baseline industrial CO2 emissions and is a function of level of carbon intensiy and economic output. Carbon intensity is exogenous and aggregated (in DICE) from emissions estimates of 12 regions. Emissions are reduced by [1 - μ(t)], which is the emissions reduction rate.
 
 $$
 E_{\text{Ind}}(t) = \sigma(t)[1 - \mu(t)]A(t) K(t)^{\gamma}  L(t)^{(1-\gamma)}
 $$
-
-
 
 - $E_{\text{Ind}}(t)$ denotes industrial CO2 emissions at time t,
 - $\sigma(t)$ is the carbon intensity at time t,
@@ -202,25 +208,24 @@ $$
 W = \sum_{t=1}^{T_{\text{max}}} U[c(t), L(t)] \cdot R(t)
 $$
 
-* c(t) - per capita consumption
-* L(t) - population/labour inputs
-* R(t) - Discount factor [ Π(t) in DICE 2023 - Make up your mind economists]
+- c(t) - per capita consumption
+- L(t) - population/labour inputs
+- R(t) - Discount factor [ Π(t) in DICE 2023 - Make up your mind economists]
 
-Utility is represented by a constant elasticity of utility function or constant elasticity of the marginal utility of consumption α. 
+Utility is represented by a constant elasticity of utility function or constant elasticity of the marginal utility of consumption α.
 
 $$
 U[c(t), L(t)] = L(t) \cdot \frac{c(t)^{(1-\alpha)}}{(1-\alpha)}
 $$
 
-
-* 	α - marginal utility of consumption (in DICE 2023 it is 'φ' [-_-] )
+-     α - marginal utility of consumption (in DICE 2023 it is 'φ' [-_-] )
 
 N.B. The elasticity is a parameter that represents the extent of substitutability of the consumption of different years or generations. If α/𝜑 is close to zero, then the consumptions of different generations are close substitutes; if α/𝜑 is high, then the consumptions are not close substitutes. α/𝜑 is calibrated in conjunction with the pure rate of time preference and the riskiness of climate investments
 
 R(t) is the discount factor where 'ρ' is the pure rate of social time preference
 
 $$
-\Pi(t) or R(t) = {(1+\rho)^{-t}} 
+\Pi(t) or R(t) = {(1+\rho)^{-t}}
 $$
 
 Damage Function
@@ -230,9 +235,11 @@ $$
 $$
 
 ## Inputs of DICE/RICE submodels
+
 ## Outputs of DICE/RICE submodels
 
 ## List of Assumptions in DICE/RICE
+
 1. Economic and Climate policies are designed to optimize the flow of consumption over time
 2. Neoclassical Growth Theory by Solow assumes reducing consumption today to invest in capital, education and technologies
 3. The world or individual regions have well-defined preferences represented by the SWF
@@ -252,15 +259,16 @@ $$
 17. Incremental extraction costs of carbon fuel are assumed to be zero and that carbon fuels are efficiently allocated over time by the market
 
 ## List of Normative Variables
+
 1. 'ρ' : Pure rate of social time preference
 2. 'α' : Elasticity of Marginal utility of consumption. α represents aversion to generational inequality, which is the diminishing social valuations of consumption of different generations
 
 ## List of Acronyms
+
 1. IAM - Integrated Assessment Model
 2. SWF - Social Welfare Function
-3. PPP - Purchasing Power Parity 
+3. PPP - Purchasing Power Parity
 4. TFP - Total Factor Productivity
 5. IMF - International Monetary Fund
 6. EMF - Energy Modeling Forum
 7. IPCC - Intergovernmental Panel on Climate Change
-
