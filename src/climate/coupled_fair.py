@@ -80,7 +80,13 @@ class CoupledFAIR(FAIR):
         """
         return object.__getattribute__(self, __name)
 
-    def fair_justice_run_init(self, time_horizon, scenarios, climate_ensembles=None):
+    def fair_justice_run_init(
+        self,
+        time_horizon,
+        scenarios,
+        climate_ensembles=None,
+        baseline_run=None,  # Default is None. Acceptable values are None, "default", "purge"
+    ):
         """Setup the stepwise run of the FaIR model with the JUSTICE IAM.
 
         Parameters
@@ -91,6 +97,7 @@ class CoupledFAIR(FAIR):
 
         self.start_year_fair = fair_start_year
         self.start_year_justice = time_horizon.start_year
+        self.end_year_justice = time_horizon.end_year
         self.end_year_fair = time_horizon.end_year
         self.timestep_justice = time_horizon.timestep
 
@@ -294,9 +301,13 @@ class CoupledFAIR(FAIR):
                     self._minor_ghg_indices,
                 )
 
-        # TODO: Temporarily added here # So this works to change the calculated temperature
-        self.purge_emissions(scenarios)
-        # TODO: Added here
+        if baseline_run is None:
+            self.purge_emissions(scenarios)
+        elif baseline_run == "default":
+            pass
+        elif baseline_run == "purge":
+            self.purge_emissions(scenarios)
+
         # part of pre-run: TODO move to a new method
         if (
             self._co2_indices.sum()
@@ -318,14 +329,28 @@ class CoupledFAIR(FAIR):
 
         self.emissions_array = self.emissions.data
 
-        # Setting the index values for the CO2 values in emissions array of FAIR
+        # Setting the index values for the CO2 values in emissions array of FAIR #TODO Change np.where to increase performance
         self.co2_idx = (np.where(self._co2_indices)[0]).item(0)
         self.co2_ffi_idx = (np.where(self._co2_ffi_indices)[0]).item(0)
         self.co2_afolu_idx = (np.where(self._co2_afolu_indices)[0]).item(0)
 
         # Run the historical temperature computation
+        if baseline_run is None:
+            self.run_temperature_calculation_until_a_specific_year(
+                self.start_year_justice
+            )
+        elif baseline_run == "default":
+            self.run_temperature_calculation_until_a_specific_year(
+                self.end_year_justice
+            )
 
-        self.run_historical_temperature_calculation()
+        elif baseline_run == "purge":
+            # Convert the nans in self.emissions to zeros
+            self.emissions_array = np.nan_to_num(self.emissions_array)
+
+            self.run_temperature_calculation_until_a_specific_year(
+                self.end_year_justice
+            )
 
         return self.number_of_ensembles
 
@@ -407,13 +432,13 @@ class CoupledFAIR(FAIR):
 
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
-    def run_historical_temperature_calculation(self):
+    def run_temperature_calculation_until_a_specific_year(self, end_year):
         """
         This function calculates the historical temperature from 1750 to the start year of JUSTICE model.
         The historical temperature is required for the FAIR model to project temperatures in the future using JUSTICE model.
         """
         fair_historical_years = np.arange(
-            fair_start_year, self.start_year_justice, self.timestep_justice
+            fair_start_year, end_year, self.timestep_justice
         )
 
         self.fair_historical_timestep_run_count = len(fair_historical_years)
