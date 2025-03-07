@@ -1,8 +1,8 @@
 # JUSTICE Integrated Assessment Framework
 
-| Components   | Status                                                                                                                                                                  |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FaIR Climate | [![GitHub Actions build status](https://github.com/pollockDeVis/JUSTICE/workflows/Build%20JUSTICE%20Module/badge.svg)](https://github.com/pollockDeVis/JUSTICE/actions) |
+| Components   | Status                                                                                                                                                                                                     |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FaIR Climate | [![GitHub Actions build status](https://github.com/pollockDeVis/JUSTICE/workflows/Run%20Pytest%20for%20JUSTICE%20Modules/badge.svg)](https://github.com/pollockDeVis/JUSTICE/actions/workflows/pytest.yml) |
 
 JUSTICE (JUST Integrated Climate Economy) is an open-source Integrated Assessment Modelling Framework for Normative Uncertainty Analysis
 
