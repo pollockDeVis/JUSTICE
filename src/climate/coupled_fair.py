@@ -336,9 +336,11 @@ class CoupledFAIR(FAIR):
 
         # Run the historical temperature computation
         if baseline_run is None:
-            self.run_temperature_calculation_until_a_specific_year(
-                self.start_year_justice
-            )
+            # Load the historical data
+            self.load_historical_simulation_data()
+            # self.run_temperature_calculation_until_a_specific_year(
+            #     self.start_year_justice
+            # )
         elif baseline_run == "default":
             self.run_temperature_calculation_until_a_specific_year(
                 self.end_year_justice
@@ -432,11 +434,127 @@ class CoupledFAIR(FAIR):
 
         fill(self.emissions, self.emissions_purge_array, specie="CO2 FFI")
 
+    def load_historical_simulation_data(self):
+        """
+        Arrays that need to be loaded from the data files are:
+         • cummins_state_array
+         • emissions_array
+         • cumulative_emissions_array
+         • concentration_array
+         • forcing_array (and forcing_sum_array/forcing_efficacy_sum_array if you want to be completely safe)
+         • alpha_lifetime_array (and possibly gas_partitions_array)
+
+        """
+
+        # Load from data/input/fair/ the files: alpha_lifetime_array_default.npy concentration_array_default.npy  cumulative_emissions_array_default.npy  emissions_array_default.npy
+        # Load and fill up the arrays
+
+        alpha_lifetime_array = np.load(
+            os.path.join(data_file_path, "fair/alpha_lifetime_array_default.npy")
+        )
+        concentration_array = np.load(
+            os.path.join(data_file_path, "fair/concentration_array_default.npy")
+        )
+        cumulative_emissions_array = np.load(
+            os.path.join(data_file_path, "fair/cumulative_emissions_array_default.npy")
+        )
+        emissions_array = np.load(
+            os.path.join(data_file_path, "fair/emissions_array_default.npy")
+        )
+
+        # Load cummins_state_array_default.npy
+        cummins_state_array = np.load(
+            os.path.join(data_file_path, "fair/cummins_state_array_default.npy")
+        )
+
+        # Load airborne_emissions_array_default.npy
+        airborne_emissions_array = np.load(
+            os.path.join(data_file_path, "fair/airborne_emissions_array_default.npy")
+        )
+
+        # Load gas_partitions_array_default.npy
+        gas_partitions_array = np.load(
+            os.path.join(data_file_path, "fair/gas_partitions_array_default.npy")
+        )
+
+        # Load forcing_array_default.npy
+        forcing_array = np.load(
+            os.path.join(data_file_path, "fair/forcing_array_default.npy")
+        )
+
+        # Load forcing_sum_array_default.npy
+        forcing_sum_array = np.load(
+            os.path.join(data_file_path, "fair/forcing_sum_array_default.npy")
+        )
+
+        # Load forcing_efficacy_sum_array_default.npy
+        forcing_efficacy_sum_array = np.load(
+            os.path.join(data_file_path, "fair/forcing_efficacy_sum_array_default.npy")
+        )
+
+        historical_timeperiod = (self.start_year_justice - self.start_year_fair) - 1
+        # Fill the arrays only until historical time period
+        fill(
+            self.alpha_lifetime[0:historical_timeperiod],
+            alpha_lifetime_array[:historical_timeperiod],
+        )
+        fill(
+            self.concentration[0:historical_timeperiod],
+            concentration_array[:historical_timeperiod],
+        )
+        fill(
+            self.cumulative_emissions[0:historical_timeperiod],
+            cumulative_emissions_array[:historical_timeperiod],
+        )
+        fill(
+            self.emissions[0:historical_timeperiod],
+            emissions_array[:historical_timeperiod],
+        )
+
+        self.cummins_state_array[:historical_timeperiod, ...] = cummins_state_array[
+            :historical_timeperiod
+        ]
+
+        fill(
+            self.airborne_emissions[0:historical_timeperiod],
+            airborne_emissions_array[:historical_timeperiod],
+        )
+        fill(
+            self.gas_partitions[0:historical_timeperiod],
+            gas_partitions_array[:historical_timeperiod],
+        )
+        fill(
+            self.forcing[0:historical_timeperiod],
+            forcing_array[:historical_timeperiod],
+        )
+        fill(
+            self.forcing_sum[0:historical_timeperiod],
+            forcing_sum_array[:historical_timeperiod],
+        )
+
+        self.forcing_efficacy_sum_array[:historical_timeperiod] = (
+            forcing_efficacy_sum_array[  # only this is a numpy array
+                :historical_timeperiod
+            ]
+        )
+
     def run_temperature_calculation_until_a_specific_year(self, end_year):
         """
         This function calculates the historical temperature from 1750 to the start year of JUSTICE model.
         The historical temperature is required for the FAIR model to project temperatures in the future using JUSTICE model.
         """
+
+        # Check if end_year is equal to justice start year
+        # if end_year == self.start_year_justice:
+        #     self.load_historical_simulation_data()
+        # elif end_year == self.end_year_justice:
+
+        #     for i in range(
+        #         (self.start_year_justice - self.start_year_fair),
+        #         ((self.end_year_fair - self.start_year_fair) - 1),
+        #     ):  # 265 - 549
+        #         self.stepwise_run(i)
+
         fair_historical_years = np.arange(
             fair_start_year, end_year, self.timestep_justice
         )
@@ -445,6 +563,106 @@ class CoupledFAIR(FAIR):
 
         for i in range(0, len(fair_historical_years)):
             self.stepwise_run(i)
+
+        # Save the historical data for arrays
+        self.save_historical_simulation_data()
+
+    def save_historical_simulation_data(self):
+        # Save self.cummins_state_array
+        np.save(
+            os.path.join(data_file_path, "fair/cummins_state_array_default.npy"),
+            self.cummins_state_array,
+        )
+
+        # Save self.emissions_array
+        np.save(
+            os.path.join(data_file_path, "fair/emissions_array_default.npy"),
+            self.emissions_array,
+        )
+
+        # Save self.cumulative_emissions_array
+        np.save(
+            os.path.join(data_file_path, "fair/cumulative_emissions_array_default.npy"),
+            self.cumulative_emissions_array,
+        )
+
+        # Save self.concentration_array
+        np.save(
+            os.path.join(data_file_path, "fair/concentration_array_default.npy"),
+            self.concentration_array,
+        )
+        # Save self.forcing_efficacy_sum_array self.forcing_sum_array self.forcing_array self.alpha_lifetime_array self.gas_partitions_array and self.airborne_emissions_array
+        np.save(
+            os.path.join(data_file_path, "fair/forcing_array_default.npy"),
+            self.forcing_array,
+        )
+        np.save(
+            os.path.join(data_file_path, "fair/forcing_sum_array_default.npy"),
+            self.forcing_sum_array,
+        )
+        np.save(
+            os.path.join(data_file_path, "fair/forcing_efficacy_sum_array_default.npy"),
+            self.forcing_efficacy_sum_array,
+        )
+        np.save(
+            os.path.join(data_file_path, "fair/alpha_lifetime_array_default.npy"),
+            self.alpha_lifetime_array,
+        )
+        np.save(
+            os.path.join(data_file_path, "fair/gas_partitions_array_default.npy"),
+            self.gas_partitions_array,
+        )
+        np.save(
+            os.path.join(data_file_path, "fair/airborne_emissions_array_default.npy"),
+            self.airborne_emissions_array,
+        )
+
+    def load_historical_simulation_data(self):
+        """
+        Arrays that need to be loaded from the data files are:
+        self.cummins_state_array
+        self.emissions_array
+        self.cumulative_emissions_array
+        self.concentration_array
+        self.forcing_array
+        self.forcing_sum_array
+        self.forcing_efficacy_sum_array
+        self.alpha_lifetime_array
+        self.gas_partitions_array
+        self.airborne_emissions_array
+        """
+
+        # Load from data/input/fair/
+        self.cummins_state_array = np.load(
+            os.path.join(data_file_path, "fair/cummins_state_array_default.npy")
+        )
+        self.emissions_array = np.load(
+            os.path.join(data_file_path, "fair/emissions_array_default.npy")
+        )
+        self.cumulative_emissions_array = np.load(
+            os.path.join(data_file_path, "fair/cumulative_emissions_array_default.npy")
+        )
+        self.concentration_array = np.load(
+            os.path.join(data_file_path, "fair/concentration_array_default.npy")
+        )
+        self.forcing_array = np.load(
+            os.path.join(data_file_path, "fair/forcing_array_default.npy")
+        )
+        self.forcing_sum_array = np.load(
+            os.path.join(data_file_path, "fair/forcing_sum_array_default.npy")
+        )
+        self.forcing_efficacy_sum_array = np.load(
+            os.path.join(data_file_path, "fair/forcing_efficacy_sum_array_default.npy")
+        )
+        self.alpha_lifetime_array = np.load(
+            os.path.join(data_file_path, "fair/alpha_lifetime_array_default.npy")
+        )
+        self.gas_partitions_array = np.load(
+            os.path.join(data_file_path, "fair/gas_partitions_array_default.npy")
+        )
+        self.airborne_emissions_array = np.load(
+            os.path.join(data_file_path, "fair/airborne_emissions_array_default.npy")
+        )
 
     # #range(self._n_timepoints) 0 - 549 1750 - 2300 , we gotta run the loop from 1750 - JUSTICE start time first, and then do step by step/ just call this function within a loop
     def stepwise_run(self, i_timepoint):
