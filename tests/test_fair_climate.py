@@ -103,16 +103,6 @@ def test_coupled_fair_historical_temperature_with_purge_with_reset():
         "tests/verification_data/global_temperature_justice_linear_ecr.npy"
     )
 
-    # compute_temperature_from_emission(self, timestep, emissions_data)
-    #     self.data["global_temperature"][(timestep + 1), :] = (
-    #     self.climate.compute_temperature_from_emission(
-    #         timestep, self.data["emissions"][:, timestep, :]
-    #     )
-    # )
-    #             self.data["global_temperature"][
-    #     0, :
-    # ] = self.climate.get_justice_initial_temperature()
-
     global_temperature[0, :] = climate.get_justice_initial_temperature()
     for timestep in range((len(time_horizon.model_time_horizon)) - 1):
         global_temperature[(timestep + 1), :] = (
@@ -120,15 +110,6 @@ def test_coupled_fair_historical_temperature_with_purge_with_reset():
                 timestep, emissions_data[:, timestep, :]
             )
         )
-
-    # model_start_index = int(start_year - fair_start_year)
-    # model_end_index = int(end_year - fair_start_year)
-
-    # for index in range(model_start_index, model_end_index):
-    #     climate.stepwise_run(index)
-
-    # # Obtain the resulting cummins_state_array which holds the historical state including temperature.
-    # cummins_state_array = climate.cummins_state_array
 
     # Assert: Compare the computed array to the expected validation data.
     np.testing.assert_allclose(

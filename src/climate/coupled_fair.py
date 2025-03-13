@@ -338,10 +338,10 @@ class CoupledFAIR(FAIR):
         # Run the historical temperature computation
         if baseline_run is None:
             # Load the historical data
-            self.load_historical_simulation_data()
-            # self.run_temperature_calculation_until_a_specific_year(
-            #     self.start_year_justice
-            # )
+            self.run_temperature_calculation_until_a_specific_year(
+                self.start_year_justice
+            )
+
         elif baseline_run == "default":
             self.run_temperature_calculation_until_a_specific_year(
                 self.end_year_justice
