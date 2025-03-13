@@ -64,11 +64,18 @@ def test_justice_fair_coupling():
     # Get the global temperature
     global_temperature = datasets["global_temperature"]
 
+    net_economy = datasets["net_economic_output"]
+    global_net_economic_output = np.sum(net_economy, axis=0)
+
     emission_verification_data = np.load(
         "tests/verification_data/emissions_justice_linear_ecr.npy"
     )
     global_temp_verification_data = np.load(
         "tests/verification_data/global_temperature_justice_linear_ecr.npy"
+    )
+
+    global_net_economic_output_verification_data = np.load(
+        "tests/verification_data/global_net_output_justice_linear_ecr.npy"
     )
 
     np.testing.assert_allclose(
@@ -77,4 +84,11 @@ def test_justice_fair_coupling():
 
     np.testing.assert_allclose(
         global_temperature, global_temp_verification_data, rtol=1e-5, atol=1e-5
+    )
+
+    np.testing.assert_allclose(
+        global_net_economic_output,
+        global_net_economic_output_verification_data,
+        rtol=1e-5,
+        atol=1e-5,
     )
