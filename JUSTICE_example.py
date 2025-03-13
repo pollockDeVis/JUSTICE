@@ -14,6 +14,11 @@ from config.default_parameters import SocialWelfareDefaults
 from src.util.enumerations import get_economic_scenario
 
 
+# This example can be used to profile JUSTICE model
+# Run python -m cProfile -o profile_output.prof JUSTICE_example.py
+# Visualize with python -m snakeviz profile_output.prof
+
+
 def get_linear_emission_control():
     """
     Linear emission control problem
