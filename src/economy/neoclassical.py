@@ -346,21 +346,50 @@ class NeoclassicalEconomyModel:
         # update only the calculated slice and clip negatives.
         self.capital[:, timestep + 1, :] = np.maximum(updated_capital, 0)
 
-    def _calculate_output(self, timestep):
-        # Calculate the Output based on gross output
+    # def _calculate_output(self, timestep):
+    #     # Calculate the Output based on gross output
 
-        self.gross_output[:, timestep, :] = self.tfp[:, timestep, np.newaxis] * (
-            np.power(
-                self.capital[:, timestep, :],
-                self.capital_elasticity_in_production_function,
-            )
-            * np.power(
-                (self.population_array[:, timestep, np.newaxis] / 1000),
-                (1 - self.capital_elasticity_in_production_function),
-            )
-        )
-        # Setting net output to gross output before any damage or abatement
-        self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
+    #     self.gross_output[:, timestep, :] = self.tfp[:, timestep, np.newaxis] * (
+    #         np.power(
+    #             self.capital[:, timestep, :],
+    #             self.capital_elasticity_in_production_function,
+    #         )
+    #         * np.power(
+    #             (self.population_array[:, timestep, np.newaxis] / 1000),
+    #             (1 - self.capital_elasticity_in_production_function),
+    #         )
+    #     )
+    #     # Setting net output to gross output before any damage or abatement
+    #     self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
+
+    def _calculate_output(self, timestep):
+        """
+        Calculate gross and net output for the specified timestep based on the production function:
+
+            gross_output = tfp * capital^(elasticity) * (population/1000)^(1 - elasticity)
+
+        Net output is initially set equal to gross output.
+        """
+        # Store the constant elasticity in a local variable.
+        elasticity = self.capital_elasticity_in_production_function
+
+        # Extract and prepare the necessary slices for the current timestep.
+        # tfp is reshaped for broadcasting with the production components.
+        current_tfp = self.tfp[:, timestep, np.newaxis]
+        current_capital = self.capital[:, timestep, :]
+        # Scale population by 1000 and reshape for broadcasting.
+        current_population = self.population_array[:, timestep, np.newaxis] / 1000.0
+
+        # Calculate the production function components independently.
+        capital_component = np.power(current_capital, elasticity)
+        population_component = np.power(current_population, 1 - elasticity)
+
+        # Calculate gross output.
+        gross_output = current_tfp * capital_component * population_component
+
+        # Update the output arrays.
+        self.gross_output[:, timestep, :] = gross_output
+        self.net_output[:, timestep, :] = gross_output
 
     def _apply_damage_to_output(self, timestep, damage_fraction):
         """
