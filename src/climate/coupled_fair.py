@@ -104,13 +104,14 @@ class CoupledFAIR(FAIR):
         # Calculate justice start index
         self.justice_start_index = self.start_year_justice - self.start_year_fair
 
-        scenarios = get_climate_scenario(scenarios)
-        scenarios = [scenarios]  # Converting into a list
+        self.justice_fair_scenarios = [get_climate_scenario(scenarios)]
 
         if climate_ensembles is not None:
-            self.fair_fill_data(scenarios, climate_ensembles=climate_ensembles)
+            self.fair_fill_data(
+                self.justice_fair_scenarios, climate_ensembles=climate_ensembles
+            )
         else:
-            self.fair_fill_data(scenarios)
+            self.fair_fill_data(self.justice_fair_scenarios)
 
         # Create self.emissions_purge_array full on nans
         self.emissions_purge_array = np.full(
@@ -302,11 +303,11 @@ class CoupledFAIR(FAIR):
                 )
 
         if baseline_run is None:
-            self.purge_emissions(scenarios)
+            self.purge_emissions(self.justice_fair_scenarios)
         elif baseline_run == "default":
             pass
         elif baseline_run == "purge":
-            self.purge_emissions(scenarios)
+            self.purge_emissions(self.justice_fair_scenarios)
 
         # part of pre-run: TODO move to a new method
         if (
@@ -1383,3 +1384,125 @@ class CoupledFAIR(FAIR):
         initialise(self.temperature, 0)
         initialise(self.cumulative_emissions, 0)
         initialise(self.airborne_emissions, 0)
+
+    def load_historical_simulation_data(self):
+        """
+        Arrays that need to be loaded from the data files are:
+        self.cummins_state_array
+        self.emissions_array
+        self.cumulative_emissions_array
+        self.concentration_array
+        self.forcing_sum_array
+        self.forcing_efficacy_sum_array
+        self.alpha_lifetime_array
+        self.gas_partitions_array
+        self.airborne_emissions_array
+        """
+
+        # Load from data/input/fair/
+        self.cummins_state_array = np.load(
+            os.path.join(data_file_path, "fair/cummins_state_array_default.npy")
+        )
+        self.emissions_array = np.load(  # (551, 1, 1001, 64)
+            os.path.join(data_file_path, "fair/emissions_array_default.npy")
+        )
+        self.cumulative_emissions_array = np.load(  # (551, 1, 1001, 64)
+            os.path.join(data_file_path, "fair/cumulative_emissions_array_default.npy")
+        )
+        self.concentration_array = np.load(  # (551, 1, 1001, 64)
+            os.path.join(data_file_path, "fair/concentration_array_default.npy")
+        )
+        self.forcing_sum_array = np.load(  # (551, 1, 1001)
+            os.path.join(data_file_path, "fair/forcing_sum_array_default.npy")
+        )
+        self.forcing_efficacy_sum_array = np.load(  # (551, 1, 1001)
+            os.path.join(data_file_path, "fair/forcing_efficacy_sum_array_default.npy")
+        )
+        self.alpha_lifetime_array = np.load(  # (551, 1, 1001, 64)
+            os.path.join(data_file_path, "fair/alpha_lifetime_array_default.npy")
+        )
+        self.gas_partitions_array = (
+            np.load(  # (1, 1001, 64, 4) # This will need to be loaded
+                os.path.join(data_file_path, "fair/gas_partitions_array_default.npy")
+            )
+        )
+        self.airborne_emissions_array = np.load(  # (551, 1, 1001, 64)
+            os.path.join(data_file_path, "fair/airborne_emissions_array_default.npy")
+        )
+
+    def save_historical_simulation_data(self):
+        """
+        Save the historical simulation data to the data files. Currently not used.
+        """
+        # Save self.cummins_state_array
+        np.save(
+            os.path.join(data_file_path, "fair/cummins_state_array_default.npy"),
+            self.cummins_state_array,
+        )
+
+        # Save self.emissions_array
+        np.save(
+            os.path.join(data_file_path, "fair/emissions_array_default.npy"),
+            self.emissions_array,
+        )
+
+        # Save self.cumulative_emissions_array
+        np.save(
+            os.path.join(data_file_path, "fair/cumulative_emissions_array_default.npy"),
+            self.cumulative_emissions_array,
+        )
+
+        # Save self.concentration_array
+        np.save(
+            os.path.join(data_file_path, "fair/concentration_array_default.npy"),
+            self.concentration_array,
+        )
+
+        np.save(
+            os.path.join(data_file_path, "fair/forcing_sum_array_default.npy"),
+            self.forcing_sum_array,
+        )
+        np.save(
+            os.path.join(data_file_path, "fair/forcing_efficacy_sum_array_default.npy"),
+            self.forcing_efficacy_sum_array,
+        )
+        np.save(
+            os.path.join(data_file_path, "fair/alpha_lifetime_array_default.npy"),
+            self.alpha_lifetime_array,
+        )
+        np.save(
+            os.path.join(data_file_path, "fair/gas_partitions_array_default.npy"),
+            self.gas_partitions_array,
+        )
+        np.save(
+            os.path.join(data_file_path, "fair/airborne_emissions_array_default.npy"),
+            self.airborne_emissions_array,
+        )
+
+    def fair_reset(self):
+        """
+        Resets fair model to initial state, with historical data and starting with justice_start_index.
+        """
+
+        # Load gas_partitions_array
+        self.gas_partitions_array = np.load(
+            os.path.join(data_file_path, "fair/gas_partitions_array_default.npy")
+        )
+
+        # Concentration array is one timestep ahead of emissions
+        self.concentration_array[self.justice_start_index + 1 :, ...] = np.nan
+
+        self.purge_emissions(self.justice_fair_scenarios)
+
+        # For self.emissions_array, only keep the data from 0 to self.justice_start_index for self.co2_ffi_idx and self.co2_idx.
+        self.emissions_array[self.justice_start_index :, 0, :, self.co2_ffi_idx] = 0
+        self.emissions_array[self.justice_start_index :, 0, :, self.co2_idx] = 0
+
+        # # For self.cumulative_emissions_array, only keep the data from 0 to self.justice_start_index for self.co2_ffi_idx and self.co2_idx.
+        # Cumulative Emissions are one timestep ahead of emissions
+        self.cumulative_emissions_array[
+            self.justice_start_index + 1 :, 0, :, self.co2_ffi_idx
+        ] = 0
+        self.cumulative_emissions_array[
+            self.justice_start_index + 1 :, 0, :, self.co2_idx
+        ] = 0

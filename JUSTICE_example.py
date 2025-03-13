@@ -35,7 +35,7 @@ def get_linear_emission_control():
     # Variables to be changed/deleted later
     miu_initial = 0.0
     min_miu = 0.0  # 0.2  # 0.0 #1.0
-    min_miu_year = 2055  # 9-original #8 in this model  # 2060
+    min_miu_year = 2060  # 9-original #8 in this model  # 2060
     max_miu = 1.0  # 1.0  # 1.2
     max_miu_year = 2200  # 38-original #37 in this model #2205
 
