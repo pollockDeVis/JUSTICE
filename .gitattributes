@@ -1,1 +1,2 @@
 tests/verification_data/regional_emissions_justice_linear_ecr.npy filter=lfs diff=lfs merge=lfs -text
+tests/verification_data/global_net_output_justice_linear_ecr.npy filter=lfs diff=lfs merge=lfs -text
