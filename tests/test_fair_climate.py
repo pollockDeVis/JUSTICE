@@ -95,7 +95,8 @@ def test_coupled_fair_historical_temperature_with_purge_with_reset():
 
     # Load the emissions data
     emissions_data = np.load(
-        "tests/verification_data/regional_emissions_justice_linear_ecr.npy"
+        "tests/verification_data/regional_emissions_justice_linear_ecr.npy",
+        allow_pickle=True,
     )
 
     # Load the expected validation data from file.
