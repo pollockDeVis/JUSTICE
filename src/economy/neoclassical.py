@@ -463,6 +463,18 @@ class NeoclassicalEconomyModel:
 
         return consumption_per_timestep
 
+    def reset(self):
+        """
+        Resets the economy model to its initial state.
+        """
+        self.gross_output.fill(0)
+        self.net_output.fill(0)
+        self.investment.fill(0)
+        self.capital.fill(0)
+        self.damage.fill(0)
+        self.abatement.fill(0)
+        self.capital_tfp_data.fill(0)
+
     def get_consumption_per_capita_per_timestep(self, savings_rate, timestep):
 
         consumption_per_timestep = self.calculate_consumption_per_timestep(
