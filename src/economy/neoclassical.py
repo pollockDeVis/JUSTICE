@@ -520,6 +520,14 @@ class NeoclassicalEconomyModel:
             )
         )
 
+        # self.capital_tfp_data
+        self.capital_tfp_data = np.zeros(
+            (
+                len(self.region_list),
+                len(self.data_time_horizon),
+            )
+        )
+
     def get_consumption_per_capita_per_timestep(self, savings_rate, timestep):
 
         consumption_per_timestep = self.calculate_consumption_per_timestep(

@@ -310,12 +310,16 @@ class DamageKalkuhl:
         """
         Reset self.total_damage_fraction to zeros.
         """
-        self.total_damage_fraction = np.zeros(
-            (
-                len(self.region_list),
-                self.climate_ensembles,
-            )
-        )
+        # self.total_damage_fraction = np.zeros(
+        #     (
+        #         len(self.region_list),
+        #         self.climate_ensembles,
+        #     )
+        # )
+        self.temperature_array.fill(0)
+        self.damage_specification.fill(0)
+        self.economic_damage_factor.fill(0)
+        self.total_damage_fraction.fill(0)
 
     def __getattribute__(self, __name: str) -> Any:
         """
