@@ -6,6 +6,10 @@ from src.util.data_loader import DataLoader
 from src.util.enumerations import *
 from src.model import JUSTICE
 
+# JUSTICE
+# Set this path as an environment variable
+# export PYTHONPATH=$PYTHONPATH:/Users/palokbiswas/Desktop/pollockdevis_git/JUSTICE/
+
 
 def test_justice_fair_coupling():
 
@@ -19,7 +23,6 @@ def test_justice_fair_coupling():
     # emissions control rate borrowed from emissions module
 
     # Variables to be changed/deleted later
-    miu_initial = 0.0
     min_miu = 0.0  # 0.2  # 0.0 #1.0
     min_miu_year = 2060  # 9-original #8 in this model  # 2060
     max_miu = 1.0  # 1.0  # 1.2
@@ -58,6 +61,7 @@ def test_justice_fair_coupling():
         emission_control_rate=emissions_control_rate, endogenous_savings_rate=True
     )
     datasets = model.evaluate()  # Get the results of the simulation run
+
     emissions = datasets["emissions"]
     # Sum up the emissions for all regions
     global_emissions = np.sum(emissions, axis=0)
@@ -66,6 +70,14 @@ def test_justice_fair_coupling():
 
     net_economy = datasets["net_economic_output"]
     global_net_economic_output = np.sum(net_economy, axis=0)
+
+    damage_cost = datasets["economic_damage"]  # (57, 286, 1001)
+    abatement_cost = datasets["abatement_cost"]  # (57, 286, 1001)
+
+    # Get the mean regional damages over ensemble members
+    mean_regional_damage = np.mean(damage_cost, axis=2)
+    # Get the mean regional abatement cost over ensemble members
+    mean_regional_abatement = np.mean(abatement_cost, axis=2)
 
     emission_verification_data = np.load(
         "tests/verification_data/emissions_justice_linear_ecr.npy"
@@ -76,6 +88,14 @@ def test_justice_fair_coupling():
 
     global_net_economic_output_verification_data = np.load(
         "tests/verification_data/global_net_output_justice_linear_ecr.npy"
+    )
+
+    mean_regional_damage_verification_data = np.load(
+        "tests/verification_data/regional_damages_kalkuhl_linear_ecr.npy"
+    )
+
+    mean_regional_abatement_verification_data = np.load(
+        "tests/verification_data/regional_abatecost_justice_linear_ecr.npy"
     )
 
     np.testing.assert_allclose(
@@ -89,6 +109,20 @@ def test_justice_fair_coupling():
     np.testing.assert_allclose(
         global_net_economic_output,
         global_net_economic_output_verification_data,
+        rtol=1e-5,
+        atol=1e-5,
+    )
+
+    np.testing.assert_allclose(
+        mean_regional_damage,
+        mean_regional_damage_verification_data,
+        rtol=1e-5,
+        atol=1e-5,
+    )
+
+    np.testing.assert_allclose(
+        mean_regional_abatement,
+        mean_regional_abatement_verification_data,
         rtol=1e-5,
         atol=1e-5,
     )
