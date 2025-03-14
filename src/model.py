@@ -719,7 +719,7 @@ class JUSTICE:
         )
         return self.data
 
-    def reset_justice(self):
+    def reset(self):
         """
         Reset the model to the initial state by setting the data dictionary to zero.
         """
@@ -827,7 +827,7 @@ class JUSTICE:
             "welfare": np.zeros((1,)),
         }
 
-        self.climate.fair_reset()
+        self.climate.reset()
         self.economy.reset()
         self.emissions.reset()
         self.damage_function.reset()

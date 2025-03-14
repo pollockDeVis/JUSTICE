@@ -1479,7 +1479,7 @@ class CoupledFAIR(FAIR):
             self.airborne_emissions_array,
         )
 
-    def fair_reset(self):
+    def reset(self):
         """
         Resets fair model to initial state, with historical data and starting with justice_start_index.
         """

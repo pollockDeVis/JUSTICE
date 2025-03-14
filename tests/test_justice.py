@@ -64,15 +64,15 @@ def test_justice_fair_coupling():
 
     verify_results(datasets)
 
-    # # Reset the model to initial conditions
-    # model.reset_justice()
+    # Reset the model to initial conditions
+    model.reset()
 
-    # model.run(
-    #     emission_control_rate=emissions_control_rate, endogenous_savings_rate=True
-    # )
-    # datasets = model.evaluate()  # Get the results of the simulation run again
+    model.run(
+        emission_control_rate=emissions_control_rate, endogenous_savings_rate=True
+    )
+    datasets = model.evaluate()  # Get the results of the simulation run again
 
-    # verify_results(datasets)
+    verify_results(datasets)
 
 
 def verify_results(datasets):

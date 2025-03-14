@@ -86,7 +86,7 @@ def test_coupled_fair_historical_temperature_with_purge_with_reset():
     )
 
     # Fair Reset
-    climate.fair_reset()
+    climate.reset()
 
     # Create a numpy array of zeros to hold global temperature data of shape ((len(time_horizon.model_time_horizon), no_of_ensembles))
     global_temperature = np.zeros(
