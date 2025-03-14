@@ -165,16 +165,18 @@ class JUSTICE:
             # Assert and raise an error if the damage function is not implemented
             assert False, "The damage function is not provided!"
 
-        # TODO: Incomplete Implementation
+        # Abatement model is instantiated
         if self.abatement_type == Abatement.ENERDATA:
             self.abatement = AbatementEnerdata(
-                input_dataset=self.data_loader, time_horizon=self.time_horizon
+                input_dataset=self.data_loader,
+                time_horizon=self.time_horizon,
+                scenario=self.scenario,
             )
         else:
             # Assert and raise an error if the abatement model is not implemented
             assert False, "The abatement model is not provided!"
 
-        # TODO: Incomplete Implementation
+        # Economy model is instantiated
         if self.economy_type == Economy.NEOCLASSICAL:
             self.economy = NeoclassicalEconomyModel(
                 input_dataset=self.data_loader,
@@ -363,7 +365,7 @@ class JUSTICE:
             self.time_horizon.model_time_horizon
         ), "The given timestep is out of range."
 
-        if endogenous_savings_rate == True:
+        if endogenous_savings_rate:
             self.savings_rate[:, timestep] = self.fixed_savings_rate[:, timestep]
         else:
             self.savings_rate[:, timestep] = savings_rate
@@ -426,7 +428,6 @@ class JUSTICE:
 
             # Abatement cost is only dependent on the emission control rate
             abatement_cost = self.abatement.calculate_abatement(
-                scenario=self.scenario,
                 timestep=timestep,
                 emission_control_rate=emission_control_rate,
             )
@@ -460,7 +461,6 @@ class JUSTICE:
 
             # Calculate the abatement cost
             abatement_cost = self.abatement.calculate_abatement(
-                scenario=self.scenario,
                 timestep=timestep,
                 emission_control_rate=emission_control_rate,
             )
@@ -516,7 +516,7 @@ class JUSTICE:
         """
         Run the model.
         """
-        if endogenous_savings_rate == True:
+        if endogenous_savings_rate:
             self.savings_rate = self.fixed_savings_rate
         else:
             self.savings_rate = savings_rate
@@ -589,7 +589,6 @@ class JUSTICE:
 
                 # Abatement cost is only dependent on the emission control rate
                 abatement_cost = self.abatement.calculate_abatement(
-                    scenario=self.scenario,
                     timestep=timestep,
                     emission_control_rate=self.emission_control_rate[:, timestep, :],
                 )
@@ -623,7 +622,6 @@ class JUSTICE:
 
                 # Calculate the abatement cost
                 abatement_cost = self.abatement.calculate_abatement(
-                    scenario=self.scenario,
                     timestep=timestep,
                     emission_control_rate=self.emission_control_rate[:, timestep, :],
                 )
@@ -721,14 +719,18 @@ class JUSTICE:
         )
         return self.data
 
+    def reset_justice(self):
+        """
+        Reset the model to the initial state by setting the data dictionary to zero.
+        """
+
+        for key in self.data:
+            self.data[key].fill(0)
+
+        self.climate.fair_reset()
+
     def get_outcome_names(self):
         """
         Get the list of outcomes of the model.
         """
         return self.data.keys()
-
-    def __getattribute__(self, __name: str) -> Any:
-        """
-        This method returns the value of the attribute of the class.
-        """
-        return object.__getattribute__(self, __name)

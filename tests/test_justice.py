@@ -62,6 +62,21 @@ def test_justice_fair_coupling():
     )
     datasets = model.evaluate()  # Get the results of the simulation run
 
+    verify_results(datasets)
+
+    # Reset the model to initial conditions
+    # model.reset_justice()
+
+    # model.run(
+    #     emission_control_rate=emissions_control_rate, endogenous_savings_rate=True
+    # )
+    # datasets = model.evaluate()  # Get the results of the simulation run again
+
+    # verify_results(datasets)
+
+
+def verify_results(datasets):
+
     emissions = datasets["emissions"]
     # Sum up the emissions for all regions
     global_emissions = np.sum(emissions, axis=0)

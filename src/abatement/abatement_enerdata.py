@@ -25,7 +25,7 @@ class AbatementEnerdata:
     """
 
     def __init__(
-        self, input_dataset, time_horizon, **kwargs
+        self, input_dataset, time_horizon, scenario, **kwargs
     ):  # TODO maybe this has to move to the calculate abatement
         """
         This method initializes the Abatement class.
@@ -44,6 +44,8 @@ class AbatementEnerdata:
         self.data_timestep = time_horizon.data_timestep
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
+        # Get economic scenario
+        self.scenario = get_economic_scenario(scenario)
 
         # Fetch the defaults for ENERDATA
         abatement_enerdata_defaults = abatement_defaults.get_defaults(
@@ -161,7 +163,7 @@ class AbatementEnerdata:
             - multiplier_difference * transition_coefficient
         )
 
-    def calculate_abatement(self, scenario, timestep, emission_control_rate):
+    def calculate_abatement(self, timestep, emission_control_rate):
         """
         This method calculates the abatement for the emissions of a given timestep.
         * y ~ ax + bx^4   --with multiplier-->   y ~ mx (ax + bx^4)
@@ -176,10 +178,6 @@ class AbatementEnerdata:
 
         @return: abatement [Trill 2005 USD / year]
         """
-        # Get economic scenario
-        scenario = get_economic_scenario(
-            scenario
-        )  # TODO: do this during initialization
 
         # Calculate abatement
         abatement_cost = (
@@ -192,7 +190,7 @@ class AbatementEnerdata:
             )
             * (
                 self.emissions_array_business_as_usual[
-                    :, timestep, scenario, np.newaxis
+                    :, timestep, self.scenario, np.newaxis
                 ]
                 / 1000
             )  #   Conversion:  [ G$ ] / 1000 -> [Trill $]
