@@ -270,55 +270,126 @@ class NeoclassicalEconomyModel:
                 savings_rate * self.net_output[:, timestep, :]
             )
 
-    def _calculate_capital(self, timestep):  # Capital is calculated one timestep ahead
-        if timestep < (len(self.model_time_horizon) - 1):
-            if timestep == 0:
-                # Initalize capital tfp
-                self.capital[:, timestep, :] = self.capital_init_arr * self.mer_to_ppp
+    # def _calculate_capital(self, timestep):  # Capital is calculated one timestep ahead
+    #     if timestep < (len(self.model_time_horizon) - 1):
+    #         if timestep == 0:
+    #             # Initalize capital tfp
+    #             self.capital[:, timestep, :] = self.capital_init_arr * self.mer_to_ppp
 
-                self.capital[:, timestep + 1, :] = self.capital[
-                    :, timestep, :
-                ] * np.power(
-                    (1 - self.depreciation_rate_capital),
-                    (self.timestep),
-                ) + self.investment[
-                    :, timestep, :
-                ] * (
-                    (self.timestep)
-                )
-            else:
-                # Calculate capital
-                self.capital[:, timestep + 1, :] = self.capital[
-                    :, timestep, :
-                ] * np.power(
-                    (1 - self.depreciation_rate_capital),
-                    (self.timestep),
-                ) + self.investment[
-                    :, timestep, :
-                ] * (
-                    (self.timestep)
-                )
+    #             self.capital[:, timestep + 1, :] = self.capital[
+    #                 :, timestep, :
+    #             ] * np.power(
+    #                 (1 - self.depreciation_rate_capital),
+    #                 (self.timestep),
+    #             ) + self.investment[
+    #                 :, timestep, :
+    #             ] * (
+    #                 (self.timestep)
+    #             )
+    #         else:
+    #             # Calculate capital
+    #             self.capital[:, timestep + 1, :] = self.capital[
+    #                 :, timestep, :
+    #             ] * np.power(
+    #                 (1 - self.depreciation_rate_capital),
+    #                 (self.timestep),
+    #             ) + self.investment[
+    #                 :, timestep, :
+    #             ] * (
+    #                 (self.timestep)
+    #             )
 
-            # Check if any element is negative in capital
-            # Need to do this because capital can negative with very high abatement rates leading to
-            # propagation of nan values in gross output, net output, consumption and utility
-            self.capital = np.where(self.capital < 0, 0, self.capital)
+    #         # Check if any element is negative in capital
+    #         # Need to do this because capital can negative with very high abatement rates leading to
+    #         # propagation of nan values in gross output, net output, consumption and utility
+    #         self.capital = np.where(self.capital < 0, 0, self.capital)
+
+    def _calculate_capital(self, timestep):
+        """
+        Update the capital array for the next timestep.
+
+        Capital is updated as:
+        capital[t+1] = capital[t] * (1 - depreciation_rate_capital)^(time_step)
+                        + investment[t] * (time_step)
+
+        For timestep 0, the initial capital array is set from the provided initial values.
+        Afterwards, only the slice for the next timestep is updated.
+
+        Negative values in the updated capital are clipped to zero.
+        """
+        # Ensure that the timestep is valid.
+        if timestep >= len(self.model_time_horizon) - 1:
+            return
+
+        # Precompute the depreciation factor for the given time step.
+        # (Assuming self.timestep is the constant length of each time period.)
+        depreciation_factor = np.power(
+            1 - self.depreciation_rate_capital, self.timestep
+        )
+
+        if timestep == 0:
+            # Initialize capital at time 0 using the provided conversion factor.
+            self.capital[:, 0, :] = self.capital_init_arr * self.mer_to_ppp
+
+        # Compute the updated capital for the next timestep;
+        # note that the same formula applies, regardless of timestep.
+        # Slice out the current timestep data to avoid extra indexing.
+        current_capital = self.capital[:, timestep, :]
+        current_investment = self.investment[:, timestep, :]
+
+        # Compute the next period's capital.
+        updated_capital = (
+            current_capital * depreciation_factor + current_investment * self.timestep
+        )
+
+        # Instead of calling np.where on the entire self.capital array,
+        # update only the calculated slice and clip negatives.
+        self.capital[:, timestep + 1, :] = np.maximum(updated_capital, 0)
+
+    # def _calculate_output(self, timestep):
+    #     # Calculate the Output based on gross output
+
+    #     self.gross_output[:, timestep, :] = self.tfp[:, timestep, np.newaxis] * (
+    #         np.power(
+    #             self.capital[:, timestep, :],
+    #             self.capital_elasticity_in_production_function,
+    #         )
+    #         * np.power(
+    #             (self.population_array[:, timestep, np.newaxis] / 1000),
+    #             (1 - self.capital_elasticity_in_production_function),
+    #         )
+    #     )
+    #     # Setting net output to gross output before any damage or abatement
+    #     self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
 
     def _calculate_output(self, timestep):
-        # Calculate the Output based on gross output
+        """
+        Calculate gross and net output for the specified timestep based on the production function:
 
-        self.gross_output[:, timestep, :] = self.tfp[:, timestep, np.newaxis] * (
-            np.power(
-                self.capital[:, timestep, :],
-                self.capital_elasticity_in_production_function,
-            )
-            * np.power(
-                (self.population_array[:, timestep, np.newaxis] / 1000),
-                (1 - self.capital_elasticity_in_production_function),
-            )
-        )
-        # Setting net output to gross output before any damage or abatement
-        self.net_output[:, timestep, :] = self.gross_output[:, timestep, :]
+            gross_output = tfp * capital^(elasticity) * (population/1000)^(1 - elasticity)
+
+        Net output is initially set equal to gross output.
+        """
+        # Store the constant elasticity in a local variable.
+        elasticity = self.capital_elasticity_in_production_function
+
+        # Extract and prepare the necessary slices for the current timestep.
+        # tfp is reshaped for broadcasting with the production components.
+        current_tfp = self.tfp[:, timestep, np.newaxis]
+        current_capital = self.capital[:, timestep, :]
+        # Scale population by 1000 and reshape for broadcasting.
+        current_population = self.population_array[:, timestep, np.newaxis] / 1000.0
+
+        # Calculate the production function components independently.
+        capital_component = np.power(current_capital, elasticity)
+        population_component = np.power(current_population, 1 - elasticity)
+
+        # Calculate gross output.
+        gross_output = current_tfp * capital_component * population_component
+
+        # Update the output arrays.
+        self.gross_output[:, timestep, :] = gross_output
+        self.net_output[:, timestep, :] = gross_output
 
     def _apply_damage_to_output(self, timestep, damage_fraction):
         """

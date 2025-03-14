@@ -208,6 +208,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Profiling files
+*.prof
+
 #VS Code
 JUSTICE.code-workspace
 
