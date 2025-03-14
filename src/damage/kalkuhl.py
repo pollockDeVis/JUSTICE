@@ -306,6 +306,17 @@ class DamageKalkuhl:
 
         return self.total_damage_fraction
 
+    def reset(self):
+        """
+        Reset self.total_damage_fraction to zeros.
+        """
+        self.total_damage_fraction = np.zeros(
+            (
+                len(self.region_list),
+                self.climate_ensembles,
+            )
+        )
+
     def __getattribute__(self, __name: str) -> Any:
         """
         This method returns the value of the attribute of the class.

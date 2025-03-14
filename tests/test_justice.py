@@ -64,7 +64,7 @@ def test_justice_fair_coupling():
 
     verify_results(datasets)
 
-    # Reset the model to initial conditions
+    # # Reset the model to initial conditions
     # model.reset_justice()
 
     # model.run(
@@ -114,10 +114,6 @@ def verify_results(datasets):
     )
 
     np.testing.assert_allclose(
-        global_emissions, emission_verification_data, rtol=1e-5, atol=1e-5
-    )
-
-    np.testing.assert_allclose(
         global_temperature, global_temp_verification_data, rtol=1e-5, atol=1e-5
     )
 
@@ -140,4 +136,8 @@ def verify_results(datasets):
         mean_regional_abatement_verification_data,
         rtol=1e-5,
         atol=1e-5,
+    )
+
+    np.testing.assert_allclose(
+        global_emissions, emission_verification_data, rtol=1e-5, atol=1e-5
     )

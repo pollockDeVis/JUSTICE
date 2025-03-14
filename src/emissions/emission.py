@@ -16,7 +16,7 @@ class OutputToEmissions:
     """
 
     # TODO: Initialize with scenario so that we don't have to load all the scenarios
-    def __init__(self, input_dataset, time_horizon, climate_ensembles):
+    def __init__(self, input_dataset, time_horizon, scenario, climate_ensembles):
         """
         This method initializes the OutputToEmissions class.
         """
@@ -31,6 +31,7 @@ class OutputToEmissions:
         self.data_timestep = time_horizon.data_timestep
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
+        self.scenario = get_economic_scenario(scenario)
 
         # Initializing the carbon intensity 3D array
         self.carbon_intensity_array = np.zeros(
@@ -76,17 +77,16 @@ class OutputToEmissions:
                 ),
             )
 
-    def run(self, scenario, timestep, output, emission_control_rate):
+    def run(self, timestep, output, emission_control_rate):
         """
         This method calculates the emissions for the economic output of a given scenario.
         carbon intensity shape (57, 1001)
         output shape (57, 1001)
         """
 
-        scenario = get_economic_scenario(scenario)
         # Calculate emissions
         self.emissions[:, timestep, :] = (
-            self.carbon_intensity[:, timestep, :, scenario]
+            self.carbon_intensity[:, timestep, :, self.scenario]
             * output
             * (
                 1 - emission_control_rate  # [:, np.newaxis]
@@ -155,6 +155,14 @@ class OutputToEmissions:
         This method returns the emissions.
         """
         return self.emissions
+
+    def reset(self):
+        """
+        This method resets the self.emissions to zero.
+        """
+        self.emissions = np.zeros(
+            (len(self.region_list), len(self.model_time_horizon), self.NUM_OF_ENSEMBLES)
+        )
 
     def __getattribute__(self, __name: str) -> Any:
         """

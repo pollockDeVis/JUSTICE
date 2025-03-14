@@ -154,7 +154,7 @@ class JUSTICE:
         #   Instantiating the Model Blocks
         #
         ############################################################################################################################################################
-        # TODO: Incomplete Implementation
+        # Instantiate the DamageFunction class
         if self.damage_function_type == DamageFunction.KALKUHL:
             self.damage_function = DamageKalkuhl(
                 input_dataset=self.data_loader,
@@ -190,9 +190,11 @@ class JUSTICE:
             # Assert and raise an error if the economy model is not implemented
             assert False, "The economy model is not provided!"
 
+        # Instantiate the OutputToEmissions class
         self.emissions = OutputToEmissions(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
+            scenario=self.scenario,
             climate_ensembles=self.no_of_ensembles,
         )
 
@@ -386,7 +388,6 @@ class JUSTICE:
 
         self.data["emissions"][:, timestep, :] = self.emissions.run(
             timestep=timestep,
-            scenario=self.scenario,
             output=gross_output,
             emission_control_rate=self.emission_control_rate[:, timestep, :],
         )
@@ -540,7 +541,6 @@ class JUSTICE:
 
             self.data["emissions"][:, timestep, :] = self.emissions.run(
                 timestep=timestep,
-                scenario=self.scenario,
                 output=gross_output,
                 emission_control_rate=self.emission_control_rate[:, timestep, :],
             )
@@ -724,10 +724,113 @@ class JUSTICE:
         Reset the model to the initial state by setting the data dictionary to zero.
         """
 
-        for key in self.data:
-            self.data[key].fill(0)
+        self.data = {
+            "gross_economic_output": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "net_economic_output": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "consumption": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "consumption_per_capita": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "damage_cost_per_capita": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "abatement_cost_per_capita": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "emissions": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "regional_temperature": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "global_temperature": np.zeros(
+                (len(self.time_horizon.model_time_horizon), self.no_of_ensembles)
+            ),
+            "damage_fraction": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "economic_damage": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "abatement_cost": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "carbon_price": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                    self.no_of_ensembles,
+                )
+            ),
+            "spatially_aggregated_welfare": np.zeros(
+                (len(self.time_horizon.model_time_horizon),)
+            ),
+            "stepwise_marl_reward": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                )
+            ),
+            "temporally_disaggregated_welfare": np.zeros(
+                (len(self.time_horizon.model_time_horizon),)
+            ),
+            "welfare": np.zeros((1,)),
+        }
 
         self.climate.fair_reset()
+        self.economy.reset()
+        self.emissions.reset()
+        self.damage_function.reset()
 
     def get_outcome_names(self):
         """

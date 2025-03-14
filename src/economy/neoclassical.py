@@ -463,6 +463,63 @@ class NeoclassicalEconomyModel:
 
         return consumption_per_timestep
 
+    def reset(self):
+        """
+        Resets the economy model to its initial state.
+        """
+        self.gross_output = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.NUM_OF_ENSEMBLES,
+            )
+        )
+
+        # self.net_output
+        self.net_output = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.NUM_OF_ENSEMBLES,
+            )
+        )
+
+        # self.investment
+        self.investment = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.NUM_OF_ENSEMBLES,
+            )
+        )
+
+        # self.capital
+        self.capital = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.NUM_OF_ENSEMBLES,
+            )
+        )
+
+        # self.damage
+        self.damage = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.NUM_OF_ENSEMBLES,
+            )
+        )
+
+        # self.abatement
+        self.abatement = np.zeros(
+            (
+                len(self.region_list),
+                len(self.model_time_horizon),
+                self.NUM_OF_ENSEMBLES,
+            )
+        )
+
     def get_consumption_per_capita_per_timestep(self, savings_rate, timestep):
 
         consumption_per_timestep = self.calculate_consumption_per_timestep(
