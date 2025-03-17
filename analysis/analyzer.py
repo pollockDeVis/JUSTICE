@@ -61,13 +61,15 @@ n_rbfs = 4
 n_inputs = 2
 nfe = 5000
 
+
 # TODO should have a configuration file for optimizations
 epsilons = [
-    0.1,
-    0.25,
-    # 10,
-    # 10,
-]  # epsilons for welfare, years_above_threshold, total_damage, total_abatement
+    0.1,  # welfare
+    # 0.25, # years above threshold
+    0.01,  # fraction of ensemble members above threshold
+    10,  # welfare loss damage
+    10,  # welfare loss abatement
+]
 
 # # TODO should have a configuration file for optimizations
 # social_welfare_function = WelfareFunction.UTILITARIAN
@@ -83,6 +85,11 @@ time_horizon = TimeHorizon(
 )
 emission_control_start_timestep = time_horizon.year_to_timestep(
     year=emission_control_start_year, timestep=timestep
+)
+
+temperature_year_of_interest = 2100
+temperature_year_of_interest_index = time_horizon.year_to_timestep(
+    year=temperature_year_of_interest, timestep=timestep
 )
 
 
@@ -117,6 +124,9 @@ def run_optimization_adaptive(
         Constant("economy_type", economy_type.value),
         Constant("damage_function_type", damage_function_type.value),
         Constant("abatement_type", abatement_type.value),
+        Constant(
+            "temperature_year_of_interest_index", temperature_year_of_interest_index
+        ),
     ]
 
     # Speicify uncertainties
@@ -157,7 +167,9 @@ def run_optimization_adaptive(
         radii_levers.append(RealParameter(f"radii {i}", 0.0, 1.0))
 
     for i in range(weights_shape):
-        weights_levers.append(RealParameter(f"weights {i}", 0.0, 1.0))
+        weights_levers.append(
+            RealParameter(f"weights {i}", 0.0, 1.0)
+        )  # Probably this range determines the min and max values of the ECR
 
     # Set the model levers
     model.levers = centers_levers + radii_levers + weights_levers
@@ -168,21 +180,26 @@ def run_optimization_adaptive(
             variable_name="welfare",
             kind=ScalarOutcome.MINIMIZE,
         ),
+        # ScalarOutcome(
+        #     "years_above_temperature_threshold",
+        #     variable_name="years_above_threshold",
+        #     kind=ScalarOutcome.MINIMIZE,
+        # ),
         ScalarOutcome(
-            "years_above_temperature_threshold",
-            variable_name="years_above_threshold",
+            "fraction_above_threshold",
+            variable_name="fraction_above_threshold",
             kind=ScalarOutcome.MINIMIZE,
         ),
-        # ScalarOutcome(
-        #     "welfare_loss_damage",
-        #     variable_name="welfare_loss_damage",
-        #     kind=ScalarOutcome.MAXIMIZE,
-        # ),
-        # ScalarOutcome(
-        #     "welfare_loss_abatement",
-        #     variable_name="welfare_loss_abatement",
-        #     kind=ScalarOutcome.MAXIMIZE,
-        # ),
+        ScalarOutcome(
+            "welfare_loss_damage",
+            variable_name="welfare_loss_damage",
+            kind=ScalarOutcome.MAXIMIZE,
+        ),
+        ScalarOutcome(
+            "welfare_loss_abatement",
+            variable_name="welfare_loss_abatement",
+            kind=ScalarOutcome.MAXIMIZE,
+        ),
     ]
 
     reference_scenario = Scenario(
@@ -511,6 +528,6 @@ if __name__ == "__main__":
     np.random.seed(seed)
     # perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None)
     run_optimization_adaptive(
-        n_rbfs=4, n_inputs=2, nfe=5, filename=None, folder=None, seed=seed
+        n_rbfs=4, n_inputs=2, nfe=5, swf=4, filename=None, folder=None, seed=seed
     )
     # run_optimization_static(nfe=5, filename=None, folder=None)
