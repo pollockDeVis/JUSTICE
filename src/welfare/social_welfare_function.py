@@ -30,6 +30,8 @@ class SocialWelfareFunction:
         inequality_aversion,
         sufficiency_threshold,
         egality_strictness,
+        limitarian_threshold_emissions,
+        limitarian_start_year_of_remaining_budget,
     ):
         """
         This method initializes the Social Welfare Function class.
@@ -40,6 +42,7 @@ class SocialWelfareFunction:
         self.data_timestep = time_horizon.data_timestep
         self.data_time_horizon = time_horizon.data_time_horizon
         self.model_time_horizon = time_horizon.model_time_horizon
+        self.time_horizon = time_horizon
         self.climate_ensembles = climate_ensembles
         self.risk_aversion = risk_aversion
         self.elasticity_of_marginal_utility_of_consumption = (
@@ -49,6 +52,10 @@ class SocialWelfareFunction:
         self.inequality_aversion = inequality_aversion
         self.sufficiency_threshold = sufficiency_threshold
         self.egality_strictness = egality_strictness
+        self.limitarian_threshold_emissions = limitarian_threshold_emissions
+        self.limitarian_start_year_of_remaining_budget = (
+            limitarian_start_year_of_remaining_budget
+        )
 
         # Population is exogenous. So we don't need the 1001 copies across the ensemble members. Hence we select the first ensemble member
         population = population[:, :, 0]
@@ -58,11 +65,11 @@ class SocialWelfareFunction:
         # Calculate the population ratio for each timestep # Validated
         self.population_ratio = population / total_population
 
-    def calculate_welfare(self, consumption_per_capita, **kwargs):
+    def calculate_welfare(self, consumption_per_capita, emissions=None, **kwargs):
         """
         This method calculates the welfare.
         """
-        # Check if consumption_per_capita has negative values
+        # Check if consumption_per_capita has negative values # FIXME Optimize this
         consumption_per_capita = np.where(
             consumption_per_capita <= 0, 1e-6, consumption_per_capita
         )
@@ -73,6 +80,43 @@ class SocialWelfareFunction:
             self.climate_ensembles,
             self.risk_aversion,
         )
+
+        # Limitarian Threshold Check
+        if self.limitarian_threshold_emissions > 0 and emissions is not None:
+
+            global_emissions = np.sum(emissions, axis=0)
+            cumulative_emissions = np.cumsum(global_emissions, axis=0)
+
+            index_from_year = self.time_horizon.year_to_timestep(
+                (self.limitarian_start_year_of_remaining_budget - self.timestep),
+                timestep=self.timestep,
+            )  # Remaining Budget from the beginning of the year. Hence we take the cumulative emissions from the previous year
+
+            # Taking the ensemble mean of global cumulative emissions
+            mean_global_cumulative_emissions = np.mean(cumulative_emissions, axis=1)
+            emission_before_start_year = mean_global_cumulative_emissions[
+                index_from_year
+            ]
+            updated_limitarian_threshold = (
+                self.limitarian_threshold_emissions + emission_before_start_year
+            )
+            # Get the index when the global cumulative emissions exceed the updated limitarian threshold
+            emission_limit_index = np.argmax(
+                mean_global_cumulative_emissions > updated_limitarian_threshold
+            )
+
+            # For emission_limit_index onwards, the states_aggregated_consumption_per_capita should be the value of states_aggregated_consumption_per_capita[emission_limit_index - self.timestep] for all time steps
+            # Get the slice of states_aggregated_consumption_per_capita from emission_limit_index - self.timestep
+            states_aggregated_consumption_per_capita_before_limit = (
+                states_aggregated_consumption_per_capita[  # Shape (regions,)
+                    :, (emission_limit_index - self.timestep)
+                ]
+            )
+
+            # Replicate the value of states_aggregated_consumption_per_capita_before_limit for the remaining timesteps in states_aggregated_consumption_per_capita which is of shape (regions, timesteps)
+            states_aggregated_consumption_per_capita[:, emission_limit_index:] = (
+                states_aggregated_consumption_per_capita_before_limit[:, None]
+            )
 
         # Aggregate the Spatial Dimension
         spatially_aggregated_welfare = self.spatial_aggregator(

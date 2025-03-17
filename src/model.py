@@ -148,6 +148,12 @@ class JUSTICE:
         self.sufficiency_threshold = welfare_defaults["sufficiency_threshold"]
         self.egality_strictness = welfare_defaults["egality_strictness"]
         self.risk_aversion = welfare_defaults["risk_aversion"]
+        self.limitarian_threshold_emissions = welfare_defaults[
+            "limitarian_threshold_emissions"
+        ]
+        self.limitarian_start_year_of_remaining_budget = welfare_defaults[
+            "limitarian_start_year_of_remaining_budget"
+        ]
 
         ############################################################################################################################################################
         #
@@ -210,6 +216,8 @@ class JUSTICE:
             inequality_aversion=self.inequality_aversion,
             sufficiency_threshold=self.sufficiency_threshold,
             egality_strictness=self.egality_strictness,
+            limitarian_threshold_emissions=self.limitarian_threshold_emissions,
+            limitarian_start_year_of_remaining_budget=self.limitarian_start_year_of_remaining_budget,
         )
 
         # Get the fixed savings rate for model time horizon
@@ -689,12 +697,13 @@ class JUSTICE:
 
         # Last timestep. Welfare_utilitarian_regional and welfare_utilitarian are calculated only for the last timestep
         if timestep == (len(self.time_horizon.model_time_horizon) - 1):
+
             (
                 self.data["spatially_aggregated_welfare"],
                 self.data["temporally_disaggregated_welfare"],
                 self.data["welfare"],
             ) = self.welfare_function.calculate_welfare(
-                consumption_per_capita=self.data["consumption_per_capita"]
+                consumption_per_capita=self.data["consumption_per_capita"],
             )
         return self.data
 
@@ -715,7 +724,8 @@ class JUSTICE:
             self.data["temporally_disaggregated_welfare"],
             self.data["welfare"],
         ) = self.welfare_function.calculate_welfare(
-            consumption_per_capita=self.data["consumption_per_capita"]
+            consumption_per_capita=self.data["consumption_per_capita"],
+            emissions=self.data["emissions"],
         )
         return self.data
 
