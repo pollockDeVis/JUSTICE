@@ -320,6 +320,12 @@ class JUSTICE:
                     self.no_of_ensembles,
                 )
             ),
+            "states_aggregated_consumption_per_capita": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
+                )
+            ),
             "spatially_aggregated_welfare": np.zeros(
                 (len(self.time_horizon.model_time_horizon),)
             ),
@@ -699,6 +705,7 @@ class JUSTICE:
         if timestep == (len(self.time_horizon.model_time_horizon) - 1):
 
             (
+                self.data["states_aggregated_consumption_per_capita"],
                 self.data["spatially_aggregated_welfare"],
                 self.data["temporally_disaggregated_welfare"],
                 self.data["welfare"],
@@ -720,6 +727,7 @@ class JUSTICE:
         """
 
         (
+            self.data["states_aggregated_consumption_per_capita"],
             self.data["spatially_aggregated_welfare"],
             self.data["temporally_disaggregated_welfare"],
             self.data["welfare"],
@@ -820,6 +828,12 @@ class JUSTICE:
                     len(self.data_loader.REGION_LIST),
                     len(self.time_horizon.model_time_horizon),
                     self.no_of_ensembles,
+                )
+            ),
+            "states_aggregated_consumption_per_capita": np.zeros(
+                (
+                    len(self.data_loader.REGION_LIST),
+                    len(self.time_horizon.model_time_horizon),
                 )
             ),
             "spatially_aggregated_welfare": np.zeros(

@@ -138,6 +138,7 @@ class SocialWelfareFunction:
         )
 
         return (
+            states_aggregated_consumption_per_capita,
             spatially_aggregated_welfare,
             temporally_disaggregated_welfare,
             welfare,

@@ -142,17 +142,17 @@ def model_wrapper_emodps(**kwargs):
         datasets["global_temperature"], 2.0
     )
 
-    # # Transform the damage cost per capita to welfare loss value
-    # _, _, welfare_loss_damage = model.welfare_function.calculate_welfare(
-    #     datasets["damage_cost_per_capita"], welfare_loss=True
-    # )
-    # welfare_loss_damage = np.abs(welfare_loss_damage)
+    # Transform the damage cost per capita to welfare loss value
+    _, _, _, welfare_loss_damage = model.welfare_function.calculate_welfare(
+        datasets["damage_cost_per_capita"], welfare_loss=True
+    )
+    welfare_loss_damage = np.abs(welfare_loss_damage)
 
-    # # Transform the abatement cost to welfare loss value
-    # _, _, welfare_loss_abatement = model.welfare_function.calculate_welfare(
-    #     datasets["abatement_cost_per_capita"], welfare_loss=True
-    # )
-    # welfare_loss_abatement = np.abs(welfare_loss_abatement)
+    # Transform the abatement cost to welfare loss value
+    _, _, _, welfare_loss_abatement = model.welfare_function.calculate_welfare(
+        datasets["abatement_cost_per_capita"], welfare_loss=True
+    )
+    welfare_loss_abatement = np.abs(welfare_loss_abatement)
 
     return (
         welfare,
