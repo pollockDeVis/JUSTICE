@@ -1,6 +1,26 @@
 import numpy as np
 
 
+def fraction_of_ensemble_above_threshold(
+    temperature, temperature_year_index, threshold
+):
+    """Calculate the fraction of ensemble members above a temperature threshold."""
+    # Temperature array should be 2D. Check if it is 2D, else throw an error.
+    if temperature.ndim != 2:
+        raise ValueError("Temperature array should be 2D.")
+    # Check if threshold is a float, else throw an error.
+    if not isinstance(threshold, float):
+        raise ValueError("Threshold should be a float.")
+
+    # Calculate the fraction of ensemble members above the threshold. Temp array (286, 1001) where (timesteps, ensemble members)
+    # Take the last timestep and check how many ensemble members are above the threshold
+    fraction_of_ensemble_above_threshold = (
+        np.sum(np.greater(temperature[temperature_year_index, :], threshold))
+        / temperature.shape[1]
+    )
+    return fraction_of_ensemble_above_threshold
+
+
 def years_above_temperature_threshold(temperature, threshold):
     """Calculate the number of years above a temperature threshold."""
     # Temperature array should be 2D. Check if it is 2D, else throw an error.
