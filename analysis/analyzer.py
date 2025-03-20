@@ -225,15 +225,16 @@ def run_optimization_adaptive(
         EpsilonProgress(),
     ]
 
-    with MPIEvaluator(model) as evaluator:  # Use this for HPC
-        # with SequentialEvaluator(model) as evaluator:  # Use this for local machine
+    # with MPIEvaluator(model) as evaluator:  # Use this for HPC
+    with SequentialEvaluator(model) as evaluator:  # Use this for local machine
+        # with MultiprocessingEvaluator(model) as evaluator:
         results = evaluator.optimize(
             searchover="levers",
             nfe=nfe,
             epsilons=epsilons,
             reference=reference_scenario,
             convergence=convergence_metrics,
-            # population_size=2,  # NOTE set population parameters for local machine. It is faster for testing
+            population_size=2,  # NOTE set population parameters for local machine. It is faster for testing
         )
 
 

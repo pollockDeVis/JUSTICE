@@ -1,0 +1,38 @@
+Bootstrap: docker
+From: python:3.9-slim
+
+%labels
+    Author PalokBiswas
+    Description "Container for HPC Python model with MPI4py and other dependencies."
+
+%files
+    $PWD/requirements.txt requirements.txt
+
+%post
+    # Update the package list
+    apt-get update
+
+    # Use this to build: apptainer build justice_MultiProcessingEval.sif justice.def
+    # Install system-level dependencies including OpenMPI on one line. # Check if this is necessary for MultiProcessing
+    apt-get install -y --no-install-recommends build-essential libopenmpi-dev openmpi-bin ca-certificates
+    
+    # Clean up package lists
+    rm -rf /var/lib/apt/lists/*
+    
+    # Upgrade pip using python3 -m pip
+    python3 -m pip install --no-cache-dir --upgrade pip
+    
+    # Install mpi4py
+    python3 -m pip install --no-cache-dir mpi4py
+    
+    # Install additional Python dependencies using the copied requirements file
+    python3 -m pip install --root-user-action=ignore -r requirements.txt
+
+%environment
+    # Set locale settings
+    export LC_ALL=C
+    export LANG=C
+
+%runscript
+    # This runscript passes any command line arguments to the container
+    exec "$@"
