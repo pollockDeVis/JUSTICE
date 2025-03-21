@@ -680,23 +680,27 @@ def reevaluate_all_for_utilitarian_prioritarian(
                 egality_strictness=welfare_defaults_prioritarian["egality_strictness"],
             )
 
-            _, _, reference_set_df.loc[index, "welfare_utilitarian"] = (
+            _, _, _, reference_set_df.loc[index, "welfare_utilitarian"] = (
                 welfare_function_utilitarian.calculate_welfare(
                     consumption_per_capita=scenario_datasets[scenario_list[0]][
                         "consumption_per_capita"
                     ]
                 )
             )
-            _, _, reference_set_df.loc[index, "damage_cost_per_capita_utilitarian"] = (
-                welfare_function_utilitarian.calculate_welfare(
-                    consumption_per_capita=scenario_datasets[scenario_list[0]][
-                        "damage_cost_per_capita"
-                    ],
-                    welfare_loss=True,
-                )
+            (
+                _,
+                _,
+                _,
+                reference_set_df.loc[index, "damage_cost_per_capita_utilitarian"],
+            ) = welfare_function_utilitarian.calculate_welfare(
+                consumption_per_capita=scenario_datasets[scenario_list[0]][
+                    "damage_cost_per_capita"
+                ],
+                welfare_loss=True,
             )
 
             (
+                _,
                 _,
                 _,
                 reference_set_df.loc[index, "abatement_cost_per_capita_utilitarian"],
@@ -707,7 +711,7 @@ def reevaluate_all_for_utilitarian_prioritarian(
                 welfare_loss=True,
             )
 
-            _, _, reference_set_df.loc[index, "welfare_prioritarian"] = (
+            _, _, _, reference_set_df.loc[index, "welfare_prioritarian"] = (
                 welfare_function_prioritarian.calculate_welfare(
                     consumption_per_capita=scenario_datasets[scenario_list[0]][
                         "consumption_per_capita"
@@ -715,16 +719,20 @@ def reevaluate_all_for_utilitarian_prioritarian(
                 )
             )
 
-            _, _, reference_set_df.loc[index, "damage_cost_per_capita_prioritarian"] = (
-                welfare_function_prioritarian.calculate_welfare(
-                    consumption_per_capita=scenario_datasets[scenario_list[0]][
-                        "damage_cost_per_capita"
-                    ],
-                    welfare_loss=True,
-                )
+            (
+                _,
+                _,
+                _,
+                reference_set_df.loc[index, "damage_cost_per_capita_prioritarian"],
+            ) = welfare_function_prioritarian.calculate_welfare(
+                consumption_per_capita=scenario_datasets[scenario_list[0]][
+                    "damage_cost_per_capita"
+                ],
+                welfare_loss=True,
             )
 
             (
+                _,
                 _,
                 _,
                 reference_set_df.loc[index, "abatement_cost_per_capita_prioritarian"],

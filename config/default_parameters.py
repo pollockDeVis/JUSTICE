@@ -92,6 +92,8 @@ class SocialWelfareDefaults:
                 "inequality_aversion": 0.0,
                 "sufficiency_threshold": 0.0,
                 "egality_strictness": 0.0,  # Range: [0,1]
+                "limitarian_threshold_emissions": 0.0,
+                "limitarian_start_year_of_remaining_budget": 0,
             },
             "PRIORITARIAN": {
                 "risk_aversion": 0,  # Risk aversion parameter.
@@ -100,6 +102,8 @@ class SocialWelfareDefaults:
                 "inequality_aversion": 2.0,
                 "sufficiency_threshold": 0.0,
                 "egality_strictness": 0.0,  # Range: [0,1]
+                "limitarian_threshold_emissions": 0.0,
+                "limitarian_start_year_of_remaining_budget": 0,
             },
             "SUFFICIENTARIAN": {  # Sufficientarian can be either Utilitarian above threshold or Prioritarian below threshold
                 "risk_aversion": 0,  # Risk aversion parameter.
@@ -112,6 +116,8 @@ class SocialWelfareDefaults:
                 # Consumption in JUSTICE is yearly (in thousands $2005 PPP), hence we simply
                 # multiply this poverty line rate with average days in a year and hence  in JUSTICE will be 1.25 * 365.25/1000
                 "egality_strictness": 0.0,  # Range: [0,1]
+                "limitarian_threshold_emissions": 0.0,
+                "limitarian_start_year_of_remaining_budget": 0,
             },
             "EGALITARIAN": {
                 "risk_aversion": 0,  # Risk aversion parameter.
@@ -120,6 +126,30 @@ class SocialWelfareDefaults:
                 "inequality_aversion": 0.5,  # 2.0, #NOTE: Keeping it 0.5 to make it distinct from prioritarian
                 "sufficiency_threshold": 0.0,
                 "egality_strictness": 1.0,  # Range: [0,1]
+                "limitarian_threshold_emissions": 0.0,
+                "limitarian_start_year_of_remaining_budget": 0,
+            },
+            # Cox, P. M., Williamson, M. S., Friedlingstein, P., Jones, C. D., Raoult, N., Rogelj, J., & Varney, R. M. (2024).
+            # Emergent constraints on carbon budgets as a function of global warming. Nature Communications, 15(1), 1885.
+            "LIMITARIAN_UTILITARIAN": {
+                "risk_aversion": 0,  # Risk aversion parameter.
+                "elasticity_of_marginal_utility_of_consumption": 1.45,
+                "pure_rate_of_social_time_preference": 0.015,
+                "inequality_aversion": 0.0,
+                "sufficiency_threshold": 0.0,
+                "egality_strictness": 0.0,  # Range: [0,1]
+                "limitarian_threshold_emissions": 422.0,  # Emergent constraints on cumulative carbon budgets, and remaining carbon budgets from the beginning of 2020 for 2°C. Confidence Intervals: [258, 586] PgC or GtC
+                "limitarian_start_year_of_remaining_budget": 2020,
+            },
+            "LIMITARIAN_PRIORITARIAN": {
+                "risk_aversion": 0,  # Risk aversion parameter.
+                "elasticity_of_marginal_utility_of_consumption": 1.45,
+                "pure_rate_of_social_time_preference": 0.0,
+                "inequality_aversion": 2.0,
+                "sufficiency_threshold": 0.0,
+                "egality_strictness": 0.0,  # Range: [0,1]
+                "limitarian_threshold_emissions": 422.0,  # Emergent constraints on cumulative carbon budgets, and remaining carbon budgets from the beginning of 2020 for 2°C. Confidence Intervals: [258, 586] PgC or GtC
+                "limitarian_start_year_of_remaining_budget": 2020,
             },
         }
 

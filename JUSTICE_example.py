@@ -425,12 +425,12 @@ def calculate_welfare_for_different_swfs(
         egality_strictness=welfare_defaults_prioritarian["egality_strictness"],
     )
 
-    _, _, datasets["welfare_utilitarian"] = (
+    _, _, _, datasets["welfare_utilitarian"] = (
         welfare_function_utilitarian.calculate_welfare(
             consumption_per_capita=datasets["consumption_per_capita"]
         )
     )
-    _, _, datasets["welfare_prioritarian"] = (
+    _, _, _, datasets["welfare_prioritarian"] = (
         welfare_function_prioritarian.calculate_welfare(
             consumption_per_capita=datasets["consumption_per_capita"]
         )

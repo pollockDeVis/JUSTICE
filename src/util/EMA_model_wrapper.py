@@ -11,6 +11,7 @@ from src.util.enumerations import *
 from solvers.emodps.rbf import RBF
 from src.objectives.objective_functions import (
     years_above_temperature_threshold,
+    fraction_of_ensemble_above_threshold,
 )
 
 from src.util.emission_control_constraint import EmissionControlConstraint
@@ -41,6 +42,10 @@ def model_wrapper_emodps(**kwargs):
 
     n_inputs_rbf = kwargs.pop("n_inputs_rbf")
     n_outputs_rbf = kwargs.pop("n_outputs_rbf")
+
+    temperature_year_of_interest_index = kwargs.pop(
+        "temperature_year_of_interest_index"
+    )
 
     rbf = RBF(
         n_rbfs=(n_inputs_rbf + 2), n_inputs=n_inputs_rbf, n_outputs=n_outputs_rbf
@@ -142,22 +147,32 @@ def model_wrapper_emodps(**kwargs):
         datasets["global_temperature"], 2.0
     )
 
-    # # Transform the damage cost per capita to welfare loss value
-    # _, _, welfare_loss_damage = model.welfare_function.calculate_welfare(
-    #     datasets["damage_cost_per_capita"], welfare_loss=True
-    # )
-    # welfare_loss_damage = np.abs(welfare_loss_damage)
+    # Calculate the fraction of ensemble above the temperature threshold temperature, temperature_year_index, threshold
+    fraction_above_threshold = fraction_of_ensemble_above_threshold(
+        temperature=datasets["global_temperature"],
+        temperature_year_index=temperature_year_of_interest_index,
+        threshold=2.0,
+    )
 
-    # # Transform the abatement cost to welfare loss value
-    # _, _, welfare_loss_abatement = model.welfare_function.calculate_welfare(
-    #     datasets["abatement_cost_per_capita"], welfare_loss=True
-    # )
-    # welfare_loss_abatement = np.abs(welfare_loss_abatement)
+    # Transform the damage cost per capita to welfare loss value
+    _, _, _, welfare_loss_damage = model.welfare_function.calculate_welfare(
+        datasets["damage_cost_per_capita"], welfare_loss=True
+    )
+    welfare_loss_damage = np.abs(welfare_loss_damage)
+
+    # Transform the abatement cost to welfare loss value
+    _, _, _, welfare_loss_abatement = model.welfare_function.calculate_welfare(
+        datasets["abatement_cost_per_capita"], welfare_loss=True
+    )
+    welfare_loss_abatement = np.abs(welfare_loss_abatement)
 
     return (
         welfare,
-        years_above_threshold,
-    )  # , welfare_loss_damage, welfare_loss_abatement
+        fraction_above_threshold,
+        # years_above_threshold,
+        welfare_loss_damage,
+        welfare_loss_abatement,
+    )  # ,
 
 
 def model_wrapper(**kwargs):
