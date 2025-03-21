@@ -80,13 +80,22 @@ def model_wrapper_emodps(**kwargs):
         min_emission_control_rate=0.01,
     )
 
-    model = JUSTICE(
-        scenario=scenario,
-        economy_type=economy_type,
-        damage_function_type=damage_function_type,
-        abatement_type=abatement_type,
-        social_welfare_function_type=social_welfare_function_type,
-    )
+    # --- Singleton logic for JUSTICE ---
+    if not hasattr(model_wrapper_emodps, "justice_instance"):
+        # First call: create the instance (this does heavy initialization)
+        model_wrapper_emodps.justice_instance = JUSTICE(
+            scenario=scenario,
+            economy_type=economy_type,
+            damage_function_type=damage_function_type,
+            abatement_type=abatement_type,
+            social_welfare_function_type=social_welfare_function_type,
+        )
+    else:
+        # Subsequent calls: perform only a light reset
+        model_wrapper_emodps.justice_instance.reset_model()
+
+    # Reuse the JUSTICE instance from here on
+    model = model_wrapper_emodps.justice_instance
 
     # getattr(model, "no_of_ensembles")
     no_of_ensembles = model.__getattribute__("no_of_ensembles")
