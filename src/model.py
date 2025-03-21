@@ -22,7 +22,64 @@ from config.default_parameters import SocialWelfareDefaults
 class JUSTICE:
     """
     This is the JUSTICE model.
+
+    This class implements the integrated assessment model JUSTICE.
+    It performs extensive initialization by loading datasets, configuring climate components, setting up
+    economic and damage sub-models, and initializing output data structures. The model is designed to run
+    simulations either stepwise or over an entire time horizon and provides evaluation methods to assess
+    welfare metrics and economic indicators.
+
+    Initialization Parameters:
+        start_year (int): The beginning year for the simulation (default is 2015).
+        end_year (int): The ending year for the simulation (default is 2300).
+        timestep (int): The simulation timestep increment (default is 1).
+        scenario (int): Identifier for the simulation scenario.
+        climate_ensembles (int or list, optional): Specifies one or more climate ensemble indices used
+            to initialize the climate model.
+        economy_type: Determines the economy model to use (default: Economy.NEOCLASSICAL).
+        damage_function_type: Specifies the type of damage function to apply (default: DamageFunction.KALKUHL).
+        abatement_type: Specifies the abatement model (default: Abatement.ENERDATA).
+        social_welfare_function: Sets the welfare function (default: WelfareFunction.UTILITARIAN).
+        **kwargs: Additional keyword arguments. For example, 'social_welfare_function_type' can be provided
+            to override the default welfare function type.
+
+    Key Methods:
+        stepwise_run(emission_control_rate, timestep, savings_rate=None, endogenous_savings_rate=False):
+            Executes a single simulation step by updating emissions, temperature (both global and regional),
+            damages, abatement costs, and economic outputs while closing the feedback loop in the economy model.
+
+        run(emission_control_rate, savings_rate=None, endogenous_savings_rate=False):
+            Runs the simulation over the entire time horizon by iteratively executing the model steps and
+            updating all relevant outputs.
+
+        stepwise_evaluate(timestep=0):
+            Evaluates the model at a given timestep by calculating stepwise welfare and reward signals,
+            with additional comprehensive welfare evaluation for the final timestep.
+
+        evaluate():
+            Performs an overall evaluation of the model, aggregating consumption, welfare, and damage data
+            over the entire simulation period.
+
+        reset() / reset_model():
+            Resets the model’s output data structures and state to allow for a fresh simulation run.
+
+        get_outcome_names():
+            Returns a list of keys representing all outcome metrics stored in the model’s data dictionary.
+
+    Usage Notes:
+        - The heavy initialization performed in the constructor (__init__) should only be executed once per instance.
+        - Ensure that any modifications to the model state are followed by a subsequent run or evaluation if needed.
+        - The model relies on external components (e.g., data loaders, climate models, economic models) which
+          must be correctly configured and available.
+
     """
+
+    _instance = None  # class-level instance for caching heavy initialization
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(JUSTICE, cls).__new__(cls)
+        return cls._instance
 
     def __init__(
         self,
@@ -37,24 +94,20 @@ class JUSTICE:
         social_welfare_function=WelfareFunction.UTILITARIAN,
         **kwargs,
     ):
-        """
-        @param start_year: The start year of the model
-        @param end_year: The end year of the model
-        @param timestep: The timestep of the model
-        @param scenario: The scenario of the model
-        """
+        # If already initialized, do not repeat heavy initialization.
+        if hasattr(self, "_already_initialized") and self._already_initialized:
+            return
+
         ############################################################################################################################################################
         #
-        #   Instatiating the JUSTICE Model
+        #   Instantiating the JUSTICE Model (Heavy Initialization)
         #
         ############################################################################################################################################################
-        # Set the model blocks
         self.economy_type = economy_type
         self.damage_function_type = damage_function_type
         self.abatement_type = abatement_type
         self.scenario = scenario
 
-        # Check for Kwargs. This is implemented for EMA Workbench Support
         if "social_welfare_function_type" in kwargs:
             self.welfare_function_type = WelfareFunction.from_index(
                 kwargs["social_welfare_function_type"]
@@ -66,8 +119,7 @@ class JUSTICE:
         self.data_loader = DataLoader()
         self.region_list = self.data_loader.REGION_LIST
 
-        # TODO: Need to do the data slicing here for different start and end years
-        # Instantiate the TimeHorizon class
+        # Instantiate the TimeHorizon class # TODO: Need to do the data slicing here for different start and end years
         self.time_horizon = TimeHorizon(
             start_year=start_year, end_year=end_year, data_timestep=5, timestep=timestep
         )
@@ -77,11 +129,9 @@ class JUSTICE:
         #   Instatiating the FAIR Climate Model
         #
         ############################################################################################################################################################
-        # Instantiate the CoupledFAIR class
         self.climate = CoupledFAIR(ch4_method="Thornhill2021")
         self.downscaler = TemperatureDownscaler(input_dataset=self.data_loader)
 
-        # Check if climate_ensembles is passed as a parameter
         if climate_ensembles is not None:
             if isinstance(climate_ensembles, int):
                 self.no_of_ensembles = self.climate.fair_justice_run_init(
@@ -105,24 +155,18 @@ class JUSTICE:
         #   Initializing the Data Structures & Loading the Default Parameters
         #
         ############################################################################################################################################################
-
-        # Set the savings rate and emissions control rate levers
-        # TODO: check if we need this
         self.fixed_savings_rate = np.zeros(
             (
                 len(self.data_loader.REGION_LIST),
                 len(self.time_horizon.model_time_horizon),
             )
         )
-
-        # Set the savings rate and emissions control rate levers
         self.savings_rate = np.zeros(
             (
                 len(self.data_loader.REGION_LIST),
                 len(self.time_horizon.model_time_horizon),
             )
         )
-
         self.emission_control_rate = np.zeros(
             (
                 len(self.data_loader.REGION_LIST),
@@ -131,13 +175,10 @@ class JUSTICE:
             )
         )
 
-        # Instantiate the SocialWelfareDefaults class
         social_welfare_defaults = SocialWelfareDefaults()
-        # Fetch the defaults for Social Welfare Function
         welfare_defaults = social_welfare_defaults.get_defaults(
             self.welfare_function_type.name
         )
-        # Assign the defaults to the class attributes
         self.elasticity_of_marginal_utility_of_consumption = welfare_defaults[
             "elasticity_of_marginal_utility_of_consumption"
         ]
@@ -160,7 +201,6 @@ class JUSTICE:
         #   Instantiating the Model Blocks
         #
         ############################################################################################################################################################
-        # Instantiate the DamageFunction class
         if self.damage_function_type == DamageFunction.KALKUHL:
             self.damage_function = DamageKalkuhl(
                 input_dataset=self.data_loader,
@@ -168,10 +208,8 @@ class JUSTICE:
                 climate_ensembles=self.no_of_ensembles,
             )
         else:
-            # Assert and raise an error if the damage function is not implemented
             assert False, "The damage function is not provided!"
 
-        # Abatement model is instantiated
         if self.abatement_type == Abatement.ENERDATA:
             self.abatement = AbatementEnerdata(
                 input_dataset=self.data_loader,
@@ -179,10 +217,8 @@ class JUSTICE:
                 scenario=self.scenario,
             )
         else:
-            # Assert and raise an error if the abatement model is not implemented
             assert False, "The abatement model is not provided!"
 
-        # Economy model is instantiated
         if self.economy_type == Economy.NEOCLASSICAL:
             self.economy = NeoclassicalEconomyModel(
                 input_dataset=self.data_loader,
@@ -193,10 +229,8 @@ class JUSTICE:
                 pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
             )
         else:
-            # Assert and raise an error if the economy model is not implemented
             assert False, "The economy model is not provided!"
 
-        # Instantiate the OutputToEmissions class
         self.emissions = OutputToEmissions(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
@@ -204,12 +238,11 @@ class JUSTICE:
             climate_ensembles=self.no_of_ensembles,
         )
 
-        # Instantiate the SocialWelfareFunction class
         self.welfare_function = SocialWelfareFunction(
             input_dataset=self.data_loader,
             time_horizon=self.time_horizon,
             climate_ensembles=self.no_of_ensembles,
-            population=self.economy.get_population(),  # TODO: This makes welfare function dependent on economy model
+            population=self.economy.get_population(),  # FIXME: This makes welfare function dependent on economy model
             risk_aversion=self.risk_aversion,
             elasticity_of_marginal_utility_of_consumption=self.elasticity_of_marginal_utility_of_consumption,
             pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
@@ -220,7 +253,6 @@ class JUSTICE:
             limitarian_start_year_of_remaining_budget=self.limitarian_start_year_of_remaining_budget,
         )
 
-        # Get the fixed savings rate for model time horizon
         self.fixed_savings_rate = self.economy.get_fixed_savings_rate(
             self.time_horizon.model_time_horizon
         )
@@ -230,8 +262,6 @@ class JUSTICE:
         #   Initializing the Output Data Structures
         #
         ############################################################################################################################################################
-
-        # Create a data dictionary to store the data
         self.data = {
             "gross_economic_output": np.zeros(
                 (
@@ -335,12 +365,14 @@ class JUSTICE:
                     len(self.time_horizon.model_time_horizon),
                 )
             ),
-            # "welfare_regional": np.zeros((len(self.data_loader.REGION_LIST),)),
             "temporally_disaggregated_welfare": np.zeros(
                 (len(self.time_horizon.model_time_horizon),)
             ),
             "welfare": np.zeros((1,)),
         }
+
+        # Flag heavy initialization as complete.
+        self._already_initialized = True
 
     ############################################################################################################################################################
     #
@@ -855,6 +887,10 @@ class JUSTICE:
         self.economy.reset()
         self.emissions.reset()
         self.damage_function.reset()
+
+    # Added for EMA Workbench Support
+    def reset_model(self):
+        self.reset()
 
     def get_outcome_names(self):
         """
