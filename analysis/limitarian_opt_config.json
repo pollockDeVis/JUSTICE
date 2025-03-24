@@ -1,0 +1,17 @@
+{
+    "start_year": 2015,
+    "end_year": 2300,
+    "data_timestep": 5,
+    "timestep": 1,
+    "emission_control_start_year": 2025,
+    "n_rbfs": 4,
+    "n_inputs": 2,
+    "reference_ssp_rcp_scenario_index": 2,
+    "epsilons": [
+        0.1,
+        0.01,
+        10,
+        10
+    ],
+    "temperature_year_of_interest": 2100
+}

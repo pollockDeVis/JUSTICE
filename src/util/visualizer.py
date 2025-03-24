@@ -2794,7 +2794,7 @@ def plot_hypervolume(
 
         if saving:
             output_file_name = f"{titletext}_hypervolume_plot"
-            fig.write_image(path_to_output + "/" + output_file_name + ".png")
+            fig.write_image(path_to_output + "/" + output_file_name + ".svg")
 
     return fig
 

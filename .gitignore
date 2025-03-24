@@ -218,6 +218,7 @@ JUSTICE.code-workspace
 data/output/*
 data/optimized_rbf_weights/*
 data/plots/*
+data/temporary/*
 data/reevaluation/*
 data/convergence_metrics/*
 tests/raw_data/*

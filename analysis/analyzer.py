@@ -8,6 +8,7 @@ import numpy as np
 import os
 import random
 from src.util.enumerations import *
+import json
 
 # Suppress numpy version warnings
 import warnings
@@ -50,67 +51,59 @@ from src.util.data_loader import DataLoader
 from src.util.enumerations import WelfareFunction, get_welfare_function_name
 from config.default_parameters import SocialWelfareDefaults
 
-# TODO: Create a config file for loading values for analysis
-start_year = 2015
-end_year = 2300
-data_timestep = 5
-timestep = 1
-emission_control_start_year = 2025
-
-n_rbfs = 4
-n_inputs = 2
-nfe = 5000
-
-
-# TODO should have a configuration file for optimizations
-epsilons = [
-    0.1,  # welfare
-    # 0.25, # years above threshold
-    0.01,  # fraction of ensemble members above threshold
-    10,  # welfare loss damage
-    10,  # welfare loss abatement
-]
-
-# # TODO should have a configuration file for optimizations
-# social_welfare_function = WelfareFunction.UTILITARIAN
-
-# Instantiate the DataLoader class
-data_loader = DataLoader()
-# Instantiate the TimeHorizon class
-time_horizon = TimeHorizon(
-    start_year=start_year,
-    end_year=end_year,
-    data_timestep=data_timestep,
-    timestep=timestep,
-)
-emission_control_start_timestep = time_horizon.year_to_timestep(
-    year=emission_control_start_year, timestep=timestep
-)
-
-temperature_year_of_interest = 2100
-temperature_year_of_interest_index = time_horizon.year_to_timestep(
-    year=temperature_year_of_interest, timestep=timestep
-)
-
 
 def run_optimization_adaptive(
-    n_rbfs=n_rbfs,
-    n_inputs=n_inputs,
-    nfe=nfe,
+    config_path,
+    # n_rbfs=n_rbfs,
+    # n_inputs=n_inputs,
+    nfe=None,
+    population_size=2,
     swf=0,
     seed=None,
+    datapath="./data",
     filename=None,
     folder=None,
     economy_type=Economy.NEOCLASSICAL,
     damage_function_type=DamageFunction.KALKUHL,
     abatement_type=Abatement.ENERDATA,
 ):
+
+    # Load configuration from file
+    with open(config_path, "r") as file:
+        config = json.load(file)
+
+    start_year = config["start_year"]
+    end_year = config["end_year"]
+    data_timestep = config["data_timestep"]
+    timestep = config["timestep"]
+    emission_control_start_year = config["emission_control_start_year"]
+    n_rbfs = config["n_rbfs"]
+    n_inputs = config["n_inputs"]
+    epsilons = config["epsilons"]
+    temperature_year_of_interest = config["temperature_year_of_interest"]
+    reference_ssp_rcp_scenario_index = config["reference_ssp_rcp_scenario_index"]
+
     social_welfare_function = WelfareFunction.from_index(swf)
     social_welfare_function_type = social_welfare_function.value[
         0
     ]  # Gets the first value of the tuple with index 0
 
     model = Model("JUSTICE", function=model_wrapper_emodps)
+
+    # Instantiate classes and compute derived parameters
+    data_loader = DataLoader()
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    emission_control_start_timestep = time_horizon.year_to_timestep(
+        year=emission_control_start_year, timestep=timestep
+    )
+    temperature_year_of_interest_index = time_horizon.year_to_timestep(
+        year=temperature_year_of_interest, timestep=timestep
+    )
 
     # Define constants, uncertainties and levers
     model.constants = [
@@ -180,16 +173,16 @@ def run_optimization_adaptive(
             variable_name="welfare",
             kind=ScalarOutcome.MINIMIZE,
         ),
-        # ScalarOutcome(
-        #     "years_above_temperature_threshold",
-        #     variable_name="years_above_threshold",
-        #     kind=ScalarOutcome.MINIMIZE,
-        # ),
         ScalarOutcome(
-            "fraction_above_threshold",
-            variable_name="fraction_above_threshold",
+            "years_above_temperature_threshold",
+            variable_name="years_above_threshold",
             kind=ScalarOutcome.MINIMIZE,
         ),
+        # ScalarOutcome(
+        #     "fraction_above_threshold",
+        #     variable_name="fraction_above_threshold",
+        #     kind=ScalarOutcome.MINIMIZE,
+        # ),
         ScalarOutcome(
             "welfare_loss_damage",
             variable_name="welfare_loss_damage",
@@ -204,13 +197,16 @@ def run_optimization_adaptive(
 
     reference_scenario = Scenario(
         "reference",
-        ssp_rcp_scenario=2,
+        ssp_rcp_scenario=reference_ssp_rcp_scenario_index,
     )
 
     # Add social_welfare_function.value[1] to the filename
     filename = f"{social_welfare_function.value[1]}_{nfe}_{seed}.tar.gz"
     date = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    directory_name = f"./data/{social_welfare_function.value[1]}_{date}_{seed}"
+
+    directory_name = os.path.join(
+        datapath, f"{social_welfare_function.value[1]}_{date}_{seed}"
+    )
     # Create a directory inside ./data/ with name output_{date} to save the results
     os.mkdir(directory_name)
     # Set the directory path to a variable
@@ -234,8 +230,13 @@ def run_optimization_adaptive(
             epsilons=epsilons,
             reference=reference_scenario,
             convergence=convergence_metrics,
-            population_size=2,  # NOTE set population parameters for local machine. It is faster for testing
+            population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
         )
+
+
+#######################################################################################################################################################
+# Deprecated
+#######################################################################################################################################################
 
 
 def run_optimization_static(nfe=5000, filename=None, folder=None):
