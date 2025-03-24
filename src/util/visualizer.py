@@ -2221,6 +2221,195 @@ def plot_choropleth_2D_data(
     return fig, processed_data_dict
 
 
+def process_economic_data_for_abated_emissions(
+    input_data_arrays,
+    region_mapping_path,
+    rice_region_dict_path,
+    start_year,
+    end_year,
+    splice_start_year,
+    splice_end_year,
+    data_timestep=5,
+    timestep=1,
+):
+
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    data_loader = DataLoader()
+
+    # Load the region mapping from the JSON file
+    with open(region_mapping_path, "r") as f:
+        region_mapping_json = json.load(f)
+
+    # Load the rice region dictionary from the JSON file
+    with open(rice_region_dict_path, "r") as f:
+        rice_50_dict_ISO3 = json.load(f)
+
+    # Prepare the data container
+    aggregated_dataframes = []
+
+    # Iterate over each input data array to process data
+    for economic_data in input_data_arrays:
+        # Aggregate the regions
+        region_list, economic_data_aggregated = justice_region_aggregator(
+            data_loader, region_mapping_json, economic_data
+        )
+
+        # Get year to time step
+        start_time_step = time_horizon.year_to_timestep(
+            splice_start_year, timestep=timestep
+        )
+        end_time_step = time_horizon.year_to_timestep(
+            splice_end_year, timestep=timestep
+        )
+
+        # Slice the data
+        economic_data_aggregated = economic_data_aggregated[
+            :, start_time_step:end_time_step
+        ]
+
+        # Sum up over the years
+        economic_data_aggregated = np.sum(economic_data_aggregated, axis=1)
+
+        # Convert to DataFrame with region_list as columns
+        economic_data_df = pd.DataFrame(economic_data_aggregated.T, columns=region_list)
+
+        # Add to result list
+        aggregated_dataframes.append(economic_data_df)
+
+    return aggregated_dataframes
+
+
+def plot_violin_comparison_sorted(
+    baseline_path,
+    utilitarian_path,
+    prioritarian_path,
+    region_mapping_path,
+    rice_region_dict_path,
+    start_year,
+    end_year,
+    splice_start_year,
+    splice_end_year,
+    plot_height=8,
+    plot_width=10,
+    color_palette=["salmon", "lightblue", "lightgreen", "orange", "purple"],
+    datanames=["Utilitarian", "Prioritarian"],
+    plot_title=None,
+    x_axis_title=None,
+    y_axis_title=None,
+    path_to_output=None,
+    output_file_name=None,
+    saving=False,
+):
+    # Load baseline emissions
+    baseline_emissions = np.load(baseline_path)
+
+    # Load UTILITARIAN and PRIORITARIAN emissions data
+    utilitarian_emissions_data = np.load(utilitarian_path)
+    prioritarian_emissions_data = np.load(prioritarian_path)
+
+    # Calculate abated emissions
+    abated_emissions_utilitarian = baseline_emissions - utilitarian_emissions_data
+    abated_emissions_prioritarian = baseline_emissions - prioritarian_emissions_data
+
+    # Process economic data
+    economic_dataframes = process_economic_data_for_abated_emissions(
+        input_data_arrays=[abated_emissions_utilitarian, abated_emissions_prioritarian],
+        region_mapping_path=region_mapping_path,
+        rice_region_dict_path=rice_region_dict_path,
+        start_year=start_year,
+        end_year=end_year,
+        splice_start_year=splice_start_year,
+        splice_end_year=splice_end_year,
+    )
+
+    # Calculate medians for each dataframe
+    medians = [df.median(axis=0) for df in economic_dataframes]
+
+    # Define the regions
+    regions = medians[0].index
+
+    # Calculate the differences for sorting
+    max_medians = np.max([median.values for median in medians], axis=0)
+    sorted_indices = np.argsort(-max_medians)
+    sorted_regions = regions[sorted_indices]
+
+    # Sort medians and economic dataframes
+    sorted_medians = [median.iloc[sorted_indices] for median in medians]
+    sorted_economic_dataframes = [
+        df.iloc[:, sorted_indices] for df in economic_dataframes
+    ]
+
+    # Prepare data for Seaborn
+    data_list = []
+    for dataname, df in zip(datanames, sorted_economic_dataframes):
+        df_sorted = df.iloc[:, sorted_indices]
+        df_melted = df_sorted.melt(var_name="Region", value_name="Value")
+        df_melted["DataType"] = dataname
+        data_list.append(df_melted)
+
+    # Concatenate all data
+    plot_df = pd.concat(data_list, ignore_index=True)
+
+    # Ensure the 'Region' column is a categorical type with the desired order
+    plot_df["Region"] = pd.Categorical(
+        plot_df["Region"], categories=sorted_regions, ordered=True
+    )
+
+    # Initialize the matplotlib figure
+    plt.figure(figsize=(plot_width, plot_height))
+
+    # Create the violin plot
+    sns.violinplot(
+        data=plot_df,
+        x="Region",
+        y="Value",
+        hue="DataType",
+        split=True,
+        inner="quartile",
+        palette=color_palette,
+        scale="width",
+        linewidth=1,
+    )
+
+    # Overlay median bars
+    median_df = pd.DataFrame({"Region": sorted_regions})
+    for idx, dataname in enumerate(datanames):
+        median_df[dataname] = sorted_medians[idx].values
+
+    # Remove the extra legend that barplot adds
+    handles, labels = plt.gca().get_legend_handles_labels()
+    plt.legend(handles[: len(datanames)], labels[: len(datanames)], title=None)
+
+    # Set titles and labels
+    if plot_title:
+        plt.title(plot_title)
+    if x_axis_title:
+        plt.xlabel(x_axis_title)
+    if y_axis_title:
+        plt.ylabel(y_axis_title)
+
+    # Rotate x-axis labels if needed
+    plt.xticks(rotation=45)
+
+    # Improve layout
+    plt.tight_layout()
+
+    # Despine the plot
+    sns.despine()
+
+    # Save the plot if required
+    if saving and path_to_output and output_file_name:
+        plt.savefig(f"{path_to_output}/{output_file_name}.svg", format="svg")
+
+    # Show plot
+    plt.show()
+
+
 def process_economic_data_for_barchart(
     input_data_paths,
     region_mapping_path,

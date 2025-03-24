@@ -89,8 +89,11 @@ def reevaluated_optimal_policy_variable_extractor(
                 processed_data = data_scenario[idx, :, :, :]
 
             if output_file_names is None:
+                # Construct the output file name using the base name, its last underscore part, the scenario, and the variable name.
                 output_file_name = (
                     input_data[plotting_idx].split(".")[0]
+                    + "_"
+                    + input_data[plotting_idx].split(".")[0].split("_")[-1]
                     + "_"
                     + scenarios
                     + "_"
@@ -99,6 +102,8 @@ def reevaluated_optimal_policy_variable_extractor(
             else:
                 output_file_name = (
                     output_file_names[plotting_idx]
+                    + "_"
+                    + input_data[plotting_idx].split(".")[0].split("_")[-1]
                     + "_"
                     + scenarios
                     + "_"
@@ -112,7 +117,7 @@ def reevaluated_optimal_policy_variable_extractor(
 
             # Save it as npy file
             np.save(
-                path_to_output + "/" + output_file_name.split(".")[0] + ".npy",
+                path_to_output + "/" + output_file_name + ".npy",
                 processed_data,
             )
 
