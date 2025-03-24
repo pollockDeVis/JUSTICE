@@ -557,6 +557,7 @@ def plot_comparison_with_boxplots(
     show_interquartile_range=True,
     first_plot_proportion=[0, 0.8],
     second_plot_proportion=[0.95, 1],
+    transpose_data=True,
 ):
     # Set the time horizon
     time_horizon = TimeHorizon(
@@ -582,7 +583,8 @@ def plot_comparison_with_boxplots(
         if len(data.shape) == 3:
             data = np.sum(data, axis=0)
 
-        data = data.T
+        if transpose_data:
+            data = data.T
         df = pd.DataFrame(data, columns=list_of_years).loc[
             :, visualization_start_year:visualization_end_year
         ]
@@ -789,6 +791,123 @@ def plot_comparison_with_boxplots(
         filename = data_paths[0].split("/")[-1].split(".")[0]
         # Save the plot
         fig.write_image(f"{output_path}/{filename}.svg")
+
+
+def plot_reevaluated_welfare(
+    prioritarian_data_path,
+    utilitarian_data_path,
+    output_path,
+    reevaluation="UTIL_PRIOR",
+    scaling=False,
+    saving=False,
+):
+    # Load the data
+    prioritarian_data = pd.read_csv(prioritarian_data_path)
+    utilitarian_data = pd.read_csv(utilitarian_data_path)
+
+    prioritarian_pareto_set = prioritarian_data[
+        ["welfare_utilitarian", "welfare_prioritarian"]
+    ]
+    utilitarian_pareto_set = utilitarian_data[
+        ["welfare_utilitarian", "welfare_prioritarian"]
+    ]
+
+    # Combine the two dataframes for scaling. Essential to get the global min and max values
+    combined_data = pd.concat([prioritarian_pareto_set, utilitarian_pareto_set])
+
+    if scaling:
+        # Normalize the columns based on the min and max values
+        scaler = MinMaxScaler()
+        # Fit the scaler on the data
+        scaler.fit(combined_data)
+        prioritarian_pareto_set = scaler.transform(prioritarian_pareto_set)
+        utilitarian_pareto_set = scaler.transform(utilitarian_pareto_set)
+
+        # Adjust the direction of the welfare columns
+        prioritarian_pareto_set[:, 0] = 1 - prioritarian_pareto_set[:, 0]
+        utilitarian_pareto_set[:, 0] = 1 - utilitarian_pareto_set[:, 0]
+
+        prioritarian_pareto_set[:, 1] = 1 - prioritarian_pareto_set[:, 1]
+        utilitarian_pareto_set[:, 1] = 1 - utilitarian_pareto_set[:, 1]
+
+    else:
+        prioritarian_pareto_set = prioritarian_pareto_set.values
+        utilitarian_pareto_set = utilitarian_pareto_set.values
+
+    fig = go.Figure()
+
+    # Add traces for Prioritarian
+    fig.add_trace(
+        go.Scatter(
+            x=prioritarian_pareto_set[:, 0],
+            y=prioritarian_pareto_set[:, 1],
+            mode="markers",
+            name="Prioritarian",
+            marker=dict(color="#8da0cb"),
+        )
+    )
+
+    # Add traces for Utilitarian
+    fig.add_trace(
+        go.Scatter(
+            x=utilitarian_pareto_set[:, 0],
+            y=utilitarian_pareto_set[:, 1],
+            mode="markers",
+            name="Utilitarian",
+            marker=dict(color="#fc8d62"),
+        )
+    )
+
+    # Update layout
+    fig.update_layout(
+        title=" ",
+        xaxis_title="Utilitarian Welfare",
+        yaxis_title="Prioritarian Welfare",
+        template="plotly_white",
+        width=700,
+        height=700,
+    )
+    # Remove the gridlines
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=False)
+
+    # Add axis line with ticks
+    fig.update_xaxes(
+        showline=True,
+        showticklabels=True,
+        linewidth=1,
+        linecolor="black",
+        ticks="outside",
+    )
+    fig.update_yaxes(
+        showline=True,
+        showticklabels=True,
+        linewidth=1,
+        linecolor="black",
+        ticks="outside",
+    )
+
+    if scaling:
+        # Make x and y axis start from 0
+        fig.update_xaxes(range=[0, 1])
+        fig.update_yaxes(range=[0, 1])
+
+    if saving:
+        filename = (
+            "REEVAL_"
+            + reevaluation
+            + "_"
+            + utilitarian_data_path.split("/")[-1].split(".")[0]
+            + "_vs_"
+            + prioritarian_data_path.split("/")[-1].split(".")[0]
+        )
+        # Save the plot
+        fig.write_image(f"{output_path}/{filename}.svg")
+
+    # Show the figure
+    fig.show()
+
+    return utilitarian_data, prioritarian_data
 
 
 def plot_sunburst(
@@ -2536,6 +2655,239 @@ def plot_ssp_rcp_subplots(
     plt.savefig(f"{path_to_output}/{variable_name}_subplots.png", dpi=300)
 
     return fig
+
+
+def plot_stacked_area_chart_with_baseline_emissions(
+    variable_name=None,
+    region_name_path="data/input/rice50_region_names.json",
+    path_to_data="data/temporary",
+    path_to_output="./data/plots",
+    baseline_emissions_path="data/temporary/baseline_emissions_16.npy",
+    input_data=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    scenario_list=[],
+    title=None,
+    title_x=0.5,
+    xaxis_label=None,
+    yaxis_label=None,
+    legend_label=None,
+    colour_palette=px.colors.qualitative.Light24,
+    height=800,
+    width=1200,
+    visualization_start_year=2015,
+    visualization_end_year=2300,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    template="plotly_white",
+    plot_title=None,
+    groupnorm=None,
+    region_aggegation=True,
+    region_dict=None,
+    saving=False,
+    fontsize=16,
+    yaxis_lower_limit=0,
+    yaxis_upper_limit=25,
+    show_legend=True,
+    filetype=".pkl",
+    regional_order=None,
+):
+
+    # Assert if input_data list, scenario_list and output_titles list is None
+    assert input_data, "No input data provided for visualization."
+    assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
+
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    data_loader = DataLoader()
+
+    region_list = data_loader.REGION_LIST
+
+    if region_aggegation == True:
+        assert region_dict, "Region dictionary is not provided."
+        # region_list = list(region_dict.keys())
+    else:
+        with open(region_name_path, "r") as f:
+            region_names = json.load(f)
+
+        # Use region list to get the region names using the region names dictionary
+        region_list = [region_names[region] for region in region_list]
+        # Convert into a flat list
+        region_list = [item for sublist in region_list for item in sublist]
+
+    # print(region_list)
+
+    # Load the data
+    # Enumerate through the input data and load the data
+    for idx, file in enumerate(input_data):
+        for scenario in scenario_list:
+            print("Loading data for: ", scenario, " - ", file)
+            # Check if the file is pickle or numpy
+            if ".npy" in filetype:
+                data = np.load(
+                    path_to_data
+                    + "/"
+                    + file
+                    + "_"
+                    + scenario
+                    + "_"
+                    + variable_name
+                    + ".npy"
+                )
+            else:
+                with open(
+                    path_to_data
+                    + "/"
+                    + file
+                    + "_"
+                    + scenario
+                    + "_"
+                    + variable_name
+                    + ".pkl",
+                    "rb",
+                ) as f:
+                    data = pickle.load(f)
+
+            if baseline_emissions_path:
+                baseline_emissions = np.load(baseline_emissions_path)
+
+                print("Baseline emissions shape: ", baseline_emissions.shape)
+                print("Data shape: ", data.shape)
+
+            # Check if region_aggegation is True
+            if region_aggegation:
+                # Aggregated Input Data
+                region_list, data = justice_region_aggregator(
+                    data_loader=data_loader, region_config=region_dict, data=data
+                )
+
+                if baseline_emissions_path:
+
+                    region_list, baseline_emissions = justice_region_aggregator(
+                        data_loader=data_loader,
+                        region_config=region_dict,
+                        data=baseline_emissions,
+                    )
+                    # Take mean over the ensemble dimension
+                    baseline_emissions = np.mean(baseline_emissions, axis=2)
+
+                    # Convert to dataframe
+                    baseline_emissions = pd.DataFrame(
+                        baseline_emissions, index=region_list, columns=list_of_years
+                    )
+
+                    # Create the slice according to visualization years
+                    baseline_emissions = baseline_emissions.loc[
+                        :, visualization_start_year:visualization_end_year
+                    ]
+
+            # Check shape of data
+            if len(data.shape) == 3:
+                data = np.mean(data, axis=2)
+
+            # Create a dataframe from the data
+            data = pd.DataFrame(data, index=region_list, columns=list_of_years)
+
+            # Create the slice according to visualization years
+            data = data.loc[:, visualization_start_year:visualization_end_year]
+
+            if baseline_emissions_path:
+                abated_emissions = baseline_emissions - data
+
+                # Update the name of regions in the abated_emissions dataframe by adding _abated
+                abated_emissions.index = [
+                    region + "_abated" for region in abated_emissions.index
+                ]
+
+                # Concatenate the dataframes abaated_emissions and data but keep the similar region names together
+                data = pd.concat([data, abated_emissions])
+
+                # # Use string similarity to sort the regions
+                # data = data.reindex(sorted(data.index, key=lambda x: x.split("_")[0]))
+
+                # Shape of the data
+
+            print("Region list: ", region_list)
+
+            if regional_order is not None:
+                region_list = regional_order
+
+            # Create plotly figure
+            fig = px.area(
+                data.T,
+                x=data.columns,
+                y=data.index,
+                title=plot_title,
+                template=template,
+                labels={"value": variable_name, "variable": "Region", "x": "Year"},
+                height=height,
+                width=width,
+                color_discrete_sequence=colour_palette,
+                groupnorm=groupnorm,
+                category_orders={"variable": region_list},
+                # pattern_shape=data.index,
+                # Pattern Shape sequence for only the abated emissions
+                # pattern_shape_sequence=["x", None, "x", None, "x", None, "x", None, "x", None, "x", None, "x", None, "x", None, "x", None],
+                # pattern_shape_sequence=["x"],
+            )
+            if groupnorm is None:
+                fig.update_layout(yaxis_range=[yaxis_lower_limit, yaxis_upper_limit])
+
+            # Update layout
+            fig.update_layout(
+                legend_title_text=legend_label,
+                # X-axis label
+                xaxis_title=xaxis_label,
+                # Y-axis label
+                yaxis_title=yaxis_label,
+                title_text=title,
+                title_x=title_x,
+                font=dict(size=fontsize),
+                legend_traceorder="reversed",
+                # legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
+            )
+            # Check if display legend is True
+            if show_legend == False:
+                fig.update_layout(showlegend=False)
+
+            # Remove gridlines
+            fig.update_xaxes(showgrid=False)
+            fig.update_yaxes(showgrid=False)
+
+            # Show ticks on x and y axes with axis lines
+            fig.update_xaxes(
+                showline=True, linewidth=1, linecolor="black", ticks="outside"
+            )
+            fig.update_yaxes(
+                showline=True, linewidth=1, linecolor="black", ticks="outside"
+            )
+
+            # Set fontsize for tick labels
+            fig.update_xaxes(tickfont=dict(size=fontsize))
+
+            if saving:
+                # Save the figure
+                if not os.path.exists(path_to_output):
+                    os.makedirs(path_to_output)
+
+                output_file_name = (
+                    variable_name + "_" + output_titles[idx] + "_" + scenario
+                )
+                print("Saving plot for: ", scenario, " - ", output_file_name)
+                fig.write_image(
+                    path_to_output + "/" + output_file_name + "_v2_with_abated" + ".svg"
+                )
+
+    return fig, data, abated_emissions
 
 
 def plot_stacked_area_chart(
