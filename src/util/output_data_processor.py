@@ -502,6 +502,34 @@ def calculate_welfare(
     return welfare_utilitarian_regional, welfare_utilitarian  #
 
 
+# Read the file 'UTILITARIAN_reference_set.csv' from the 'data/convergence_metrics' folder
+def get_selected_policy_indices_based_on_welfare_temperature(
+    rival_framings, data_dir, n_percent=0.1, number_of_objectives=4
+):
+    selected_indices = []
+    for rival in rival_framings:
+        file_path = f"{data_dir}/{rival}_reference_set.csv"
+        data = pd.read_csv(file_path)
+
+        # Keep the last 4 columns of the data
+        data = data.iloc[:, -number_of_objectives:]
+
+        # Find the index of the lowest 10% of values in the 'welfare' column
+        lowest_n_percent_indices = (
+            data["welfare"].nsmallest(int(data.shape[0] * n_percent)).index
+        )
+
+        # Find the index of the lowest 'years_above_temperature_threshold' within the selected indices
+        selected_policy_index = data.loc[
+            lowest_n_percent_indices, "years_above_temperature_threshold"
+        ].idxmin()
+        print(f"Index of interest for {rival}: ", selected_policy_index)
+        print(data.loc[selected_policy_index])
+
+        selected_indices.append(selected_policy_index)
+    return selected_indices
+
+
 def get_best_performing_policies(
     input_data=[],
     direction_of_optimization=[],  # ["min", "min", "min", "min"],
