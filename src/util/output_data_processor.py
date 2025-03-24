@@ -63,10 +63,18 @@ def reevaluated_optimal_policy_variable_extractor(
         # Get the string out of the input_data list
         file_name = input_data[plotting_idx]
         # Load the scenario data from the pickle file
-        with open(
-            path_to_data + "/" + file_name, "rb"
-        ) as f:  # input_data[plotting_idx]
-            scenario_data = pickle.load(f)
+        # with open(
+        #     path_to_data + "/" + file_name, "rb"
+        # ) as f:  # input_data[plotting_idx]
+        #     scenario_data = pickle.load(f)
+        scenario_data = {}
+        # HDF5 file
+        with h5py.File(path_to_data + "/" + file_name.split(".")[0] + ".h5", "r") as f:
+            for scenario in f.keys():
+                scenario_data[scenario] = {}
+                scenario_group = f[scenario]
+                for dataset in scenario_group.keys():
+                    scenario_data[scenario][dataset] = np.array(scenario_group[dataset])
 
         for idx, scenarios in enumerate(scenario_list):
             print(scenarios)
@@ -87,7 +95,6 @@ def reevaluated_optimal_policy_variable_extractor(
                     + scenarios
                     + "_"
                     + variable_name
-                    + ".pkl"
                 )
             else:
                 output_file_name = (
@@ -96,7 +103,6 @@ def reevaluated_optimal_policy_variable_extractor(
                     + scenarios
                     + "_"
                     + variable_name
-                    + ".pkl"
                 )
 
             # TODO: Change from pickle to hdf5
@@ -215,20 +221,26 @@ def reevaluate_optimal_policy(
                 )
 
                 output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
-                with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-                    pickle.dump(scenario_datasets, f)
+                # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
+                #     pickle.dump(scenario_datasets, f)
 
-                    # for key in scenario_datasets.keys():
-                    #     # Save the processed data as a pickle file
-                    #     with open(
-                    #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
-                    #     ) as f:
-                    #         pickle.dump(scenario_datasets[key], f)
+                # for key in scenario_datasets.keys():
+                #     # Save the processed data as a pickle file
+                #     with open(
+                #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
+                #     ) as f:
+                #         pickle.dump(scenario_datasets[key], f)
 
-                    # # Now save in hdf5 format
-                    # with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
-                    #     for key in scenario_datasets.keys():
-                    #         f.create_dataset(key, data=scenario_datasets[key])
+                # Now save in hdf5 format
+                with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
+                    for scenario, arrays in scenario_datasets.items():
+                        scenario_group = f.create_group(
+                            scenario
+                        )  # Create a group for each scenario
+                        for key, array in arrays.items():
+                            scenario_group.create_dataset(
+                                key, data=array
+                            )  # Save each array in its respective group
 
                 print(f"File saved as {output_file_name} at location {path_to_output}")
 
@@ -253,8 +265,18 @@ def reevaluate_optimal_policy(
             )
             output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
 
-            with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-                pickle.dump(scenario_datasets, f)
+            # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
+            #     pickle.dump(scenario_datasets, f)
+            # Save as HDF5 file
+            with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
+                for scenario, arrays in scenario_datasets.items():
+                    scenario_group = f.create_group(
+                        scenario
+                    )  # Create a group for each scenario
+                    for key, array in arrays.items():
+                        scenario_group.create_dataset(
+                            key, data=array
+                        )  # Save each array in its respective group
             print(f"File saved as {output_file_name} at location {path_to_output}")
 
         elif objective_of_interest is not None and rbf_policy_index is None:
@@ -279,9 +301,19 @@ def reevaluate_optimal_policy(
             )
             output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
 
-            with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-                pickle.dump(scenario_datasets, f)
-
+            # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
+            #     pickle.dump(scenario_datasets, f)
+            # Save as HDF5 file
+            with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
+                for scenario, arrays in scenario_datasets.items():
+                    scenario_group = f.create_group(
+                        scenario
+                    )  # Create a group for each scenario
+                    for key, array in arrays.items():
+                        scenario_group.create_dataset(
+                            key, data=array
+                        )  # Save each array in its respective group
+            print(f"File saved as {output_file_name} at location {path_to_output}")
             # for key in scenario_datasets.keys():
             #     # Save the processed data as a pickle file
             #     with open(
