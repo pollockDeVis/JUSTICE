@@ -541,11 +541,16 @@ def calculate_welfare(
 
 # Read the file 'UTILITARIAN_reference_set.csv' from the 'data/convergence_metrics' folder
 def get_selected_policy_indices_based_on_welfare_temperature(
-    rival_framings, data_dir, n_percent=0.1, number_of_objectives=4
+    rival_framings,
+    data_dir,
+    n_percent=0.1,
+    number_of_objectives=4,
+    suffix="_reference_set.csv",
+    second_objective_of_interest="years_above_temperature_threshold",
 ):
     selected_indices = []
     for rival in rival_framings:
-        file_path = f"{data_dir}/{rival}_reference_set.csv"
+        file_path = f"{data_dir}/{rival}{suffix}"
         data = pd.read_csv(file_path)
 
         # Keep the last 4 columns of the data
@@ -558,7 +563,7 @@ def get_selected_policy_indices_based_on_welfare_temperature(
 
         # Find the index of the lowest 'years_above_temperature_threshold' within the selected indices
         selected_policy_index = data.loc[
-            lowest_n_percent_indices, "years_above_temperature_threshold"
+            lowest_n_percent_indices, second_objective_of_interest
         ].idxmin()
         print(f"Index of interest for {rival}: ", selected_policy_index)
         print(data.loc[selected_policy_index])
