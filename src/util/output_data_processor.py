@@ -57,6 +57,9 @@ def reevaluated_optimal_policy_variable_extractor(
     # Print the working directory with os
     print("Directory: ", os.getcwd())
 
+    # Create empty dataframe to store the data named processed_data
+    processed_data = pd.DataFrame()
+
     # Loop through the input data and plot the timeseries
     for plotting_idx, file in enumerate(input_data):
 

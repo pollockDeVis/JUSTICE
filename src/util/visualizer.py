@@ -3340,6 +3340,191 @@ def plot_hypervolume(
     return fig
 
 
+def plot_regional_emissions_with_boxplots(
+    utilitarian_path,
+    prioritarian_path,
+    start_year,
+    end_year,
+    data_timestep,
+    timestep,
+    visualization_start_year,
+    visualization_end_year,
+    region_index,
+    yaxis_range,
+    opacity,
+    plot_title,
+    xaxis_title,
+    yaxis_title,
+    template,
+    width,
+    height,
+    color_palette=["#fc8d62", "#8da0cb"],
+    saving=False,
+    output_path=None,
+):
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+    data_loader = DataLoader()
+    region_list = data_loader.REGION_LIST
+
+    # Load Region Names
+    with open("data/input/rice50_region_names.json", "r") as f:
+        region_mapping = json.load(f)
+
+    region_list = [region_mapping[region] for region in region_list]
+    region_name = region_list[region_index]
+    region_name = region_name[0]
+
+    # Load as npy
+    emissions_utilitarian = np.load(utilitarian_path)
+    emissions_prioritarian = np.load(prioritarian_path)
+
+    # Select region
+    emissions_utilitarian = emissions_utilitarian[region_index, :, :]
+    emissions_prioritarian = emissions_prioritarian[region_index, :, :]
+
+    # Convert to dataframe with years as columns
+    emissions_utilitarian = pd.DataFrame(emissions_utilitarian.T, columns=list_of_years)
+    emissions_prioritarian = pd.DataFrame(
+        emissions_prioritarian.T, columns=list_of_years
+    )
+
+    # Only select up to visualization_end_year columns
+    emissions_utilitarian = emissions_utilitarian.loc[
+        :, visualization_start_year:visualization_end_year
+    ]
+    emissions_prioritarian = emissions_prioritarian.loc[
+        :, visualization_start_year:visualization_end_year
+    ]
+
+    # Transpose the dataframes
+    emissions_utilitarian = emissions_utilitarian.T
+    emissions_prioritarian = emissions_prioritarian.T
+
+    # Create subplots: 1 row, 2 columns
+    fig = make_subplots(rows=1, cols=2, column_widths=[0.7, 0.3])
+
+    # Add traces for utilitarian emissions
+    for i in range(emissions_utilitarian.shape[1]):
+        fig.add_trace(
+            go.Scatter(
+                x=emissions_utilitarian.index,
+                y=emissions_utilitarian.iloc[:, i],
+                mode="lines",
+                line=dict(color=color_palette[0], width=0.5),
+                opacity=opacity,
+                showlegend=False,
+            ),
+            row=1,
+            col=1,
+        )
+
+    # Add traces for prioritarian emissions
+    for i in range(emissions_prioritarian.shape[1]):
+        fig.add_trace(
+            go.Scatter(
+                x=emissions_prioritarian.index,
+                y=emissions_prioritarian.iloc[:, i],
+                mode="lines",
+                line=dict(color=color_palette[1], width=0.5),
+                opacity=opacity,
+                showlegend=False,
+            ),
+            row=1,
+            col=1,
+        )
+
+    # Add box plots for the last year
+    utilitarian_last_year_data = emissions_utilitarian.iloc[-1]
+    prioritarian_last_year_data = emissions_prioritarian.iloc[-1]
+
+    fig.add_trace(
+        go.Box(
+            y=utilitarian_last_year_data,
+            name="Utilitarian",
+            marker=dict(color=color_palette[0]),
+            width=0.2,
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.add_trace(
+        go.Box(
+            y=prioritarian_last_year_data,
+            name="Prioritarian",
+            marker=dict(color=color_palette[1]),
+            width=0.2,
+        ),
+        row=1,
+        col=2,
+    )
+
+    # Styling the box plot
+    fig.update_traces(marker=dict(line=dict(width=0.3, color="gray")), row=1, col=2)
+
+    # Update layout
+    fig.update_layout(
+        title=plot_title + f" for {region_name}",
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        template=template,
+        height=height,
+        width=width,
+    )
+
+    # Adjust subplot layouts
+    fig.update_yaxes(
+        title_text=yaxis_title, range=yaxis_range, showgrid=False, row=1, col=1
+    )
+    fig.update_yaxes(
+        showticklabels=False, range=yaxis_range, showgrid=False, row=1, col=2
+    )
+    fig.update_xaxes(title_text=xaxis_title, showgrid=False, row=1, col=1)
+
+    # Show y axis line on the first y-axis with ticks
+    fig.update_yaxes(
+        showline=True,
+        showticklabels=True,
+        row=1,
+        col=1,
+        linewidth=1,
+        linecolor="black",
+        ticks="outside",
+    )
+    # Show x axis line on the first x-axis with ticks
+    fig.update_xaxes(
+        showline=True,
+        showticklabels=True,
+        row=1,
+        col=1,
+        linewidth=1,
+        linecolor="black",
+        ticks="outside",
+    )
+
+    # Adjust the width of the first subplot (column=1) to be more than the second subplot (column=2)
+    fig.update_layout(
+        xaxis=dict(domain=[0, 0.8]),  # First subplot takes 80% of the width
+        xaxis2=dict(
+            domain=[0.90, 1]
+        ),  # Second subplot takes the remaining 10% of the width
+    )
+
+    if saving:
+        # Save the figure as svg
+        fig.write_image(f"{output_path}/emission_pathways_{region_name}_emissions.svg")
+
+    # Show the figure
+    fig.show()
+
+
 # def plot_hypervolume(
 #     path_to_data="data/convergence_metrics",
 #     path_to_output="./data/plots/convergence_plots",
