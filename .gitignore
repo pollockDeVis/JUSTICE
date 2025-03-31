@@ -222,6 +222,7 @@ data/temporary/*
 data/reevaluation/*
 data/convergence_metrics/*
 tests/raw_data/*
+limitarianism.ipynb
 # tests/verification_data/*
 #Mac
 .DS_Store

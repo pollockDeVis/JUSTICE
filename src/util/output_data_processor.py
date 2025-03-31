@@ -542,6 +542,79 @@ def calculate_welfare(
     return welfare_utilitarian_regional, welfare_utilitarian  #
 
 
+# Compares reevaluated Utilitarian and Prioritarian Pareto Front. Filters the best performing policies based on the top 10% of the Policies that are also coinciding with each other
+
+
+def find_closest_pairs_of_pareto_solutions(
+    utilitarian_data_path,
+    prioritarian_data_path,
+    column_of_interest="welfare_prioritarian",
+    columns_to_keep=[
+        "welfare_utilitarian",
+        "welfare_prioritarian",
+        "years_above_temperature_threshold",
+    ],
+):
+
+    utilitarian_data = pd.read_csv(utilitarian_data_path)
+    prioritarian_data = pd.read_csv(prioritarian_data_path)
+
+    # Only keep the following columns "welfare_utilitarian", "welfare_prioritarian", "years_above_temperature_threshold"
+    utilitarian_data = utilitarian_data[columns_to_keep]
+    prioritarian_data = prioritarian_data[columns_to_keep]
+
+    # Filter the lowest 10% in prioritarian_data
+    utilitarian_data_filtered = utilitarian_data[
+        utilitarian_data[column_of_interest]
+        <= utilitarian_data[column_of_interest].quantile(0.1)
+    ]
+
+    prioritarian_data_filtered = prioritarian_data[
+        prioritarian_data[column_of_interest]
+        <= prioritarian_data[column_of_interest].quantile(0.1)
+    ]
+
+    min_diff = np.inf
+    index_pairs = []
+
+    # Round values to two decimal places
+    df1_rounded = utilitarian_data_filtered[column_of_interest].round(5)
+    df2_rounded = prioritarian_data_filtered[column_of_interest].round(5)
+
+    # Collect pairs with the smallest difference
+    for i, value1 in enumerate(df1_rounded):
+        for j, value2 in enumerate(df2_rounded):
+            diff = abs(value1 - value2)
+            if diff < min_diff:
+                min_diff = diff
+                index_pairs = [
+                    (
+                        utilitarian_data_filtered.index[i],
+                        prioritarian_data_filtered.index[j],
+                    )
+                ]  # Reset list with the new closest pair
+            elif diff == min_diff:
+                index_pairs.append(
+                    (
+                        utilitarian_data_filtered.index[i],
+                        prioritarian_data_filtered.index[j],
+                    )
+                )
+
+    # Print the welfare_utilitarian and welfare_prioritarian values for the indices
+    print(
+        f"Closest pairs of Pareto solutions with the same {column_of_interest} value:"
+    )
+    print(f"index pairs: {index_pairs}")
+    for i, j in index_pairs:
+        print(
+            f"Utilitarian welfare_utilitarian: {utilitarian_data_filtered.loc[i, column_of_interest]}, "
+            f"Prioritarian welfare_utilitarian: {prioritarian_data_filtered.loc[j, column_of_interest]}"
+        )
+
+    return index_pairs
+
+
 # Read the file 'UTILITARIAN_reference_set.csv' from the 'data/convergence_metrics' folder
 def get_selected_policy_indices_based_on_welfare_temperature(
     rival_framings,
