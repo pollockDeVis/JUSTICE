@@ -549,6 +549,7 @@ def find_closest_pairs_of_pareto_solutions(
     utilitarian_data_path,
     prioritarian_data_path,
     column_of_interest="welfare_prioritarian",
+    temperature_objective="years_above_temperature_threshold",
     columns_to_keep=[
         "welfare_utilitarian",
         "welfare_prioritarian",
@@ -612,7 +613,17 @@ def find_closest_pairs_of_pareto_solutions(
             f"Prioritarian welfare_utilitarian: {prioritarian_data_filtered.loc[j, column_of_interest]}"
         )
 
-    return index_pairs
+    # Find the index for each dataframe on temperature_objective and get the index of the minimum value for the entire set
+    utilitarian_index = utilitarian_data[temperature_objective].idxmin()
+    prioritarian_index = prioritarian_data[temperature_objective].idxmin()
+
+    temperature_index_pairs = (utilitarian_index, prioritarian_index)
+    print(
+        "Temperature Index Pairs Utilitarian and Prioritarian: ",
+        temperature_index_pairs,
+    )
+
+    return index_pairs, temperature_index_pairs
 
 
 # Read the file 'UTILITARIAN_reference_set.csv' from the 'data/convergence_metrics' folder
