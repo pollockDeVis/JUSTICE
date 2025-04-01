@@ -548,7 +548,7 @@ def calculate_welfare(
 def find_closest_pairs_of_pareto_solutions(
     utilitarian_data_path,
     prioritarian_data_path,
-    column_of_interest="welfare_prioritarian",
+    column_of_interest=None,
     temperature_objective="years_above_temperature_threshold",
     columns_to_keep=[
         "welfare_utilitarian",
@@ -579,8 +579,8 @@ def find_closest_pairs_of_pareto_solutions(
     index_pairs = []
 
     # Round values to two decimal places
-    df1_rounded = utilitarian_data_filtered[column_of_interest].round(5)
-    df2_rounded = prioritarian_data_filtered[column_of_interest].round(5)
+    df1_rounded = utilitarian_data_filtered[column_of_interest].round(9)
+    df2_rounded = prioritarian_data_filtered[column_of_interest].round(9)
 
     # Collect pairs with the smallest difference
     for i, value1 in enumerate(df1_rounded):
@@ -614,14 +614,54 @@ def find_closest_pairs_of_pareto_solutions(
         )
 
     # Find the index for each dataframe on temperature_objective and get the index of the minimum value for the entire set
-    utilitarian_index = utilitarian_data[temperature_objective].idxmin()
-    prioritarian_index = prioritarian_data[temperature_objective].idxmin()
+    utilitarian_temp_filtered = utilitarian_data[
+        utilitarian_data[temperature_objective]
+        <= utilitarian_data[temperature_objective].quantile(0.1)
+    ]
+    prioritarian_temp_filtered = prioritarian_data[
+        prioritarian_data[temperature_objective]
+        <= prioritarian_data[temperature_objective].quantile(0.1)
+    ]
 
-    temperature_index_pairs = (utilitarian_index, prioritarian_index)
+    temp1_rounded = utilitarian_temp_filtered[temperature_objective].round(9)
+    temp2_rounded = prioritarian_temp_filtered[temperature_objective].round(9)
+
+    min_diff_temp = np.inf
+    temperature_index_pairs = []
+
+    for i, value1 in enumerate(temp1_rounded):
+        for j, value2 in enumerate(temp2_rounded):
+            diff = abs(value1 - value2)
+            if diff < min_diff_temp:
+                min_diff_temp = diff
+                temperature_index_pairs = [
+                    (
+                        utilitarian_temp_filtered.index[i],
+                        prioritarian_temp_filtered.index[j],
+                    )
+                ]
+            elif diff == min_diff_temp:
+                temperature_index_pairs.append(
+                    (
+                        utilitarian_temp_filtered.index[i],
+                        prioritarian_temp_filtered.index[j],
+                    )
+                )
+
+    # Print the closest temperature objective pairs
     print(
-        "Temperature Index Pairs Utilitarian and Prioritarian: ",
-        temperature_index_pairs,
+        f"\nClosest pairs of Pareto solutions with respect to {temperature_objective} (lowest 10%):"
     )
+    print(f"Index pairs: {temperature_index_pairs}")
+    for i, j in temperature_index_pairs:
+        print(
+            f"Utilitarian {temperature_objective}: {utilitarian_temp_filtered.loc[i, temperature_objective]}, "
+            f"Prioritarian {temperature_objective}: {prioritarian_temp_filtered.loc[j, temperature_objective]}"
+        )
+
+    # Print a newline
+    print("\n")
+    print("\n")
 
     return index_pairs, temperature_index_pairs
 
