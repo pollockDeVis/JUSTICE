@@ -223,6 +223,7 @@ data/reevaluation/*
 data/convergence_metrics/*
 tests/raw_data/*
 limitarianism.ipynb
+paper_data_figures_generator.ipynb
 # tests/verification_data/*
 #Mac
 .DS_Store
