@@ -502,10 +502,10 @@ def setup_RBF_for_emission_control(
 
     # Print the welfare and years_above_temperature_threshold values # Diagnostics
     print("Welfare: ", rbf_decision_vars["welfare"])
-    print(
-        "Years Above Temperature Threshold: ",
-        rbf_decision_vars["years_above_temperature_threshold"],
-    )
+    # print(
+    #     "Years Above Temperature Threshold: ",
+    #     rbf_decision_vars["years_above_temperature_threshold"],
+    # )
 
     # Read the columns starting with name 'center'
     center_columns = rbf_decision_vars.filter(regex="center")

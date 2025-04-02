@@ -57,16 +57,27 @@ def reevaluated_optimal_policy_variable_extractor(
     # Print the working directory with os
     print("Directory: ", os.getcwd())
 
+    # Create empty dataframe to store the data named processed_data
+    processed_data = pd.DataFrame()
+
     # Loop through the input data and plot the timeseries
     for plotting_idx, file in enumerate(input_data):
 
         # Get the string out of the input_data list
         file_name = input_data[plotting_idx]
         # Load the scenario data from the pickle file
-        with open(
-            path_to_data + "/" + file_name, "rb"
-        ) as f:  # input_data[plotting_idx]
-            scenario_data = pickle.load(f)
+        # with open(
+        #     path_to_data + "/" + file_name, "rb"
+        # ) as f:  # input_data[plotting_idx]
+        #     scenario_data = pickle.load(f)
+        scenario_data = {}
+        # HDF5 file
+        with h5py.File(path_to_data + "/" + file_name.split(".")[0] + ".h5", "r") as f:
+            for scenario in f.keys():
+                scenario_data[scenario] = {}
+                scenario_group = f[scenario]
+                for dataset in scenario_group.keys():
+                    scenario_data[scenario][dataset] = np.array(scenario_group[dataset])
 
         for idx, scenarios in enumerate(scenario_list):
             print(scenarios)
@@ -81,22 +92,25 @@ def reevaluated_optimal_policy_variable_extractor(
                 processed_data = data_scenario[idx, :, :, :]
 
             if output_file_names is None:
+                # Construct the output file name using the base name, its last underscore part, the scenario, and the variable name.
                 output_file_name = (
                     input_data[plotting_idx].split(".")[0]
+                    + "_"
+                    + input_data[plotting_idx].split(".")[0].split("_")[-1]
                     + "_"
                     + scenarios
                     + "_"
                     + variable_name
-                    + ".pkl"
                 )
             else:
                 output_file_name = (
                     output_file_names[plotting_idx]
                     + "_"
+                    + input_data[plotting_idx].split(".")[0].split("_")[-1]
+                    + "_"
                     + scenarios
                     + "_"
                     + variable_name
-                    + ".pkl"
                 )
 
             # TODO: Change from pickle to hdf5
@@ -106,7 +120,7 @@ def reevaluated_optimal_policy_variable_extractor(
 
             # Save it as npy file
             np.save(
-                path_to_output + "/" + output_file_name.split(".")[0] + ".npy",
+                path_to_output + "/" + output_file_name + ".npy",
                 processed_data,
             )
 
@@ -215,20 +229,26 @@ def reevaluate_optimal_policy(
                 )
 
                 output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
-                with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-                    pickle.dump(scenario_datasets, f)
+                # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
+                #     pickle.dump(scenario_datasets, f)
 
-                    # for key in scenario_datasets.keys():
-                    #     # Save the processed data as a pickle file
-                    #     with open(
-                    #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
-                    #     ) as f:
-                    #         pickle.dump(scenario_datasets[key], f)
+                # for key in scenario_datasets.keys():
+                #     # Save the processed data as a pickle file
+                #     with open(
+                #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
+                #     ) as f:
+                #         pickle.dump(scenario_datasets[key], f)
 
-                    # # Now save in hdf5 format
-                    # with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
-                    #     for key in scenario_datasets.keys():
-                    #         f.create_dataset(key, data=scenario_datasets[key])
+                # Now save in hdf5 format
+                with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
+                    for scenario, arrays in scenario_datasets.items():
+                        scenario_group = f.create_group(
+                            scenario
+                        )  # Create a group for each scenario
+                        for key, array in arrays.items():
+                            scenario_group.create_dataset(
+                                key, data=array
+                            )  # Save each array in its respective group
 
                 print(f"File saved as {output_file_name} at location {path_to_output}")
 
@@ -253,8 +273,18 @@ def reevaluate_optimal_policy(
             )
             output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
 
-            with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-                pickle.dump(scenario_datasets, f)
+            # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
+            #     pickle.dump(scenario_datasets, f)
+            # Save as HDF5 file
+            with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
+                for scenario, arrays in scenario_datasets.items():
+                    scenario_group = f.create_group(
+                        scenario
+                    )  # Create a group for each scenario
+                    for key, array in arrays.items():
+                        scenario_group.create_dataset(
+                            key, data=array
+                        )  # Save each array in its respective group
             print(f"File saved as {output_file_name} at location {path_to_output}")
 
         elif objective_of_interest is not None and rbf_policy_index is None:
@@ -279,9 +309,19 @@ def reevaluate_optimal_policy(
             )
             output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
 
-            with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-                pickle.dump(scenario_datasets, f)
-
+            # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
+            #     pickle.dump(scenario_datasets, f)
+            # Save as HDF5 file
+            with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
+                for scenario, arrays in scenario_datasets.items():
+                    scenario_group = f.create_group(
+                        scenario
+                    )  # Create a group for each scenario
+                    for key, array in arrays.items():
+                        scenario_group.create_dataset(
+                            key, data=array
+                        )  # Save each array in its respective group
+            print(f"File saved as {output_file_name} at location {path_to_output}")
             # for key in scenario_datasets.keys():
             #     # Save the processed data as a pickle file
             #     with open(
@@ -500,6 +540,163 @@ def calculate_welfare(
     )
 
     return welfare_utilitarian_regional, welfare_utilitarian  #
+
+
+# Compares reevaluated Utilitarian and Prioritarian Pareto Front. Filters the best performing policies based on the top 10% of the Policies that are also coinciding with each other
+
+
+def find_closest_pairs_of_pareto_solutions(
+    utilitarian_data_path,
+    prioritarian_data_path,
+    column_of_interest=None,
+    temperature_objective="years_above_temperature_threshold",
+    columns_to_keep=[
+        "welfare_utilitarian",
+        "welfare_prioritarian",
+        "years_above_temperature_threshold",
+    ],
+):
+
+    utilitarian_data = pd.read_csv(utilitarian_data_path)
+    prioritarian_data = pd.read_csv(prioritarian_data_path)
+
+    # Only keep the following columns "welfare_utilitarian", "welfare_prioritarian", "years_above_temperature_threshold"
+    utilitarian_data = utilitarian_data[columns_to_keep]
+    prioritarian_data = prioritarian_data[columns_to_keep]
+
+    # Filter the lowest 10% in prioritarian_data
+    utilitarian_data_filtered = utilitarian_data[
+        utilitarian_data[column_of_interest]
+        <= utilitarian_data[column_of_interest].quantile(0.1)
+    ]
+
+    prioritarian_data_filtered = prioritarian_data[
+        prioritarian_data[column_of_interest]
+        <= prioritarian_data[column_of_interest].quantile(0.1)
+    ]
+
+    min_diff = np.inf
+    index_pairs = []
+
+    # Round values to two decimal places
+    df1_rounded = utilitarian_data_filtered[column_of_interest].round(9)
+    df2_rounded = prioritarian_data_filtered[column_of_interest].round(9)
+
+    # Collect pairs with the smallest difference
+    for i, value1 in enumerate(df1_rounded):
+        for j, value2 in enumerate(df2_rounded):
+            diff = abs(value1 - value2)
+            if diff < min_diff:
+                min_diff = diff
+                index_pairs = [
+                    (
+                        utilitarian_data_filtered.index[i],
+                        prioritarian_data_filtered.index[j],
+                    )
+                ]  # Reset list with the new closest pair
+            elif diff == min_diff:
+                index_pairs.append(
+                    (
+                        utilitarian_data_filtered.index[i],
+                        prioritarian_data_filtered.index[j],
+                    )
+                )
+
+    # Print the welfare_utilitarian and welfare_prioritarian values for the indices
+    print(
+        f"Closest pairs of Pareto solutions with the same {column_of_interest} value:"
+    )
+    print(f"index pairs: {index_pairs}")
+    for i, j in index_pairs:
+        print(
+            f"Utilitarian welfare_utilitarian: {utilitarian_data_filtered.loc[i, column_of_interest]}, "
+            f"Prioritarian welfare_utilitarian: {prioritarian_data_filtered.loc[j, column_of_interest]}"
+        )
+
+    # Find the index for each dataframe on temperature_objective and get the index of the minimum value for the entire set
+    utilitarian_temp_filtered = utilitarian_data[
+        utilitarian_data[temperature_objective]
+        <= utilitarian_data[temperature_objective].quantile(0.1)
+    ]
+    prioritarian_temp_filtered = prioritarian_data[
+        prioritarian_data[temperature_objective]
+        <= prioritarian_data[temperature_objective].quantile(0.1)
+    ]
+
+    temp1_rounded = utilitarian_temp_filtered[temperature_objective].round(9)
+    temp2_rounded = prioritarian_temp_filtered[temperature_objective].round(9)
+
+    min_diff_temp = np.inf
+    temperature_index_pairs = []
+
+    for i, value1 in enumerate(temp1_rounded):
+        for j, value2 in enumerate(temp2_rounded):
+            diff = abs(value1 - value2)
+            if diff < min_diff_temp:
+                min_diff_temp = diff
+                temperature_index_pairs = [
+                    (
+                        utilitarian_temp_filtered.index[i],
+                        prioritarian_temp_filtered.index[j],
+                    )
+                ]
+            elif diff == min_diff_temp:
+                temperature_index_pairs.append(
+                    (
+                        utilitarian_temp_filtered.index[i],
+                        prioritarian_temp_filtered.index[j],
+                    )
+                )
+
+    # Print the closest temperature objective pairs
+    print(
+        f"\nClosest pairs of Pareto solutions with respect to {temperature_objective} (lowest 10%):"
+    )
+    print(f"Index pairs: {temperature_index_pairs}")
+    for i, j in temperature_index_pairs:
+        print(
+            f"Utilitarian {temperature_objective}: {utilitarian_temp_filtered.loc[i, temperature_objective]}, "
+            f"Prioritarian {temperature_objective}: {prioritarian_temp_filtered.loc[j, temperature_objective]}"
+        )
+
+    # Print a newline
+    print("\n")
+    print("\n")
+
+    return index_pairs, temperature_index_pairs
+
+
+# Read the file 'UTILITARIAN_reference_set.csv' from the 'data/convergence_metrics' folder
+def get_selected_policy_indices_based_on_welfare_temperature(
+    rival_framings,
+    data_dir,
+    n_percent=0.1,
+    number_of_objectives=4,
+    suffix="_reference_set.csv",
+    second_objective_of_interest="years_above_temperature_threshold",
+):
+    selected_indices = []
+    for rival in rival_framings:
+        file_path = f"{data_dir}/{rival}{suffix}"
+        data = pd.read_csv(file_path)
+
+        # Keep the last 4 columns of the data
+        data = data.iloc[:, -number_of_objectives:]
+
+        # Find the index of the lowest 10% of values in the 'welfare' column
+        lowest_n_percent_indices = (
+            data["welfare"].nsmallest(int(data.shape[0] * n_percent)).index
+        )
+
+        # Find the index of the lowest 'years_above_temperature_threshold' within the selected indices
+        selected_policy_index = data.loc[
+            lowest_n_percent_indices, second_objective_of_interest
+        ].idxmin()
+        print(f"Index of interest for {rival}: ", selected_policy_index)
+        print(data.loc[selected_policy_index])
+
+        selected_indices.append(selected_policy_index)
+    return selected_indices
 
 
 def get_best_performing_policies(
