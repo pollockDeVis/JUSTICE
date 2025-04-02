@@ -1252,6 +1252,261 @@ def plot_stacked_area_chart_v2(
     return fig, data
 
 
+def visualize_tradeoffs_with_annotations(
+    input_data=[],
+    figsize=(15, 10),
+    set_style="whitegrid",
+    font_scale=1.8,
+    colourmap="bright",
+    linewidth=0.4,
+    alpha=0.1,
+    path_to_data="data/reevaluation/",
+    path_to_output="./data/plots/only_welfare_temp",
+    scaling=True,
+    feature_range=(0, 1),
+    column_labels=None,
+    legend_labels=None,
+    show_legend=True,
+    axis_rotation=30,
+    fontsize=12,
+    list_of_objectives=[
+        "welfare_utilitarian",
+        "years_above_temperature_threshold",
+        "damage_cost_per_capita_utilitarian",
+        "abatement_cost_per_capita_utilitarian",
+    ],
+    direction_of_optimization=[
+        "min",
+        "min",
+        "max",
+        "max",
+    ],
+    pretty_labels=[
+        "Welfare",
+        "Years Above Temp Threshold",
+        "Welfare Loss Damage",
+        "Welfare Loss Abatement",
+    ],
+    default_colors=["red", "blue"],
+    top_percentage=0.1,
+    objective_of_interest="welfare_utilitarian",
+    show_best_solutions=False,
+    temperature_filter=False,
+    saving=False,
+    # New parameter: annotation values. For example, we will annotate only the first three axes.
+    annotate_values=[103.76, 413.44, 85.2],
+):
+
+    sns.set_theme(font_scale=font_scale)
+    sns.set_style(set_style)
+    sns.set_theme(rc={"figure.figsize": figsize})
+
+    # Assertions
+    assert input_data, "Input data not provided"
+    assert path_to_data, "Path to reference set is not provided"
+    assert len(list_of_objectives) == len(
+        direction_of_optimization
+    ), "Length of objectives and direction of optimization not equal"
+
+    color_mapping = {
+        file: default_colors[i % len(default_colors)]
+        for i, file in enumerate(input_data)
+    }
+
+    if column_labels:
+        assert len(column_labels) == len(
+            list_of_objectives
+        ), "Length of column labels and objectives not equal"
+
+    concatenated_df = pd.DataFrame()
+
+    for file in input_data:
+        data = pd.read_csv(os.path.join(path_to_data, file))
+        data = data[list_of_objectives]
+        data = np.abs(data)
+
+        # Add a column to track the data type
+        data["type"] = file
+
+        concatenated_df = pd.concat([concatenated_df, data], axis=0)
+
+    # Reset index for concatenated_df
+    concatenated_df.reset_index(drop=True, inplace=True)
+
+    # Determine top 10% indices for the objective of interest if needed
+    top_indices = {}
+    if show_best_solutions:
+        for file in input_data:
+            df_type = concatenated_df[concatenated_df["type"] == file]
+            top_indices[file] = (
+                df_type[objective_of_interest]
+                .nsmallest(int(df_type.shape[0] * top_percentage))
+                .index
+            )
+            print(file, len(top_indices[file]))
+
+            # If using temperature_filter, further filter indices.
+            if temperature_filter:
+                index = df_type.loc[top_indices[file]][
+                    "years_above_temperature_threshold"
+                ].idxmin()
+                print(index)
+                top_indices[file] = [index]
+
+    # Save the raw min and max values of the objectives before scaling.
+    raw_min = concatenated_df[list_of_objectives].min()
+    raw_max = concatenated_df[list_of_objectives].max()
+
+    if scaling:
+        print("Min and Max values of the objectives", list_of_objectives)
+        print(raw_min)
+        print(raw_max)
+
+        # Scale the data
+        scaler = MinMaxScaler(feature_range=feature_range)
+        concatenated_df[list_of_objectives] = scaler.fit_transform(
+            concatenated_df[list_of_objectives]
+        )
+
+        for i, direction in enumerate(direction_of_optimization):
+            if direction == "min":
+                concatenated_df[list_of_objectives[i]] = (
+                    1 - concatenated_df[list_of_objectives[i]]
+                )
+
+    # Create the parallel axes plot.
+    limits = parcoords.get_limits(concatenated_df[list_of_objectives])
+    limits.columns = pretty_labels
+    axes_obj = parcoords.ParallelAxes(limits, rot=axis_rotation, fontsize=fontsize)
+    # Notice that axes_obj.axes is a list of subplot axes corresponding to segments.
+
+    adjusted_linewidth = linewidth
+    # Plot each row with its corresponding color.
+    for idx, row in concatenated_df.iterrows():
+        if show_best_solutions:
+            file_color = "gray"
+            adjusted_linewidth = linewidth
+            for _type, indices in top_indices.items():
+                if idx in indices:
+                    file_color = color_mapping[_type]
+                    if temperature_filter:
+                        adjusted_linewidth = linewidth * 5
+                    break
+        else:
+            file_color = color_mapping.get(
+                row["type"], "green"
+            )  # Default to 'green' if not specified.
+
+        _sliced_data = pd.DataFrame(row[list_of_objectives].values).T
+        _sliced_data.columns = pretty_labels
+        if show_best_solutions or temperature_filter:
+            axes_obj.plot(
+                _sliced_data,
+                color=file_color,
+                linewidth=adjusted_linewidth,
+                alpha=alpha if (show_best_solutions and file_color == "gray") else 1.0,
+            )
+        else:
+            axes_obj.plot(
+                _sliced_data,
+                color=file_color,
+                linewidth=adjusted_linewidth,
+                alpha=alpha,
+            )
+
+    # Now add annotations.
+    # The drawing of segments uses the following:
+    #   j starts at -1 and then in each segment:
+    #     x coordinates = [j+1, j+2]
+    # So, if you have 4 objectives, the vertical axes (boundaries) are at global x:
+    #   1, 2, 3, and 4.
+    # We want to annotate (for example) the first three axes, i.e. global x = 1, 2, 3.
+    #
+    # Since the subplots (axes) are separate, we need to annotate on the proper Axes:
+    #   - For a global x value of 1 or 2, annotate on subplot 0 (axes_obj.axes[0]).
+    #   - For a global x value of 3, annotate on subplot 1 (which has xlim [2,3]).
+    # (If you had more, you’d follow the same logic.)
+    for i, dot_value in enumerate(annotate_values):
+        # Only annotate if within the number of objectives
+        if i >= len(list_of_objectives):
+            break
+
+        # Get the corresponding objective key and compute the normalized value.
+        objective_key = list_of_objectives[i]
+        min_val = raw_min[objective_key]
+        max_val = raw_max[objective_key]
+        if max_val - min_val == 0:
+            normalized_val = 0.5
+        else:
+            normalized_val = (dot_value - min_val) / (max_val - min_val)
+        if direction_of_optimization[i] == "min":
+            normalized_val = 1 - normalized_val
+
+        # Global x coordinate for the vertical axis is i+1.
+        global_x = i + 1
+
+        # Determine which subplot (Axes instance) holds this vertical axis.
+        # For our simple case:
+        # - If global_x is 1 or 2, use the first subplot: axes_obj.axes[0]
+        # - Otherwise, use subplot index = global_x - 2.
+        if global_x <= 2:
+            ax_to_use = axes_obj.axes[0]
+        else:
+            # Make sure we don't go out of bounds.
+            index = global_x - 2
+            if index < len(axes_obj.axes):
+                ax_to_use = axes_obj.axes[index]
+            else:
+                # Fall back to the last subplot if necessary.
+                ax_to_use = axes_obj.axes[-1]
+
+        # Now annotate on this Axes instance.
+        # Note: The x coordinates in the subplot are in data coordinates.
+        # x = global_x should lie on its boundary; we disable clipping to ensure visibility.
+        ax_to_use.scatter(
+            global_x,
+            normalized_val,
+            marker="*",
+            edgecolor="black",
+            color="red",
+            s=100,
+            zorder=10,
+            clip_on=False,
+            label=f"Annotation: {pretty_labels[i]}" if i == 0 else None,
+        )
+
+    # Creating a legend if needed.
+    if show_legend:
+        if legend_labels is None:
+            legend_labels = list(color_mapping.keys())
+            legend_labels = [label.split("_")[0] for label in legend_labels]
+            unique_colors = list(color_mapping.values())
+            legend_elements = [
+                Line2D([0], [0], color=unique_colors[i], lw=2, label=legend_labels[i])
+                for i in range(len(unique_colors))
+            ]
+            plt.legend(
+                handles=legend_elements,
+                loc="upper right",
+                fontsize="small",
+                bbox_to_anchor=(1.1, 1.1),
+            )
+
+    if saving:
+        output_file_name = (
+            "tradeoffs_"
+            + "_".join([file.split("_")[0] for file in input_data])
+            + "_"
+            + ".svg"
+        )
+        if not os.path.exists(path_to_output):
+            os.makedirs(path_to_output)
+        plt.savefig(os.path.join(path_to_output, output_file_name), dpi=300)
+
+    plt.show()
+    return concatenated_df
+
+
 def visualize_tradeoffs(
     input_data=[],
     figsize=(15, 10),
@@ -3329,6 +3584,17 @@ def plot_hypervolume(
         # Avoid zero tick in the y-axis - minor cosmetic change
         fig.update_yaxes(tickvals=(np.arange(0, yaxis_upper_limit, 0.1))[1:])
 
+        # Get rid of gridlines
+        fig.update_xaxes(showgrid=False)
+        fig.update_yaxes(showgrid=False)
+
+        # Show x and y axis with black lines and ticks
+        fig.update_xaxes(showline=True, linewidth=2, linecolor="black", ticks="outside")
+        fig.update_yaxes(showline=True, linewidth=2, linecolor="black", ticks="outside")
+
+        # Set fontsize for tick labels
+        fig.update_xaxes(tickfont=dict(size=fontsize))
+        fig.update_yaxes(tickfont=dict(size=fontsize))
         # Save the figure
         if not os.path.exists(path_to_output):
             os.makedirs(path_to_output)
