@@ -7,7 +7,7 @@ Derived from RICE50 model which is based on Berger et al. (2020).
 
 from typing import Any
 import numpy as np
-from src.objectives.objective_functions import (
+from justice.objectives.objective_functions import (
     calculate_gini_index_c1,
 )
 

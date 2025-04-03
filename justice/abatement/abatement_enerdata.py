@@ -15,8 +15,8 @@ import numpy as np
 import copy
 
 from config.default_parameters import AbatementDefaults
-from src.util.enumerations import Abatement
-from src.util.enumerations import get_economic_scenario
+from justice.util.enumerations import Abatement
+from justice.util.enumerations import get_economic_scenario
 
 
 class AbatementEnerdata:

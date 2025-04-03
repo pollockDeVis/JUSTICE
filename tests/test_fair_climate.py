@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from src.climate.coupled_fair import CoupledFAIR
-from src.util.model_time import TimeHorizon
+from justice.climate.coupled_fair import CoupledFAIR
+from justice.util.model_time import TimeHorizon
 
 
 def test_coupled_fair_historical_temperature():

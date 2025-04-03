@@ -4,18 +4,18 @@ import seaborn as sns
 import pandas as pd
 from scipy.interpolate import interp1d
 from JUSTICE_example import JUSTICE_stepwise_run
-from src.util.enumerations import *
+from justice.util.enumerations import *
 import pickle
-from src.util.enumerations import Scenario
-from src.util.model_time import TimeHorizon
-from src.util.data_loader import DataLoader
+from justice.util.enumerations import Scenario
+from justice.util.model_time import TimeHorizon
+from justice.util.data_loader import DataLoader
 import os
 import h5py
 from ema_workbench import load_results, ema_logging
 import pandas as pd
-from src.welfare.social_welfare_function import SocialWelfareFunction
+from justice.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
-from src.util.enumerations import get_economic_scenario
+from justice.util.enumerations import get_economic_scenario
 
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 

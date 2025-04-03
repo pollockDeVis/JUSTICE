@@ -2,16 +2,16 @@ import pandas as pd
 from solvers.emodps.rbf import RBF
 import numpy as np
 
-from src.util.data_loader import DataLoader
-from src.util.enumerations import *
-from src.util.model_time import TimeHorizon
-from src.model import JUSTICE
-from src.util.emission_control_constraint import EmissionControlConstraint
+from justice.util.data_loader import DataLoader
+from justice.util.enumerations import *
+from justice.util.model_time import TimeHorizon
+from justice.model import JUSTICE
+from justice.util.emission_control_constraint import EmissionControlConstraint
 
 
-from src.welfare.social_welfare_function import SocialWelfareFunction
+from justice.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
-from src.util.enumerations import get_economic_scenario
+from justice.util.enumerations import get_economic_scenario
 
 
 # This example can be used to profile JUSTICE model

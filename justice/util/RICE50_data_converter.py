@@ -4,11 +4,11 @@
 
 import pandas as pd
 import os
-from src.util.data_loader import DataLoader
+from justice.util.data_loader import DataLoader
 from scipy.interpolate import interp1d
-from src.util.model_time import TimeHorizon
+from justice.util.model_time import TimeHorizon
 import numpy as np
-from src.util.regional_configuration import justice_region_aggregator
+from justice.util.regional_configuration import justice_region_aggregator
 import json
 
 

@@ -6,15 +6,15 @@ This module wraps the model for uncertainty analysis experiments using EMA.
 
 import numpy as np
 
-from src.model import JUSTICE
-from src.util.enumerations import *
+from justice.model import JUSTICE
+from justice.util.enumerations import *
 from solvers.emodps.rbf import RBF
-from src.objectives.objective_functions import (
+from justice.objectives.objective_functions import (
     years_above_temperature_threshold,
     fraction_of_ensemble_above_threshold,
 )
 
-from src.util.emission_control_constraint import EmissionControlConstraint
+from justice.util.emission_control_constraint import EmissionControlConstraint
 
 # Scaling Values
 max_temperature = 16.0

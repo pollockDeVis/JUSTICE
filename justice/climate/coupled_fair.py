@@ -51,7 +51,7 @@ import os
 import copy
 from scipy.interpolate import interp1d
 from typing import Any
-from src.util.enumerations import get_climate_scenario
+from justice.util.enumerations import get_climate_scenario
 
 
 # FaIR Model Constants

@@ -9,14 +9,14 @@ import numpy as np
 import seaborn as sns
 import os
 from matplotlib.lines import Line2D
-from src.util.model_time import TimeHorizon
-from src.util.enumerations import *
-from src.util.regional_configuration import (
+from justice.util.model_time import TimeHorizon
+from justice.util.enumerations import *
+from justice.util.regional_configuration import (
     justice_region_aggregator,
     get_region_mapping,
 )
 import pickle
-from src.util.data_loader import DataLoader
+from justice.util.data_loader import DataLoader
 from plotly.subplots import make_subplots
 from sklearn.preprocessing import MinMaxScaler
 

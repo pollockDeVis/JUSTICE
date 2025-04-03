@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
-from src.climate.coupled_fair import CoupledFAIR
-from src.util.model_time import TimeHorizon
-from src.util.data_loader import DataLoader
-from src.util.enumerations import *
-from src.model import JUSTICE
+from justice.climate.coupled_fair import CoupledFAIR
+from justice.util.model_time import TimeHorizon
+from justice.util.data_loader import DataLoader
+from justice.util.enumerations import *
+from justice.model import JUSTICE
 
 # JUSTICE
 # Set this path as an environment variable

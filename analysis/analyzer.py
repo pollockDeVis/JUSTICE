@@ -7,7 +7,7 @@ import datetime
 import numpy as np
 import os
 import random
-from src.util.enumerations import *
+from justice.util.enumerations import *
 import json
 
 # Suppress numpy version warnings
@@ -40,15 +40,15 @@ from ema_workbench.em_framework.optimization import (
 # Set this path to the src folder
 # export PYTHONPATH=$PYTHONPATH:/Users/palokbiswas/Desktop/pollockdevis_git/JUSTICE/src
 # from src.util.enumerations import Scenario
-from src.util.EMA_model_wrapper import (
+from justice.util.EMA_model_wrapper import (
     model_wrapper,
     model_wrapper_emodps,
     model_wrapper_static_optimization,
 )
-from src.util.model_time import TimeHorizon
-from src.util.data_loader import DataLoader
+from justice.util.model_time import TimeHorizon
+from justice.util.data_loader import DataLoader
 
-from src.util.enumerations import WelfareFunction, get_welfare_function_name
+from justice.util.enumerations import WelfareFunction, get_welfare_function_name
 from config.default_parameters import SocialWelfareDefaults
 
 

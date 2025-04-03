@@ -6,16 +6,21 @@ import numpy as np
 import pandas as pd
 from typing import Any
 
-from src.util.data_loader import DataLoader
-from src.util.enumerations import Economy, DamageFunction, Abatement, WelfareFunction
-from src.util.model_time import TimeHorizon
-from src.economy.neoclassical import NeoclassicalEconomyModel
-from src.emissions.emission import OutputToEmissions
-from src.damage.kalkuhl import DamageKalkuhl
-from src.climate.coupled_fair import CoupledFAIR
-from src.climate.temperature_downscaler import TemperatureDownscaler
-from src.abatement.abatement_enerdata import AbatementEnerdata
-from src.welfare.social_welfare_function import SocialWelfareFunction
+from justice.util.data_loader import DataLoader
+from justice.util.enumerations import (
+    Economy,
+    DamageFunction,
+    Abatement,
+    WelfareFunction,
+)
+from justice.util.model_time import TimeHorizon
+from justice.economy.neoclassical import NeoclassicalEconomyModel
+from justice.emissions.emission import OutputToEmissions
+from justice.damage.kalkuhl import DamageKalkuhl
+from justice.climate.coupled_fair import CoupledFAIR
+from justice.climate.temperature_downscaler import TemperatureDownscaler
+from justice.abatement.abatement_enerdata import AbatementEnerdata
+from justice.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
 
 

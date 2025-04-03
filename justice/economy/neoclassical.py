@@ -9,7 +9,7 @@ import copy
 
 
 from config.default_parameters import EconomyDefaults
-from src.util.enumerations import Economy, get_economic_scenario
+from justice.util.enumerations import Economy, get_economic_scenario
 
 
 class NeoclassicalEconomyModel:
