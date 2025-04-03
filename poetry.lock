@@ -1294,20 +1294,21 @@ type = ["mypy (>=1.14.1)"]
 
 [[package]]
 name = "platypus-opt"
-version = "1.4.1"
+version = "1.1.0"
 description = "Multiobjective optimization in Python"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "Platypus_Opt-1.4.1-py3-none-any.whl", hash = "sha256:9c22883a3ffd91bd3a6dfb75412fc6b80368850fdb9b24f9e301a8cbf160fdda"},
-    {file = "platypus_opt-1.4.1.tar.gz", hash = "sha256:b341790be67354c2c964bb3431b9acc8a1a147aca9d9464a43720dc58b3895e8"},
+    {file = "Platypus-Opt-1.1.0.tar.gz", hash = "sha256:19610123c204e2dfc10741c69403b57a649589d9494de0fce0fc27579e586bbd"},
+    {file = "Platypus_Opt-1.1.0-py3-none-any.whl", hash = "sha256:f25084514a6eac400211a5323756c6ae257145f444f07d07e9e60a09921ffe77"},
 ]
 
+[package.dependencies]
+numpy = "*"
+
 [package.extras]
-docs = ["sphinx", "sphinx-rtd-theme"]
-full = ["Platypus-Opt[docs]", "Platypus-Opt[test]", "mpi4py"]
-test = ["flake8", "flake8-pyproject", "jsonpickle", "matplotlib", "mock", "numpy", "pytest"]
+test = ["mock", "pytest"]
 
 [[package]]
 name = "pluggy"
@@ -1893,4 +1894,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9, <4"
-content-hash = "bdecffe83ea78fc7eac936bd6ce7d0bb5277237c3490b2bcc6466c9a11ab1ec5"
+content-hash = "13fbbb3183770e66acf55afa5a28cbdcfc480d5b0c7f8874831dd9826175e6f6"
