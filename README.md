@@ -1,7 +1,7 @@
 # JUSTICE Integrated Assessment Framework
 
 ![GitHub Actions build status](https://github.com/pollockDeVis/JUSTICE/actions/workflows/pytest.yml/badge.svg?event=push)
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15145122.svg)](https://doi.org/10.5281/zenodo.15145122)
 <p align="center">
   <img title="JUSTICE Logo" alt="JUSTICE Logo" src="/docs/diagrams/JUSTICE LOGO.svg" width="400"/>
 </p>
