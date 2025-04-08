@@ -555,6 +555,7 @@ def find_closest_pairs_of_pareto_solutions(
         "welfare_prioritarian",
         "years_above_temperature_threshold",
     ],
+    direction="lowest",  # "highest" or "lowest",
 ):
 
     utilitarian_data = pd.read_csv(utilitarian_data_path)
@@ -564,16 +565,28 @@ def find_closest_pairs_of_pareto_solutions(
     utilitarian_data = utilitarian_data[columns_to_keep]
     prioritarian_data = prioritarian_data[columns_to_keep]
 
-    # Filter the lowest 10% in prioritarian_data
-    utilitarian_data_filtered = utilitarian_data[
-        utilitarian_data[column_of_interest]
-        <= utilitarian_data[column_of_interest].quantile(0.1)
-    ]
+    if direction == "lowest":
+        # Filter the lowest 10% in prioritarian_data
+        utilitarian_data_filtered = utilitarian_data[
+            utilitarian_data[column_of_interest]
+            <= utilitarian_data[column_of_interest].quantile(0.1)
+        ]
 
-    prioritarian_data_filtered = prioritarian_data[
-        prioritarian_data[column_of_interest]
-        <= prioritarian_data[column_of_interest].quantile(0.1)
-    ]
+        prioritarian_data_filtered = prioritarian_data[
+            prioritarian_data[column_of_interest]
+            <= prioritarian_data[column_of_interest].quantile(0.1)
+        ]
+    elif direction == "highest":
+        # Filter the highest 10% in prioritarian_data
+        utilitarian_data_filtered = utilitarian_data[
+            utilitarian_data[column_of_interest]
+            >= utilitarian_data[column_of_interest].quantile(0.9)
+        ]
+
+        prioritarian_data_filtered = prioritarian_data[
+            prioritarian_data[column_of_interest]
+            >= prioritarian_data[column_of_interest].quantile(0.9)
+        ]
 
     min_diff = np.inf
     index_pairs = []
