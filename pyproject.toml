@@ -1,6 +1,6 @@
 [project]
 name = "justice"
-version = "0.1.0"
+version = "0.1.3"
 description = "JUSTICE is an open-source Integrated Assessment Modeling Framework for Analysing Policy Implications of Modelling Assumptions"
 authors = [{ name = "PBiswas", email = "p.biswas@tudelft.nl" }]
 license = { text = "BSD-3-Clause" }
