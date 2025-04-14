@@ -31,6 +31,15 @@ class SSP(IntEnum):
     SSP4 = 3
     SSP5 = 4
 
+class ScenarioIdx(IntEnum):
+    SSP119 = 0
+    SSP126 = 1
+    SSP245 = 2
+    SSP370 = 3
+    SSP434 = 4
+    SSP460 = 5
+    SSP534 = 6
+    SSP585 = 7
 
 # TODO: Add the pretty strings in the tuple like (0, SSP.SSP1, "ssp119", "SSP1-RCP1.9")
 class Scenario(Enum):

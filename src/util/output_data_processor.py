@@ -171,7 +171,7 @@ def reevaluate_optimal_policy(
                 lowest_n_percent=lowest_n_percent,
                 data_path="data/optimized_rbf_weights/tradeoffs",
                 list_of_objectives=[
-                    "welfare",
+                    "welfare_utilitarian",
                     "years_above_temperature_threshold",
                     "welfare_loss_damage",
                     "welfare_loss_abatement",
@@ -523,14 +523,14 @@ def get_best_performing_policies(
 if __name__ == "__main__":
     reevaluate_optimal_policy(
         input_data=[
-            "UTIL_100024_s1644652.csv",
+            "utilitarian.csv",
             # "PRIOR_101400_s1644652.csv",
             # "SUFF_100090_s9845531.csv",
             # "EGAL_100417_s1644652.csv",
         ],  # "UTIL_100049.csv", "EGAL_101948.csv",
-        path_to_rbf_weights="data/optimized_rbf_weights/tradeoffs/",
+        path_to_rbf_weights="data/optimized_rbf_weights/",
         path_to_output="data/reevaluation/",
-        objective_of_interest="welfare",
+        objective_of_interest="welfare_utilitarian",
         # direction_of_optimization=[
         #     "min",
         #     "min",

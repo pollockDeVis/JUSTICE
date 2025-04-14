@@ -105,7 +105,7 @@ class SocialWelfareFunction:
         """
         # New feature: consumption_per_capita is checked to have negative values
         consumption_per_capita = np.where(
-            consumption_per_capita < 0, 1e-6, consumption_per_capita
+            consumption_per_capita < 0.1, 0.1, consumption_per_capita
         )
 
         # Aggregate the states dimension

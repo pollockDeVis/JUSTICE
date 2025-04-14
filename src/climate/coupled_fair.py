@@ -80,7 +80,7 @@ class CoupledFAIR(FAIR):
         """
         return object.__getattribute__(self, __name)
 
-    def fair_justice_run_init(self, time_horizon, scenarios, climate_ensembles=None):
+    def fair_justice_run_init(self, time_horizon, scenarios, climate_ensembles=None, stochastic_run=True):
         """Setup the stepwise run of the FaIR model with the JUSTICE IAM.
 
         Parameters
@@ -100,10 +100,7 @@ class CoupledFAIR(FAIR):
         scenarios = get_climate_scenario(scenarios)
         scenarios = [scenarios]  # Converting into a list
 
-        if climate_ensembles is not None:
-            self.fair_fill_data(scenarios, climate_ensembles=climate_ensembles)
-        else:
-            self.fair_fill_data(scenarios)
+        self.fair_fill_data(scenarios, climate_ensembles=climate_ensembles, stochastic_run=stochastic_run)
 
         # Create self.emissions_purge_array full on nans
         self.emissions_purge_array = np.full(
@@ -1087,7 +1084,7 @@ class CoupledFAIR(FAIR):
                     # fill FaIR xarray
                     fill(self.forcing, forc[:, None], specie=specie, scenario=scenario)
 
-    def fair_fill_data(self, scenarios, climate_ensembles=None):
+    def fair_fill_data(self, scenarios, climate_ensembles=None, stochastic_run=True):
         self.define_time(
             self.start_year_fair, self.end_year_fair, self.timestep_justice
         )
@@ -1100,15 +1097,21 @@ class CoupledFAIR(FAIR):
         )
 
         if climate_ensembles is not None:
-            assert (
-                climate_ensembles >= 0
-            ), "climate_ensembles must be greater than or equal to 0"
-            assert climate_ensembles <= len(
-                df_configs.index
-            ), "climate_ensembles must be less than or equal to the number of ensembles"
-
-            # Take only one specific row from df_configs
-            df_configs = df_configs.iloc[(climate_ensembles - 1) : climate_ensembles]
+            if callable(climate_ensembles):
+                df_configs = df_configs.apply(climate_ensembles, axis=0).to_frame().T
+            elif isinstance(climate_ensembles, int):
+                assert (
+                    climate_ensembles >= 0
+                ), "climate_ensembles must be greater than or equal to 0"
+                assert climate_ensembles <= len(
+                    df_configs.index
+                ), "climate_ensembles must be less than or equal to the number of ensembles"
+                # Take only one specific row from df_configs
+                df_configs = df_configs.iloc[(climate_ensembles - 1): climate_ensembles]
+            else:
+                raise ValueError(
+                    "climate_ensembles must be either a callable function, an integer, or None."
+                )
 
         self.define_configs(df_configs.index)
         self.number_of_ensembles = len(df_configs.index)
@@ -1191,7 +1194,7 @@ class CoupledFAIR(FAIR):
             df_configs["clim_sigma_xi"].values.squeeze(),
         )
         fill(self.climate_configs["seed"], df_configs["seed"])
-        fill(self.climate_configs["stochastic_run"], True)
+        fill(self.climate_configs["stochastic_run"], stochastic_run)
         fill(self.climate_configs["use_seed"], True)
         fill(self.climate_configs["forcing_4co2"], df_configs["clim_F_4xCO2"])
 

@@ -38,6 +38,7 @@ class JUSTICE:
         timestep=1,  # Model is only tested for timestep 1
         scenario=0,
         climate_ensembles=None,
+        stochastic_run=True,
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
@@ -76,15 +77,16 @@ class JUSTICE:
         if "matter" in kwargs:
             self.economy_submodule = kwargs["matter"]
 
-        # Load the datasets by instantiating the DataLoader class
-        self.data_loader = DataLoader()
-        self.region_list = self.data_loader.REGION_LIST
-
         # TODO: Need to do the data slicing here for different start and end years
         # Instantiate the TimeHorizon class
         self.time_horizon = TimeHorizon(
             start_year=start_year, end_year=end_year, data_timestep=5, timestep=timestep
         )
+
+        # Load the datasets by instantiating the DataLoader class
+        self.data_loader = DataLoader(self.time_horizon)
+        self.region_list = self.data_loader.REGION_LIST
+
 
         ############################################################################################################################################################
         #
@@ -95,16 +97,11 @@ class JUSTICE:
         self.climate = CoupledFAIR(ch4_method="Thornhill2021")
         self.downscaler = TemperatureDownscaler(input_dataset=self.data_loader)
 
-        # Check if climate_ensembles is passed as a parameter
-        if climate_ensembles is not None:
-            self.no_of_ensembles = self.climate.fair_justice_run_init(
+        self.no_of_ensembles = self.climate.fair_justice_run_init(
                 time_horizon=self.time_horizon,
                 scenarios=self.scenario,
                 climate_ensembles=climate_ensembles,
-            )
-        else:
-            self.no_of_ensembles = self.climate.fair_justice_run_init(
-                time_horizon=self.time_horizon, scenarios=self.scenario
+            stochastic_run=stochastic_run
             )
 
         ############################################################################################################################################################
@@ -418,11 +415,6 @@ class JUSTICE:
     #
     ############################################################################################################################################################
 
-    def __getattribute__(self, __name: str) -> Any:
-        """
-        This method returns the value of the attribute of the class.
-        """
-        return object.__getattribute__(self, __name)
 
     ############################################################################################################################################################
     #
@@ -854,8 +846,3 @@ class JUSTICE:
         """
         return self.data.keys()
 
-    def __getattribute__(self, __name: str) -> Any:
-        """
-        This method returns the value of the attribute of the class.
-        """
-        return object.__getattribute__(self, __name)

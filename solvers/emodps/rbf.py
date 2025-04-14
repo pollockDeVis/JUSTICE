@@ -183,7 +183,7 @@ class RBF:
         return self.c_i.shape, self.r_i.shape, self.w_i.shape
 
     def set_decision_vars(self, decision_vars):
-        decision_vars = decision_vars.copy()
+        decision_vars = np.array(decision_vars)
 
         self.centers = decision_vars[self.c_i].reshape((self.n_rbfs, self.n_inputs))
         self.radii = decision_vars[self.r_i].reshape((self.n_rbfs, self.n_inputs))

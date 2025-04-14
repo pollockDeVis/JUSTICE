@@ -17,11 +17,14 @@ class DataLoader:
     # TODO: Future Optimization - Use scenario to instantiate the DataLoader and load only the required data
     # TODO: Bring the interpolation here from economy. Instantiation should take time horizon - Can also select specific years
 
-    def __init__(self):
+    def __init__(self, time_horizon):
         """
         This method initializes the DataLoader class.
 
         """
+        n_timesteps = len(time_horizon.data_time_horizon)
+        n_timesteps_model = len(time_horizon.model_time_horizon)
+
         # Get the current working directory
         current_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -40,15 +43,15 @@ class DataLoader:
 
         # Load GDP
         with h5py.File(os.path.join(data_file_path, "gdp_array.hdf5"), "r") as f:
-            self.GDP_ARRAY = f["gdp"][:]
+            self.GDP_ARRAY = f["gdp"][:,:n_timesteps,:]
 
         # Load the population
         with h5py.File(os.path.join(data_file_path, "population_array.hdf5"), "r") as f:
-            self.POPULATION_ARRAY = f["population"][:]
+            self.POPULATION_ARRAY = f["population"][:,:n_timesteps,:]
 
         # Load the emissions dictionary
         with h5py.File(os.path.join(data_file_path, "emissions_array.hdf5"), "r") as f:
-            self.EMISSIONS_ARRAY = f["emissions"][:]
+            self.EMISSIONS_ARRAY = f["emissions"][:,:n_timesteps,:]
 
         # Load the capital stock initial values
         with h5py.File(os.path.join(data_file_path, "capital_init.hdf5"), "r") as f:
@@ -68,7 +71,7 @@ class DataLoader:
 
         # Load PPP2MER conversion factor. Conversion factor for Purchasing Power Parity (PPP) to Market Exchange Rate (MER)
         with h5py.File(os.path.join(data_file_path, "ppp2mer.hdf5"), "r") as f:
-            self.PPP_TO_MER_CONVERSION_FACTOR = f["ppp2mer"][:]
+            self.PPP_TO_MER_CONVERSION_FACTOR = f["ppp2mer"][:,:n_timesteps]
 
         # Load the Temperature Downscaler Coefficients Alpha
         with h5py.File(
@@ -90,12 +93,12 @@ class DataLoader:
         with h5py.File(
             os.path.join(data_file_path, "abatement_coefficient_a.hdf5"), "r"
         ) as f:
-            self.ABATEMENT_COEFFICIENT_A = f["abatement_coefficient_a"][:]
+            self.ABATEMENT_COEFFICIENT_A = f["abatement_coefficient_a"][:,:n_timesteps]
 
         with h5py.File(
             os.path.join(data_file_path, "abatement_coefficient_b.hdf5"), "r"
         ) as f:
-            self.ABATEMENT_COEFFICIENT_B = f["abatement_coefficient_b"][:]
+            self.ABATEMENT_COEFFICIENT_B = f["abatement_coefficient_b"][:,:n_timesteps]
 
         ###########################################################################
         # Load the Material data in hdf5 format
@@ -105,7 +108,7 @@ class DataLoader:
         with h5py.File(
             os.path.join(data_file_path, "material_intensity_array.hdf5"), "r"
         ) as f:
-            self.MATERIAL_INTENSITY_ARRAY = f["material_intensity_array"][:]
+            self.MATERIAL_INTENSITY_ARRAY = f["material_intensity_array"][:,:n_timesteps,:]
 
         # In use stock initial values
         with h5py.File(os.path.join(data_file_path, "in_use_stock_init.hdf5"), "r") as f:
@@ -133,10 +136,10 @@ class DataLoader:
         with h5py.File(
             os.path.join(recycling_file_path, "recycling_rate_linear_proyection.hdf5"), "r"
         ) as f:
-            self.RECYCLING_RATE_LINEAR_PROYECTION = f["recycling_rate_linear_proyection"][:]
+            self.RECYCLING_RATE_LINEAR_PROYECTION = f["recycling_rate_linear_proyection"][:,:n_timesteps_model]
 
         # In use stock initial values
         with h5py.File(
             os.path.join(recycling_file_path, "recycling_rate_2050_target.hdf5"), "r"
         ) as f:
-            self.RECYCLING_RATE_2050_TARGET = f["recycling_rate_2050_target"][:]
+            self.RECYCLING_RATE_2050_TARGET = f["recycling_rate_2050_target"][:,:n_timesteps_model]

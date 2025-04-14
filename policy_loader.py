@@ -8,10 +8,11 @@ class PolicyLoader:
     """
     This class loads all the input policy data for the JUSTICE model.
     """
-    def __init__(self):
+    def __init__(self,
+                 emission_control_rate_file_path="data/input/emissions_control_rate/constrained_emission_control_rate.npz"
+                 ):
         # Create data file path for recycling data 
         recycling_file_path = "data/input/recycling/"
-        emission_control_rate_file_path = "data/input/emissions_control_rate/constrained_emission_control_rate.npz"
 
         ###############################################################################
         # Load the Recycling data in hdf5 format
@@ -29,12 +30,15 @@ class PolicyLoader:
         # Load the Constrained Emission Control Rate data in NPZ format
         ###############################################################################
 
-        self.constrained_emission_control_rate = self.load_npz_file(emission_control_rate_file_path)
+        self.constrained_emission_control_rate = self.load_np_file(emission_control_rate_file_path)
         print(f"Loaded constrained_emission_control_rate with scenarios: {list(self.constrained_emission_control_rate.keys())}")
 
-    def load_npz_file(self, file_path):
+    def load_np_file(self, file_path):
         data = np.load(file_path)
-        constrained_emission_control_rate = {key: data[key] for key in data}
+        if isinstance(data, np.ndarray) and (data.ndim == 3):
+            constrained_emission_control_rate = {'SSP245': data}
+        else:
+            constrained_emission_control_rate = {key: data[key] for key in data}
         return constrained_emission_control_rate
 
 if __name__ == "__main__":

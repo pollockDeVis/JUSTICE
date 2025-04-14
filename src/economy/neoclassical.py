@@ -271,38 +271,22 @@ class NeoclassicalEconomyModel:
             )
 
     def _calculate_capital(self, timestep):  # Capital is calculated one timestep ahead
-        if timestep < (len(self.model_time_horizon) - 1):
+        if timestep < len(self.model_time_horizon) - 1:
+            # Pre-calculate the power term to avoid recalculating it multiple times
+            depreciation_factor = np.power(1 - self.depreciation_rate_capital, self.timestep)
+
             if timestep == 0:
-                # Initalize capital tfp
+                # Initialize capital only once at the beginning
                 self.capital[:, timestep, :] = self.capital_init_arr * self.mer_to_ppp
 
-                self.capital[:, timestep + 1, :] = self.capital[
-                    :, timestep, :
-                ] * np.power(
-                    (1 - self.depreciation_rate_capital),
-                    (self.timestep),
-                ) + self.investment[
-                    :, timestep, :
-                ] * (
-                    (self.timestep)
-                )
-            else:
-                # Calculate capital
-                self.capital[:, timestep + 1, :] = self.capital[
-                    :, timestep, :
-                ] * np.power(
-                    (1 - self.depreciation_rate_capital),
-                    (self.timestep),
-                ) + self.investment[
-                    :, timestep, :
-                ] * (
-                    (self.timestep)
-                )
+            # Update capital using vectorized operations
+            self.capital[:, timestep + 1, :] = (
+                    self.capital[:, timestep, :] * depreciation_factor
+                    + self.investment[:, timestep, :] * self.timestep
+            )
 
-            # Check if any element is negative in capital
-            # Need to do this because capital can negative with very high abatement rates leading to
-            # propagation of nan values in gross output, net output, consumption and utility
-            self.capital = np.where(self.capital < 0, 0, self.capital)
+            # Ensure no negative values in the capital array
+            np.maximum(self.capital, 0, out=self.capital)
 
     def _calculate_output(self, timestep):
         # Calculate the Output based on gross output
