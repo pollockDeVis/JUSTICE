@@ -79,18 +79,11 @@ def load_archives(
 
 
 def load_archives_all_seeds(
-    list_of_objectives=[
-        "welfare",
-        "years_above_temperature_threshold",
-        "welfare_loss_damage",
-        "welfare_loss_abatement",
-    ],
-    data_path="data/optimized_rbf_weights/",
+    list_of_objectives=[],
+    data_path=None,
     file_name=None,  # "UTILITARIAN_100000_1644652.tar.gz",
-    swf=[
-        "UTILITARIAN",
-    ],
-    nfe="100000",
+    swf=None,
+    nfe=None,
 ):
     """
 
@@ -115,7 +108,6 @@ def load_archives_all_seeds(
             if filename.startswith(f"{swf}_{nfe}"):
                 file_name = filename
                 print(file_name)
-
                 archives = ArchiveLogger.load_archives(f"{data_path}/{file_name}")
 
                 print("Loading archives for ", file_name)
@@ -140,27 +132,13 @@ def load_archives_all_seeds(
 
 
 def get_global_reference_set(
-    list_of_objectives=[
-        "welfare",
-        "years_above_temperature_threshold",
-        "welfare_loss_damage",
-        "welfare_loss_abatement",
-    ],
-    data_path="data/optimized_rbf_weights/",
-    file_name=None,  # "UTILITARIAN_100000_1644652.tar.gz",
-    swf=[
-        "UTILITARIAN",
-        "PRIORITARIAN",
-    ],
-    nfe="150000",
-    epsilons=[
-        0.1,
-        0.25,
-        10,
-        10,
-    ],
-    direction_of_optimization=["min", "min", "max", "max"],
-    output_data_path="data/convergence_metrics",
+    list_of_objectives=[],
+    data_path=None,
+    swf=None,
+    nfe=None,
+    epsilons=[],
+    direction_of_optimization=[],
+    output_data_path=None,
     saving=True,
 ):
     """
