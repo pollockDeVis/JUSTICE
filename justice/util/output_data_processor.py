@@ -712,6 +712,35 @@ def get_selected_policy_indices_based_on_welfare_temperature(
     return selected_indices
 
 
+def select_policy_index_for_fraction_below_threshold(
+    file_path, num_last_columns, fraction_column, threshold, objective_column
+):
+    """
+    Reads the CSV file, selects a subset of columns, filters the rows
+    based on the fraction_column being <= threshold, and returns the index
+    of the policy with the minimum value in the objective_column.
+
+    Parameters:
+        file_path (str): Path to the CSV file.
+        num_last_columns (int): Number of columns from the end to select.
+        fraction_column (str): Column name for the fraction to check.
+        threshold (float): Maximum allowed value for the fraction_column.
+        objective_column (str): Column name whose minimum value determines the selection.
+
+    Returns:
+        numpy.int64: Index of the selected policy.
+    """
+
+    # Load the data
+    data = pd.read_csv(file_path)
+    # Select the last num_last_columns columns
+    data_subset = data.iloc[:, -num_last_columns:]
+    # Filter policies where fraction_column is less than or equal to threshold
+    filtered = data_subset[data_subset[fraction_column] <= threshold]
+
+    return list(filtered.index)
+
+
 def get_best_performing_policies(
     input_data=[],
     direction_of_optimization=[],  # ["min", "min", "min", "min"],
