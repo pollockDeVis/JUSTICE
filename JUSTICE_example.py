@@ -497,12 +497,19 @@ def setup_RBF_for_emission_control(
     # Read the csv file
     rbf_decision_vars = pd.read_csv(path_to_rbf_weights)
 
-    # select 6810 row
+    # select  row
     rbf_decision_vars = rbf_decision_vars.iloc[rbf_policy_index, :]
 
     # Print the welfare and years_above_temperature_threshold values # Diagnostics
     print("Welfare: ", rbf_decision_vars["welfare"])
-    # print(
+
+    # Print the shape of rbf_decision_vars -
+    # print("RBF Decision Variables Shape: ", rbf_decision_vars.shape)
+    # Shape is (249,). Print the last 4 values
+    # print("RBF Decision Variables: ", rbf_decision_vars[-4:])
+
+    #
+    #     # print(
     #     "Years Above Temperature Threshold: ",
     #     rbf_decision_vars["years_above_temperature_threshold"],
     # )

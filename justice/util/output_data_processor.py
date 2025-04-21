@@ -16,6 +16,7 @@ import pandas as pd
 from justice.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
 from justice.util.enumerations import get_economic_scenario
+from justice.objectives.objective_functions import fraction_of_ensemble_above_threshold
 
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
@@ -331,6 +332,123 @@ def reevaluate_optimal_policy(
             #         # Print file saved as filename at location path
 
             print(f"File saved as {output_file_name} at location {path_to_output}")
+
+
+def reevaluate_optimal_policy_with_temperature_threshold_filtering(
+    input_data=[],
+    scenario_list=[],
+    list_of_objectives=[],
+    direction_of_optimization=[],
+    path_to_rbf_weights=None,
+    path_to_output=None,
+    rbf_policy_index=None,
+    n_inputs_rbf=2,
+    max_annual_growth_rate=0.04,
+    emission_control_start_timestep=10,
+    min_emission_control_rate=0.01,
+    max_temperature=16.0,
+    min_temperature=0.0,
+    max_difference=2.0,
+    min_difference=0.0,
+    temperature_year_of_interest=2100,
+    temperature_threshold=2.0,
+    saving=False,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+):
+
+    # Assert if any arguments are None
+    assert input_data is not None, "Input data not provided"
+    assert path_to_rbf_weights is not None, "Path to RBF weights not provided"
+    assert path_to_output is not None, "Path to output not provided"
+    # Assert if direction of optimization is not provided
+    assert direction_of_optimization != [], "Direction of optimization not provided"
+
+    path_to_output = path_to_output  # "data/reevaluation/"
+
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+
+    temperature_year_of_interest_index = time_horizon.year_to_timestep(
+        year=temperature_year_of_interest, timestep=timestep
+    )
+
+    # Loop through the elements in input_data
+    for input_data_index, file in enumerate(input_data):
+
+        output_file_name = file.split(".")[0]  # input_data[index]
+
+        # TODO: Temporarily Commented Out
+        # print("index for policy: ", rbf_policy_index)
+
+        # Create a dictionary to store the data for each scenario
+        scenario_data = {}
+
+        for _, scenarios in enumerate(scenario_list):
+            scenario_idx = Scenario[scenarios].value[0]
+            # TODO: Temporarily Commented Out
+            print("Scenario", scenario_idx, scenarios)
+
+            data_dictionary, model = JUSTICE_stepwise_run(
+                scenarios=scenario_idx,
+                path_to_rbf_weights=path_to_rbf_weights + file,
+                saving=False,
+                output_file_name=None,
+                rbf_policy_index=rbf_policy_index,
+                n_inputs_rbf=n_inputs_rbf,
+                max_annual_growth_rate=max_annual_growth_rate,
+                emission_control_start_timestep=emission_control_start_timestep,
+                min_emission_control_rate=min_emission_control_rate,
+                allow_emission_fallback=False,  # Default is False
+                endogenous_savings_rate=True,
+                max_temperature=max_temperature,
+                min_temperature=min_temperature,
+                max_difference=max_difference,
+                min_difference=min_difference,
+            )
+
+            fraction_above_threshold = fraction_of_ensemble_above_threshold(
+                temperature=data_dictionary["global_temperature"],
+                temperature_year_index=temperature_year_of_interest_index,
+                threshold=temperature_threshold,
+            )
+
+            # print(
+            #     f"Fraction of ensemble members above threshold: {fraction_above_threshold}"
+            # )
+
+            # if fraction_above_threshold <= 0.5:
+            # print(scenario_idx, scenarios)
+            print("index for policy: ", rbf_policy_index)
+            print(
+                f"Fraction of ensemble members above threshold: {fraction_above_threshold}"
+            )
+
+            scenario_data[scenarios] = data_dictionary
+
+        output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
+
+        if saving:
+            # Save as HDF5 file
+            with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
+                for scenario, arrays in scenario_data.items():
+                    scenario_group = f.create_group(
+                        scenario
+                    )  # Create a group for each scenario
+                    for key, array in arrays.items():
+                        scenario_group.create_dataset(
+                            key, data=array
+                        )  # Save each array in its respective group
+            print(f"File saved as {output_file_name} at location {path_to_output}")
+        # Reset the model
+        model.reset()
 
 
 def read_hdf5_file(file_path):

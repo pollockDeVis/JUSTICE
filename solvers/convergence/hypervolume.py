@@ -99,34 +99,43 @@ def load_archives_all_seeds(
     assert list_of_objectives, "list_of_objectives is empty"
 
     solutions = []
-    # Load all data file that starts with swf and nfe
+    # Convert swf to a list if it isn't one
+    if not isinstance(swf, (list, tuple)):
+        swf = [swf]
+
     print("Loading list of files")
     seed_archive_dict = {}
-    for swf in swf:
-        print("Loading archives for ", swf)
+    for current_swf in swf:
+        print("Loading archives for: ", current_swf)
         for filename in os.listdir(data_path):
-            if filename.startswith(f"{swf}_{nfe}"):
+            print("Filename: ", filename)
+            if filename.startswith(f"{current_swf}_{nfe}"):
                 file_name = filename
-                print(file_name)
+                print("Matching file:", file_name)
                 archives = ArchiveLogger.load_archives(f"{data_path}/{file_name}")
 
-                print("Loading archives for ", file_name)
+                print("Loading archives from:", file_name)
 
-                # Get the maximum value in the archives keys
+                # Get the maximum key from the archive keys
                 max_key = max(archives.keys())
-                print("Max key: ", max_key)
+                print("Max key:", max_key)
 
-                # Get the archive with maximum key
+                # Retrieve the archive corresponding to the maximum key
                 archive = archives[max_key]
 
-                # Print the number of rows for the archive
-                print("Number of rows: ", archive.shape[0])
+                # Print the number of rows in the archive
+                print("Number of rows in archive:", archive.shape[0])
 
                 solutions.append(archive)
 
-                print("Archives loaded")
+                print("Archives loaded for:", file_name)
 
-            seed_archive_dict[swf] = pd.concat(solutions, ignore_index=True)
+        if solutions:  # Only if there are solutions found for this swf
+            seed_archive_dict[current_swf] = pd.concat(solutions, ignore_index=True)
+        else:
+            print(
+                f"No archives found for {current_swf} with prefix {current_swf}_{nfe}"
+            )
 
     return seed_archive_dict
 
