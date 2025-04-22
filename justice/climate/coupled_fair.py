@@ -1142,9 +1142,11 @@ class CoupledFAIR(FAIR):
             ), "climate_ensembles must be less than or equal to the number of ensembles"
 
             # Subtract 1 from climate_ensembles to get the correct index using vectorized operations
-            ensemble_indices = climate_ensembles - 1
+            self.ensemble_indices = climate_ensembles - 1
 
-            df_configs = df_configs.iloc[ensemble_indices]
+            df_configs = df_configs.iloc[self.ensemble_indices]
+        else:
+            self.ensemble_indices = None
 
         self.define_configs(df_configs.index)
         self.number_of_ensembles = len(df_configs.index)
@@ -1484,10 +1486,23 @@ class CoupledFAIR(FAIR):
         Resets fair model to initial state, with historical data and starting with justice_start_index.
         """
 
-        # Load gas_partitions_array
-        self.gas_partitions_array = np.load(
-            os.path.join(data_file_path, "fair/gas_partitions_array_default.npy")
-        )
+        if self.ensemble_indices is None:
+            # Load gas_partitions_array
+            self.gas_partitions_array = np.load(
+                os.path.join(data_file_path, "fair/gas_partitions_array_default.npy")
+            )
+        else:
+            # Load gas_partitions_array
+            self.gas_partitions_array = np.load(
+                os.path.join(
+                    data_file_path, "fair/gas_partitions_array_default.npy"
+                )  # (1, 1001, 64, 4)
+            )
+
+            # Now select the gas_partitions_array for the ensemble indices
+            self.gas_partitions_array = self.gas_partitions_array[
+                :, self.ensemble_indices, :, :
+            ]
 
         # Concentration array is one timestep ahead of emissions
         self.concentration_array[self.justice_start_index + 1 :, ...] = np.nan
