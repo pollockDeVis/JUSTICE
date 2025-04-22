@@ -85,6 +85,7 @@ class CoupledFAIR(FAIR):
         time_horizon,
         scenarios,
         climate_ensembles=None,
+        stochastic_run=True,
         baseline_run=None,  # Default is None. Acceptable values are None, "default", "purge"
     ):
         """Setup the stepwise run of the FaIR model with the JUSTICE IAM.
@@ -108,10 +109,14 @@ class CoupledFAIR(FAIR):
 
         if climate_ensembles is not None:
             self.fair_fill_data(
-                self.justice_fair_scenarios, climate_ensembles=climate_ensembles
+                self.justice_fair_scenarios,
+                climate_ensembles=climate_ensembles,
+                stochastic_run=stochastic_run,
             )
         else:
-            self.fair_fill_data(self.justice_fair_scenarios)
+            self.fair_fill_data(
+                self.justice_fair_scenarios, stochastic_run=stochastic_run
+            )
 
         # Create self.emissions_purge_array full on nans
         self.emissions_purge_array = np.full(
@@ -1118,7 +1123,7 @@ class CoupledFAIR(FAIR):
                     # fill FaIR xarray
                     fill(self.forcing, forc[:, None], specie=specie, scenario=scenario)
 
-    def fair_fill_data(self, scenarios, climate_ensembles=None):
+    def fair_fill_data(self, scenarios, climate_ensembles=None, stochastic_run=True):
         self.define_time(
             self.start_year_fair, self.end_year_fair, self.timestep_justice
         )
@@ -1229,7 +1234,7 @@ class CoupledFAIR(FAIR):
             df_configs["clim_sigma_xi"].values.squeeze(),
         )
         fill(self.climate_configs["seed"], df_configs["seed"])
-        fill(self.climate_configs["stochastic_run"], True)
+        fill(self.climate_configs["stochastic_run"], stochastic_run)
         fill(self.climate_configs["use_seed"], True)
         fill(self.climate_configs["forcing_4co2"], df_configs["clim_F_4xCO2"])
 

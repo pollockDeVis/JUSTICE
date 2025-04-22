@@ -93,6 +93,7 @@ class JUSTICE:
         timestep=1,  # Model is only tested for timestep 1
         scenario=0,
         climate_ensembles=None,
+        stochastic_run=True,
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
@@ -143,16 +144,20 @@ class JUSTICE:
                     time_horizon=self.time_horizon,
                     scenarios=self.scenario,
                     climate_ensembles=[climate_ensembles],
+                    stochastic_run=stochastic_run,
                 )
             else:
                 self.no_of_ensembles = self.climate.fair_justice_run_init(
                     time_horizon=self.time_horizon,
                     scenarios=self.scenario,
                     climate_ensembles=climate_ensembles,
+                    stochastic_run=stochastic_run,
                 )
         else:
             self.no_of_ensembles = self.climate.fair_justice_run_init(
-                time_horizon=self.time_horizon, scenarios=self.scenario
+                time_horizon=self.time_horizon,
+                scenarios=self.scenario,
+                stochastic_run=stochastic_run,
             )
 
         ############################################################################################################################################################
