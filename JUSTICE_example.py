@@ -224,9 +224,10 @@ def JUSTICE_stepwise_run(
     # Call the function within the JUSTICE_stepwise_run method #NOTE: This is optional for data analysis
     # baseline_emissions = calculate_baseline_emissions(model, datasets, scenarios)
 
-    # df_welfare_util_prior = calculate_welfare_for_different_swfs(
-    #     datasets, data_loader, time_horizon, no_of_ensembles, population
-    # )
+    # df_welfare_util_prior =
+    calculate_welfare_for_different_swfs(
+        datasets, data_loader, time_horizon, no_of_ensembles, population
+    )
 
     # Example usage within JUSTICE_stepwise_run #NOTE: This is optional for data analysis
     # save_constrained_emission_control_rate_at_percentile(
@@ -262,6 +263,109 @@ def JUSTICE_stepwise_run(
         # )
 
     return datasets, model
+
+
+def JUSTICE_run_policy_index(
+    model=None,
+    path_to_rbf_weights=None,
+    rbf_policy_index=None,
+    time_horizon=None,
+    data_loader=None,
+    n_inputs_rbf=2,
+    max_annual_growth_rate=0.04,
+    emission_control_start_timestep=10,
+    min_emission_control_rate=0.01,
+    allow_emission_fallback=False,  # Default is False
+    endogenous_savings_rate=True,
+    max_temperature=16.0,
+    min_temperature=0.0,
+    max_difference=2.0,
+    min_difference=0.0,
+):
+
+    # Assert if the path to the RBF weights is provided
+    assert path_to_rbf_weights is not None, "Path to RBF weights is not provided"
+
+    no_of_ensembles = model.__getattribute__("no_of_ensembles")
+    n_regions = len(data_loader.REGION_LIST)
+    n_timesteps = len(time_horizon.model_time_horizon)
+    population = model.economy.get_population()
+
+    # Setting up the RBF. Note: this depends on the setup of the optimization run
+    rbf = setup_RBF_for_emission_control(
+        region_list=data_loader.REGION_LIST,
+        rbf_policy_index=rbf_policy_index,
+        n_inputs_rbf=n_inputs_rbf,
+        path_to_rbf_weights=path_to_rbf_weights,
+    )
+    emission_constraint = EmissionControlConstraint(
+        max_annual_growth_rate=max_annual_growth_rate,
+        emission_control_start_timestep=emission_control_start_timestep,
+        min_emission_control_rate=min_emission_control_rate,
+    )
+
+    # Initialize datasets to store the results
+    datasets = {}
+
+    # Initialize emissions control rate
+    emissions_control_rate = np.zeros((n_regions, n_timesteps, no_of_ensembles))
+    constrained_emission_control_rate = np.zeros(
+        (n_regions, n_timesteps, no_of_ensembles)
+    )
+
+    previous_temperature = 0
+    difference = 0
+    max_temperature = max_temperature
+    min_temperature = min_temperature
+    max_difference = max_difference
+    min_difference = min_difference
+
+    for timestep in range(n_timesteps):
+
+        # Constrain the emission control rate
+        constrained_emission_control_rate[:, timestep, :] = (
+            emission_constraint.constrain_emission_control_rate(
+                emissions_control_rate[:, timestep, :],
+                timestep,
+                allow_fallback=allow_emission_fallback,
+            )
+        )
+
+        model.stepwise_run(
+            emission_control_rate=constrained_emission_control_rate[:, timestep, :],
+            timestep=timestep,
+            endogenous_savings_rate=endogenous_savings_rate,
+        )
+        datasets = model.stepwise_evaluate(timestep=timestep)
+        temperature = datasets["global_temperature"][timestep, :]
+
+        if timestep % 5 == 0:
+            difference = temperature - previous_temperature
+            # Do something with the difference variable
+            previous_temperature = temperature
+
+        # Apply Min Max Scaling to temperature and difference
+        scaled_temperature = (temperature - min_temperature) / (
+            max_temperature - min_temperature
+        )
+        scaled_difference = (difference - min_difference) / (
+            max_difference - min_difference
+        )
+
+        rbf_input = np.array([scaled_temperature, scaled_difference])
+
+        # Check if this is not the last timestep
+        if timestep < n_timesteps - 1:
+            emissions_control_rate[:, timestep + 1, :] = rbf.apply_rbfs(rbf_input)
+
+    datasets = model.evaluate()
+    datasets["constrained_emission_control_rate"] = constrained_emission_control_rate
+
+    calculate_welfare_for_different_swfs(
+        datasets, data_loader, time_horizon, no_of_ensembles, population
+    )
+
+    return datasets
 
 
 # TODO: Under Construction - Not implemented yet
@@ -406,6 +510,12 @@ def calculate_welfare_for_different_swfs(
         inequality_aversion=welfare_defaults_utilitarian["inequality_aversion"],
         sufficiency_threshold=welfare_defaults_utilitarian["sufficiency_threshold"],
         egality_strictness=welfare_defaults_utilitarian["egality_strictness"],
+        limitarian_threshold_emissions=welfare_defaults_utilitarian[
+            "limitarian_threshold_emissions"
+        ],
+        limitarian_start_year_of_remaining_budget=welfare_defaults_utilitarian[
+            "limitarian_start_year_of_remaining_budget"
+        ],
     )
 
     welfare_function_prioritarian = SocialWelfareFunction(
@@ -423,6 +533,12 @@ def calculate_welfare_for_different_swfs(
         inequality_aversion=welfare_defaults_prioritarian["inequality_aversion"],
         sufficiency_threshold=welfare_defaults_prioritarian["sufficiency_threshold"],
         egality_strictness=welfare_defaults_prioritarian["egality_strictness"],
+        limitarian_threshold_emissions=welfare_defaults_prioritarian[
+            "limitarian_threshold_emissions"
+        ],
+        limitarian_start_year_of_remaining_budget=welfare_defaults_prioritarian[
+            "limitarian_start_year_of_remaining_budget"
+        ],
     )
 
     _, _, _, datasets["welfare_utilitarian"] = (
@@ -436,55 +552,55 @@ def calculate_welfare_for_different_swfs(
         )
     )
 
-    timestep_2100 = time_horizon.year_to_timestep(2100, timestep=1)
-    print("Timestep 2100: ", timestep_2100)
+    # timestep_2100 = time_horizon.year_to_timestep(2100, timestep=1)
+    # print("Timestep 2100: ", timestep_2100)
 
-    net_output = datasets["net_economic_output"]
-    # Sum over all regions
-    net_output = np.sum(net_output, axis=0)
-    # Select the 2100 timestep
-    net_output = net_output[timestep_2100, :]
+    # net_output = datasets["net_economic_output"]
+    # # Sum over all regions
+    # net_output = np.sum(net_output, axis=0)
+    # # Select the 2100 timestep
+    # net_output = net_output[timestep_2100, :]
 
-    damages = datasets["economic_damage"]
-    # Sum over all regions
-    damages = np.sum(damages, axis=0)
-    # Select the 2100 timestep
-    damages = damages[timestep_2100, :]
+    # damages = datasets["economic_damage"]
+    # # Sum over all regions
+    # damages = np.sum(damages, axis=0)
+    # # Select the 2100 timestep
+    # damages = damages[timestep_2100, :]
 
-    abatement = datasets["abatement_cost"]
-    # Sum over all regions
-    abatement = np.sum(abatement, axis=0)
-    # Select the 2100 timestep
-    abatement = abatement[timestep_2100, :]
+    # abatement = datasets["abatement_cost"]
+    # # Sum over all regions
+    # abatement = np.sum(abatement, axis=0)
+    # # Select the 2100 timestep
+    # abatement = abatement[timestep_2100, :]
 
-    temperature = datasets["global_temperature"]
-    # Select the 2100 timestep
-    temperature = temperature[timestep_2100, :]
+    # temperature = datasets["global_temperature"]
+    # # Select the 2100 timestep
+    # temperature = temperature[timestep_2100, :]
 
-    consumption_per_capita = datasets["consumption_per_capita"]
-    # Sum over all regions
-    consumption_per_capita = np.sum(consumption_per_capita, axis=0)
-    # Select the 2100 timestep
-    consumption_per_capita = consumption_per_capita[timestep_2100, :]
+    # consumption_per_capita = datasets["consumption_per_capita"]
+    # # Sum over all regions
+    # consumption_per_capita = np.sum(consumption_per_capita, axis=0)
+    # # Select the 2100 timestep
+    # consumption_per_capita = consumption_per_capita[timestep_2100, :]
 
-    # Print the shapes of net_output, damages, abatement, temperature
-    print("Net Output Shape: ", net_output.shape)
-    print("Damages Shape: ", damages.shape)
-    print("Abatement Shape: ", abatement.shape)
-    print("Temperature Shape: ", temperature.shape)
+    # # Print the shapes of net_output, damages, abatement, temperature
+    # print("Net Output Shape: ", net_output.shape)
+    # print("Damages Shape: ", damages.shape)
+    # print("Abatement Shape: ", abatement.shape)
+    # print("Temperature Shape: ", temperature.shape)
 
-    # Net Output, Damages, Abatement, Temperature have shape (1001,). Combine them in a single dataframe with 4 columns
-    df = pd.DataFrame(
-        {
-            "Net Output": net_output,
-            "Consumption Per Capita": consumption_per_capita,
-            "Damages": damages,
-            "Abatement": abatement,
-            "Temperature": temperature,
-        }
-    )
+    # # Net Output, Damages, Abatement, Temperature have shape (1001,). Combine them in a single dataframe with 4 columns
+    # df = pd.DataFrame(
+    #     {
+    #         "Net Output": net_output,
+    #         "Consumption Per Capita": consumption_per_capita,
+    #         "Damages": damages,
+    #         "Abatement": abatement,
+    #         "Temperature": temperature,
+    #     }
+    # )
 
-    return df
+    # return df
 
 
 def setup_RBF_for_emission_control(
