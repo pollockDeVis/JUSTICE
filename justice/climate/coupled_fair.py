@@ -85,6 +85,7 @@ class CoupledFAIR(FAIR):
         time_horizon,
         scenarios,
         climate_ensembles=None,
+        stochastic_run=True,
         baseline_run=None,  # Default is None. Acceptable values are None, "default", "purge"
     ):
         """Setup the stepwise run of the FaIR model with the JUSTICE IAM.
@@ -108,10 +109,14 @@ class CoupledFAIR(FAIR):
 
         if climate_ensembles is not None:
             self.fair_fill_data(
-                self.justice_fair_scenarios, climate_ensembles=climate_ensembles
+                self.justice_fair_scenarios,
+                climate_ensembles=climate_ensembles,
+                stochastic_run=stochastic_run,
             )
         else:
-            self.fair_fill_data(self.justice_fair_scenarios)
+            self.fair_fill_data(
+                self.justice_fair_scenarios, stochastic_run=stochastic_run
+            )
 
         # Create self.emissions_purge_array full on nans
         self.emissions_purge_array = np.full(
@@ -1118,7 +1123,7 @@ class CoupledFAIR(FAIR):
                     # fill FaIR xarray
                     fill(self.forcing, forc[:, None], specie=specie, scenario=scenario)
 
-    def fair_fill_data(self, scenarios, climate_ensembles=None):
+    def fair_fill_data(self, scenarios, climate_ensembles=None, stochastic_run=True):
         self.define_time(
             self.start_year_fair, self.end_year_fair, self.timestep_justice
         )
@@ -1142,9 +1147,11 @@ class CoupledFAIR(FAIR):
             ), "climate_ensembles must be less than or equal to the number of ensembles"
 
             # Subtract 1 from climate_ensembles to get the correct index using vectorized operations
-            ensemble_indices = climate_ensembles - 1
+            self.ensemble_indices = climate_ensembles - 1
 
-            df_configs = df_configs.iloc[ensemble_indices]
+            df_configs = df_configs.iloc[self.ensemble_indices]
+        else:
+            self.ensemble_indices = None
 
         self.define_configs(df_configs.index)
         self.number_of_ensembles = len(df_configs.index)
@@ -1227,7 +1234,7 @@ class CoupledFAIR(FAIR):
             df_configs["clim_sigma_xi"].values.squeeze(),
         )
         fill(self.climate_configs["seed"], df_configs["seed"])
-        fill(self.climate_configs["stochastic_run"], True)
+        fill(self.climate_configs["stochastic_run"], stochastic_run)
         fill(self.climate_configs["use_seed"], True)
         fill(self.climate_configs["forcing_4co2"], df_configs["clim_F_4xCO2"])
 
@@ -1484,10 +1491,23 @@ class CoupledFAIR(FAIR):
         Resets fair model to initial state, with historical data and starting with justice_start_index.
         """
 
-        # Load gas_partitions_array
-        self.gas_partitions_array = np.load(
-            os.path.join(data_file_path, "fair/gas_partitions_array_default.npy")
-        )
+        if self.ensemble_indices is None:
+            # Load gas_partitions_array
+            self.gas_partitions_array = np.load(
+                os.path.join(data_file_path, "fair/gas_partitions_array_default.npy")
+            )
+        else:
+            # Load gas_partitions_array
+            self.gas_partitions_array = np.load(
+                os.path.join(
+                    data_file_path, "fair/gas_partitions_array_default.npy"
+                )  # (1, 1001, 64, 4)
+            )
+
+            # Now select the gas_partitions_array for the ensemble indices
+            self.gas_partitions_array = self.gas_partitions_array[
+                :, self.ensemble_indices, :, :
+            ]
 
         # Concentration array is one timestep ahead of emissions
         self.concentration_array[self.justice_start_index + 1 :, ...] = np.nan
