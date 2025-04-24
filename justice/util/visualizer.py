@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import seaborn as sns
+from pathlib import Path
 import os
 from matplotlib.lines import Line2D
 from justice.util.model_time import TimeHorizon
@@ -3789,6 +3790,91 @@ def plot_regional_emissions_with_boxplots(
 
     # Show the figure
     fig.show()
+
+
+def plot_regret_heatmap(
+    data,
+    figsize=(15, 10),
+    font_scale=1.5,
+    set_style="white",
+    cmap="vlag",
+    center=0,
+    square=False,
+    linewidths=0,
+    cbar_shrink=0.8,
+    cbar_label="",
+    title="",
+    xlabel="Scenario",
+    ylabel="Policy Index",
+    show_values=False,
+    fmt=".2f",
+    annot_kws=None,
+    save_path=None,
+    show=True,
+    xtick_labelsize=None,
+    ytick_labelsize=None,
+    scaling=False,  # ← new flag: if True, min–max scale to [-1,1]
+):
+    """
+    Plot a seaborn heatmap of `data` (DataFrame).
+    If scaling=True, data is min–max scaled into [-1,1] before plotting.
+    """
+    sns.set_theme(font_scale=font_scale)
+    sns.set_style(set_style)
+    plt.figure(figsize=figsize)
+
+    # 1) optionally scale the data into [-1,1]
+    if scaling:
+        d = data.astype(float)
+        mn, mx = d.values.min(), d.values.max()
+        if mx != mn:
+            plot_data = (d - mn) / (mx - mn) * 2 - 1
+        else:
+            plot_data = d * 0.0
+        vmin, vmax = -1, 1
+    else:
+        plot_data = data
+        vmin = vmax = None
+
+    # 2) draw the heatmap
+    ax = sns.heatmap(
+        plot_data,
+        cmap=cmap,
+        center=center,
+        square=square,
+        linewidths=linewidths,
+        vmin=vmin,
+        vmax=vmax,
+        cbar_kws={"shrink": cbar_shrink, "label": cbar_label},
+        annot=show_values,
+        fmt=fmt,
+        annot_kws=annot_kws or {},
+        xticklabels=True,
+        yticklabels=True,
+    )
+    ax.set_aspect("auto")
+
+    # 3) adjust tick label sizes
+    if xtick_labelsize is not None:
+        ax.tick_params(axis="x", labelsize=xtick_labelsize)
+    if ytick_labelsize is not None:
+        ax.tick_params(axis="y", labelsize=ytick_labelsize)
+
+    # 4) titles and labels
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    plt.tight_layout()
+
+    # 5) save or show
+    if save_path:
+        p = Path(save_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(p, dpi=300)
+    if show:
+        plt.show()
+
+    return ax
 
 
 # def plot_hypervolume(
