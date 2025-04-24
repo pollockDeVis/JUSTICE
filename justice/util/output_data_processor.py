@@ -1,6 +1,4 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import pandas as pd
 from scipy.interpolate import interp1d
 from JUSTICE_example import JUSTICE_stepwise_run, JUSTICE_run_policy_index
@@ -12,12 +10,12 @@ from justice.util.data_loader import DataLoader
 import os
 import h5py
 from ema_workbench import load_results, ema_logging
-import pandas as pd
 from justice.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
-from justice.util.enumerations import get_economic_scenario
 from justice.objectives.objective_functions import fraction_of_ensemble_above_threshold
 from pathlib import Path
+import filecmp
+import multiprocessing as mp
 
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
@@ -1226,6 +1224,116 @@ def generate_reference_set_policy_mapping(
         print(f"Wrote mapping to {h5_path}")
 
     return mapping
+
+
+def process_scenario(swf, policy_indices, scenario: str):
+    """
+    Worker that runs all of your policies under a single SSP scenario.
+    This executes in a fresh Python process, so JUSTICE will load the
+    right CSVs for that scenario.
+    """
+    # re‑import inside the worker so each process has a clean namespace
+    from justice.model import JUSTICE
+    from justice.util.enumerations import (
+        Scenario,
+        Economy,
+        DamageFunction,
+        Abatement,
+    )
+
+    # re‑construct exactly the same path / filename logic
+    sw_name = swf.value[1]
+    path = f"data/optimized_rbf_weights/limitarian/50k/{sw_name}/"
+    filename = f"{sw_name}_reference_set.csv"
+
+    # build the model for this one SSP
+    scenario_idx = Scenario[scenario].value[0]
+    print(
+        f"\n--- [PID {mp.current_process().pid}] Building JUSTICE for {scenario} ({scenario_idx}) ---"
+    )
+    model = JUSTICE(
+        scenario=scenario_idx,
+        economy_type=Economy.NEOCLASSICAL,
+        damage_function_type=DamageFunction.KALKUHL,
+        abatement_type=Abatement.ENERDATA,
+        social_welfare_function=swf,
+    )
+
+    # run your robustness‐check loop
+    for pi in policy_indices:
+        T, uW, pW = reevaluate_optimal_policy_for_robustness(
+            model=model,
+            filename=filename,
+            path_to_rbf_weights=path,
+            path_to_output=path,
+            rbf_policy_index=pi,
+            n_inputs_rbf=2,
+            max_annual_growth_rate=0.04,
+            emission_control_start_timestep=10,
+            min_emission_control_rate=0.01,
+            max_temperature=16.0,
+            min_temperature=0.0,
+            max_difference=2.0,
+            min_difference=0.0,
+            temperature_year_of_interest=2100,
+            temperature_threshold=2.0,
+        )
+
+        out_df = pd.DataFrame(
+            {
+                "utilitarian_welfare": uW,
+                "prioritarian_welfare": pW,
+                "global_temperature": T,
+            }
+        )
+        out_fname = f"{pi}_{scenario}_{swf.value[1]}_global_temperature_.csv"
+        out_df.to_csv(path + out_fname, index=False)
+
+        # clear only the *time series* so you can rerun the same model object
+        model.reset()
+
+
+def compare_test_vs_old(test_dir: str):
+    """
+    Compare every .csv in test_dir against the file of the same name
+    in its parent directory.  Returns a dict with lists of
+    'identical', 'different', and 'missing'.
+    """
+    test_path = Path(test_dir)
+    old_path = test_path.parent
+
+    summary = {
+        "identical": [],
+        "different": [],
+        "missing": [],
+    }
+
+    for test_file in test_path.glob("*.csv"):
+        old_file = old_path / test_file.name
+        if not old_file.exists():
+            summary["missing"].append(test_file.name)
+            continue
+
+        # first try a fast, byte‐for‐byte compare
+        if filecmp.cmp(test_file, old_file, shallow=False):
+            summary["identical"].append(test_file.name)
+            continue
+
+        # if the byte‐compare fails, do a pandas DataFrame compare
+        df_new = pd.read_csv(test_file)
+        df_old = pd.read_csv(old_file)
+        try:
+            pd.testing.assert_frame_equal(
+                df_new,
+                df_old,
+                check_dtype=False,  # allow int64 vs float64 if harmless
+                check_like=True,  # ignore column‐order
+            )
+            summary["identical"].append(test_file.name)
+        except AssertionError:
+            summary["different"].append(test_file.name)
+
+    return summary
 
 
 if __name__ == "__main__":
