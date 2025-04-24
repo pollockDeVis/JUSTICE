@@ -17,6 +17,7 @@ from justice.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
 from justice.util.enumerations import get_economic_scenario
 from justice.objectives.objective_functions import fraction_of_ensemble_above_threshold
+from pathlib import Path
 
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
@@ -334,123 +335,6 @@ def reevaluate_optimal_policy(
             print(f"File saved as {output_file_name} at location {path_to_output}")
 
 
-def reevaluate_optimal_policy_with_temperature_threshold_filtering(
-    input_data=[],
-    scenario_list=[],
-    list_of_objectives=[],
-    direction_of_optimization=[],
-    path_to_rbf_weights=None,
-    path_to_output=None,
-    rbf_policy_index=None,
-    n_inputs_rbf=2,
-    max_annual_growth_rate=0.04,
-    emission_control_start_timestep=10,
-    min_emission_control_rate=0.01,
-    max_temperature=16.0,
-    min_temperature=0.0,
-    max_difference=2.0,
-    min_difference=0.0,
-    temperature_year_of_interest=2100,
-    temperature_threshold=2.0,
-    saving=False,
-    start_year=2015,
-    end_year=2300,
-    data_timestep=5,
-    timestep=1,
-):
-
-    # Assert if any arguments are None
-    assert input_data is not None, "Input data not provided"
-    assert path_to_rbf_weights is not None, "Path to RBF weights not provided"
-    assert path_to_output is not None, "Path to output not provided"
-    # Assert if direction of optimization is not provided
-    assert direction_of_optimization != [], "Direction of optimization not provided"
-
-    path_to_output = path_to_output  # "data/reevaluation/"
-
-    # Set the time horizon
-    time_horizon = TimeHorizon(
-        start_year=start_year,
-        end_year=end_year,
-        data_timestep=data_timestep,
-        timestep=timestep,
-    )
-
-    temperature_year_of_interest_index = time_horizon.year_to_timestep(
-        year=temperature_year_of_interest, timestep=timestep
-    )
-
-    # Loop through the elements in input_data
-    for input_data_index, file in enumerate(input_data):
-
-        output_file_name = file.split(".")[0]  # input_data[index]
-
-        # TODO: Temporarily Commented Out
-        # print("index for policy: ", rbf_policy_index)
-
-        # Create a dictionary to store the data for each scenario
-        scenario_data = {}
-
-        for _, scenarios in enumerate(scenario_list):
-            scenario_idx = Scenario[scenarios].value[0]
-            # TODO: Temporarily Commented Out
-            print("Scenario", scenario_idx, scenarios)
-
-            data_dictionary, model = JUSTICE_stepwise_run(
-                scenarios=scenario_idx,
-                path_to_rbf_weights=path_to_rbf_weights + file,
-                saving=False,
-                output_file_name=None,
-                rbf_policy_index=rbf_policy_index,
-                n_inputs_rbf=n_inputs_rbf,
-                max_annual_growth_rate=max_annual_growth_rate,
-                emission_control_start_timestep=emission_control_start_timestep,
-                min_emission_control_rate=min_emission_control_rate,
-                allow_emission_fallback=False,  # Default is False
-                endogenous_savings_rate=True,
-                max_temperature=max_temperature,
-                min_temperature=min_temperature,
-                max_difference=max_difference,
-                min_difference=min_difference,
-            )
-
-            fraction_above_threshold = fraction_of_ensemble_above_threshold(
-                temperature=data_dictionary["global_temperature"],
-                temperature_year_index=temperature_year_of_interest_index,
-                threshold=temperature_threshold,
-            )
-
-            # print(
-            #     f"Fraction of ensemble members above threshold: {fraction_above_threshold}"
-            # )
-
-            # if fraction_above_threshold <= 0.5:
-            # print(scenario_idx, scenarios)
-            print("index for policy: ", rbf_policy_index)
-            print(
-                f"Fraction of ensemble members above threshold: {fraction_above_threshold}"
-            )
-
-            scenario_data[scenarios] = data_dictionary
-
-        output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
-
-        if saving:
-            # Save as HDF5 file
-            with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
-                for scenario, arrays in scenario_data.items():
-                    scenario_group = f.create_group(
-                        scenario
-                    )  # Create a group for each scenario
-                    for key, array in arrays.items():
-                        scenario_group.create_dataset(
-                            key, data=array
-                        )  # Save each array in its respective group
-            print(f"File saved as {output_file_name} at location {path_to_output}")
-        # Reset the model
-        model.reset()
-
-
 #######################################################################################
 #
 #
@@ -528,100 +412,6 @@ def reevaluate_optimal_policy_for_robustness(
         utilitarian_welfare,
         prioritarian_welfare,
     )
-
-
-# def reevaluate_optimal_policy_for_robustness(
-#     filename=None,
-#     scenario=None,
-#     list_of_objectives=[],
-#     direction_of_optimization=[],
-#     path_to_rbf_weights=None,
-#     path_to_output=None,
-#     rbf_policy_index=None,
-#     n_inputs_rbf=2,
-#     max_annual_growth_rate=0.04,
-#     emission_control_start_timestep=10,
-#     min_emission_control_rate=0.01,
-#     max_temperature=16.0,
-#     min_temperature=0.0,
-#     max_difference=2.0,
-#     min_difference=0.0,
-#     temperature_year_of_interest=2100,
-#     temperature_threshold=2.0,
-#     saving=False,
-#     start_year=2015,
-#     end_year=2300,
-#     data_timestep=5,
-#     timestep=1,
-# ):
-
-#     # Assert if any arguments are None
-#     assert filename is not None, "Input data not provided"
-#     assert path_to_rbf_weights is not None, "Path to RBF weights not provided"
-#     assert path_to_output is not None, "Path to output not provided"
-#     # Assert if direction of optimization is not provided
-#     assert direction_of_optimization != [], "Direction of optimization not provided"
-
-#     path_to_output = path_to_output  # "data/reevaluation/"
-
-#     # Set the time horizon
-#     time_horizon = TimeHorizon(
-#         start_year=start_year,
-#         end_year=end_year,
-#         data_timestep=data_timestep,
-#         timestep=timestep,
-#     )
-
-#     temperature_year_of_interest_index = time_horizon.year_to_timestep(
-#         year=temperature_year_of_interest, timestep=timestep
-#     )
-
-#     scenario_idx = Scenario[scenario].value[0]
-#     # TODO: Temporarily Commented Out
-#     print("Scenario", scenario_idx, scenario)
-
-#     data_dictionary, model = JUSTICE_stepwise_run(
-#         scenarios=scenario_idx,
-#         path_to_rbf_weights=path_to_rbf_weights + filename,
-#         saving=False,
-#         output_file_name=None,
-#         rbf_policy_index=rbf_policy_index,
-#         n_inputs_rbf=n_inputs_rbf,
-#         max_annual_growth_rate=max_annual_growth_rate,
-#         emission_control_start_timestep=emission_control_start_timestep,
-#         min_emission_control_rate=min_emission_control_rate,
-#         allow_emission_fallback=False,  # Default is False
-#         endogenous_savings_rate=True,
-#         max_temperature=max_temperature,
-#         min_temperature=min_temperature,
-#         max_difference=max_difference,
-#         min_difference=min_difference,
-#     )
-
-#     fraction_above_threshold = fraction_of_ensemble_above_threshold(
-#         temperature=data_dictionary["global_temperature"],
-#         temperature_year_index=temperature_year_of_interest_index,
-#         threshold=temperature_threshold,
-#     )
-
-#     temperature_values_per_policy = data_dictionary["global_temperature"][
-#         temperature_year_of_interest_index, :
-#     ]
-#     utilitarian_welfare = data_dictionary["welfare_utilitarian"]
-#     prioritarian_welfare = data_dictionary["welfare_prioritarian"]
-
-#     print("index for policy: ", rbf_policy_index)
-#     print(f"Fraction above threshold Reeval: {fraction_above_threshold}")
-#     # Print
-#     print("Utilitarian Welfare Reeval: ", utilitarian_welfare)
-#     print("Prioritarian Welfare Reeval: ", prioritarian_welfare)
-
-#     return (
-#         model,
-#         temperature_values_per_policy,
-#         utilitarian_welfare,
-#         prioritarian_welfare,
-#     )
 
 
 def read_hdf5_file(file_path):
@@ -1288,6 +1078,154 @@ def reevaluate_all_for_utilitarian_prioritarian(
         reference_set_df.to_csv(
             path_to_output + output_file_name + "_reevaluated" + ".csv"
         )
+
+
+##############################################################################
+#
+#          LIMITARIAN ANALYSIS
+#
+###############################################################################
+
+
+def read_reference_set_policy_mapping(
+    base_dir, sw_name, mapping_subdir="mapping", hdf5_filename_template="mapping_{}.h5"
+):
+    """
+    Reads the reference set policy mapping from an HDF5 file.
+
+    Arguments:
+        base_dir (Path or str): The base directory path.
+        sw_name (str): The social welfare name to use in the HDF5 filename.
+        mapping_subdir (str): The subdirectory under base_dir where the mapping file is stored.
+        hdf5_filename_template (str): A template for the HDF5 filename, where '{}' will be replaced with sw_name.
+
+    Returns:
+        dict: A dictionary containing the policy mapping.
+    """
+    import h5py
+    from pathlib import Path
+
+    base_dir = Path(base_dir + "/" + sw_name)
+    mapping_dir = base_dir / mapping_subdir
+    h5_path = mapping_dir / hdf5_filename_template.format(sw_name)
+
+    mapping = {}
+    with h5py.File(h5_path, "r") as h5f:
+        for pi_str, grp_pi in h5f.items():
+            pi = int(pi_str)
+            welfare = grp_pi.attrs["welfare"]
+            frac_above = grp_pi.attrs["fraction_above_threshold"]
+            mapping[pi] = {
+                "welfare": welfare,
+                "fraction_above_threshold": frac_above,
+            }
+            for scenario, grp_s in grp_pi.items():
+                gt = grp_s["global_temperature"][()]  # numpy array
+                u0 = grp_s.attrs["utilitarian_welfare"]
+                p0 = grp_s.attrs["prioritarian_welfare"]
+                mapping[pi][scenario] = {
+                    "global_temperature": gt,
+                    "utilitarian_welfare": u0,
+                    "prioritarian_welfare": p0,
+                }
+    return mapping
+
+
+def generate_reference_set_policy_mapping(
+    swf,
+    data_root,
+    scenario_list,
+    saving=True,
+    output_directory=None,
+):
+    """
+    Build and optionally save an HDF5 mapping from a reference‐set CSV
+    to per‐scenario reevaluation data for each policy index.
+
+    Args:
+      swf             : WelfareFunction enum member
+      data_root       : Path or str, base folder up to "limitarian/50k"
+      scenario_list   : list of scenario codes, e.g. ["SSP119",…]
+      saving          : bool, whether to write out mapping_<sw_name>.h5
+
+    Returns:
+      mapping dict with structure:
+        { policy_index: {
+            "welfare": float,
+            "fraction_above_threshold": float,
+            "<scenario>": {
+               "global_temperature": np.ndarray,
+               "utilitarian_welfare": float,
+               "prioritarian_welfare": float
+            }, …
+          }, … }
+    """
+    sw_name = swf.value[1]
+    base_dir = Path(data_root) / sw_name
+    ref_file = base_dir / f"{sw_name}_reference_set.csv"
+    out_dir = base_dir
+
+    # load reference set
+    ref_df = pd.read_csv(ref_file)
+    policy_indices = list(range(len(ref_df)))
+    print(f"Found {len(policy_indices)} policies (0 to {policy_indices[-1]})")
+
+    mapping = {}
+    missing_files = []
+
+    for pi in policy_indices:
+        row = ref_df.iloc[pi]
+        mapping[pi] = {
+            "welfare": float(row["welfare"]),
+            "fraction_above_threshold": float(row["fraction_above_threshold"]),
+        }
+        for scenario in scenario_list:
+            fname = out_dir / f"{pi}_{scenario}_{sw_name}_global_temperature_.csv"
+            if not fname.exists():
+                missing_files.append(str(fname))
+                continue
+
+            df = pd.read_csv(fname)
+            mapping[pi][scenario] = {
+                "global_temperature": df["global_temperature"].to_numpy(),
+                "utilitarian_welfare": float(df["utilitarian_welfare"].iloc[0]),
+                "prioritarian_welfare": float(df["prioritarian_welfare"].iloc[0]),
+            }
+
+    if missing_files:
+        print("Missing reevaluation files:")
+        for fn in missing_files:
+            print("   ", fn)
+    else:
+        print("All files loaded successfully.")
+
+    if saving:
+        mapping_dir = base_dir / output_directory
+        mapping_dir.mkdir(parents=True, exist_ok=True)
+        h5_path = mapping_dir / f"{output_directory}_{sw_name}.h5"
+        with h5py.File(h5_path, "w") as h5f:
+            for pi, pi_dict in mapping.items():
+                grp_pi = h5f.create_group(str(pi))
+                grp_pi.attrs["welfare"] = pi_dict["welfare"]
+                grp_pi.attrs["fraction_above_threshold"] = pi_dict[
+                    "fraction_above_threshold"
+                ]
+                for scen, scen_data in pi_dict.items():
+                    if scen in ("welfare", "fraction_above_threshold"):
+                        continue
+                    grp_s = grp_pi.create_group(scen)
+                    grp_s.create_dataset(
+                        "global_temperature", data=scen_data["global_temperature"]
+                    )
+                    grp_s.attrs["utilitarian_welfare"] = scen_data[
+                        "utilitarian_welfare"
+                    ]
+                    grp_s.attrs["prioritarian_welfare"] = scen_data[
+                        "prioritarian_welfare"
+                    ]
+        print(f"Wrote mapping to {h5_path}")
+
+    return mapping
 
 
 if __name__ == "__main__":
