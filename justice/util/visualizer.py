@@ -3361,6 +3361,235 @@ def plot_stacked_area_chart_with_baseline_emissions(
     return fig, data, abated_emissions
 
 
+def plot_stacked_area_chart_with_baseline_emissions_v2(
+    variable_name=None,
+    region_name_path="data/input/rice50_region_names.json",
+    path_to_data="data/temporary",
+    path_to_output="./data/plots",
+    baseline_emissions=None,
+    input_data=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    scenario_list=[],
+    title=None,
+    title_x=0.5,
+    xaxis_label=None,
+    yaxis_label=None,
+    legend_label=None,
+    colour_palette=px.colors.qualitative.Light24,
+    height=800,
+    width=1200,
+    visualization_start_year=2015,
+    visualization_end_year=2300,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    template="plotly_white",
+    plot_title=None,
+    groupnorm=None,
+    region_aggegation=True,
+    region_dict=None,
+    saving=False,
+    fontsize=16,
+    yaxis_lower_limit=0,
+    yaxis_upper_limit=25,
+    show_legend=True,
+    filetype=".pkl",
+    regional_order=None,
+):
+
+    # Assert if input_data list, scenario_list and output_titles list is None
+    assert input_data, "No input data provided for visualization."
+    assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
+
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    data_loader = DataLoader()
+
+    region_list = data_loader.REGION_LIST
+
+    if region_aggegation == True:
+        assert region_dict, "Region dictionary is not provided."
+
+    else:
+        with open(region_name_path, "r") as f:
+            region_names = json.load(f)
+
+        # Use region list to get the region names using the region names dictionary
+        region_list = [region_names[region] for region in region_list]
+        # Convert into a flat list
+        region_list = [item for sublist in region_list for item in sublist]
+
+    # Load the data
+    # Enumerate through the input data and load the data
+    for idx, file in enumerate(input_data):
+        for scenario in scenario_list:
+            print("Loading data for: ", scenario, " - ", file)
+            # Check if the file is pickle or numpy
+            if ".npy" in filetype:
+                data = np.load(
+                    path_to_data
+                    + "/"
+                    + file
+                    + "_"
+                    + scenario
+                    + "_"
+                    + variable_name
+                    + ".npy"
+                )
+            else:
+                with open(
+                    path_to_data
+                    + "/"
+                    + file
+                    + "_"
+                    + scenario
+                    + "_"
+                    + variable_name
+                    + ".pkl",
+                    "rb",
+                ) as f:
+                    data = pickle.load(f)
+
+            if baseline_emissions is not None:
+
+                print("Baseline emissions shape: ", baseline_emissions.shape)
+                # if shape is 2, tile it to 3
+                if len(baseline_emissions.shape) == 2:
+                    baseline_emissions = np.tile(
+                        baseline_emissions[:, :, np.newaxis], (1, 1, 1001)
+                    )
+
+                print("New Shape: ", baseline_emissions.shape)
+
+            # Check if region_aggegation is True
+            if region_aggegation:
+                # Aggregated Input Data
+                region_list, data = justice_region_aggregator(
+                    data_loader=data_loader, region_config=region_dict, data=data
+                )
+
+                if baseline_emissions is not None:
+
+                    region_list, baseline_emissions = justice_region_aggregator(
+                        data_loader=data_loader,
+                        region_config=region_dict,
+                        data=baseline_emissions,
+                    )
+                    # Take mean over the ensemble dimension
+                    baseline_emissions = np.mean(baseline_emissions, axis=2)
+
+                    # Convert to dataframe
+                    baseline_emissions = pd.DataFrame(
+                        baseline_emissions, index=region_list, columns=list_of_years
+                    )
+
+                    # Create the slice according to visualization years
+                    baseline_emissions = baseline_emissions.loc[
+                        :, visualization_start_year:visualization_end_year
+                    ]
+
+            # Check shape of data
+            if len(data.shape) == 3:
+                data = np.mean(data, axis=2)
+
+            # Create a dataframe from the data
+            data = pd.DataFrame(data, index=region_list, columns=list_of_years)
+
+            # Create the slice according to visualization years
+            data = data.loc[:, visualization_start_year:visualization_end_year]
+
+            if baseline_emissions is not None:
+                abated_emissions = baseline_emissions - data
+                # Make sure no negative values
+                abated_emissions[abated_emissions < 0] = 0
+
+                # Update the name of regions in the abated_emissions dataframe by adding _abated
+                abated_emissions.index = [
+                    region + "_abated" for region in abated_emissions.index
+                ]
+
+                # Concatenate the dataframes abaated_emissions and data but keep the similar region names together
+                data = pd.concat([data, abated_emissions])
+
+            print("Region list: ", region_list)
+
+            if regional_order is not None:
+                region_list = regional_order
+
+            # Create plotly figure
+            fig = px.area(
+                data.T,
+                x=data.columns,
+                y=data.index,
+                title=plot_title,
+                template=template,
+                labels={"value": variable_name, "variable": "Region", "x": "Year"},
+                height=height,
+                width=width,
+                color_discrete_sequence=colour_palette,
+                groupnorm=groupnorm,
+                category_orders={"variable": region_list},
+            )
+            if groupnorm is None:
+                fig.update_layout(yaxis_range=[yaxis_lower_limit, yaxis_upper_limit])
+
+            # Update layout
+            fig.update_layout(
+                legend_title_text=legend_label,
+                # X-axis label
+                xaxis_title=xaxis_label,
+                # Y-axis label
+                yaxis_title=yaxis_label,
+                title_text=title,
+                title_x=title_x,
+                font=dict(size=fontsize),
+                legend_traceorder="reversed",
+                # legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
+            )
+            # Check if display legend is True
+            if show_legend == False:
+                fig.update_layout(showlegend=False)
+
+            # Remove gridlines
+            fig.update_xaxes(showgrid=False)
+            fig.update_yaxes(showgrid=False)
+
+            # Show ticks on x and y axes with axis lines
+            fig.update_xaxes(
+                showline=True, linewidth=1, linecolor="black", ticks="outside"
+            )
+            fig.update_yaxes(
+                showline=True, linewidth=1, linecolor="black", ticks="outside"
+            )
+
+            # Set fontsize for tick labels
+            fig.update_xaxes(tickfont=dict(size=fontsize))
+
+            if saving:
+                # Save the figure
+                if not os.path.exists(path_to_output):
+                    os.makedirs(path_to_output)
+
+                output_file_name = (
+                    variable_name + "_" + output_titles[idx] + "_" + scenario
+                )
+                print("Saving plot for: ", scenario, " - ", output_file_name)
+                fig.write_image(
+                    path_to_output + "/" + output_file_name + "_v2_with_abated" + ".svg"
+                )
+
+    return fig, data, abated_emissions
+
+
 def plot_stacked_area_chart(
     variable_name=None,
     region_name_path="data/input/rice50_region_names.json",

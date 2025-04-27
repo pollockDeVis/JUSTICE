@@ -50,6 +50,8 @@ class OutputToEmissions:
         if self.timestep != self.data_timestep:
             # Interpolate Carbon Intensity Dictionary
             self._interpolate_carbon_intensity()
+            # NEW: Interpolate Emissions # Not needed for now
+            # self._interpolate_emissions()
 
         # Initializing the emissions array
         self.emissions = np.zeros(
@@ -149,6 +151,26 @@ class OutputToEmissions:
                 interp_data[i, :, j] = f(self.model_time_horizon)
 
         self.carbon_intensity_array = interp_data
+
+    def _interpolate_emissions(self):
+        interp_data = np.zeros(
+            (
+                self.emissions_array.shape[0],
+                len(self.model_time_horizon),
+                self.emissions_array.shape[2],
+            )
+        )
+
+        for i in range(self.emissions_array.shape[0]):
+            for j in range(self.emissions_array.shape[2]):
+                f = interp1d(
+                    self.data_time_horizon,
+                    self.emissions_array[i, :, j],
+                    kind="linear",
+                )
+                interp_data[i, :, j] = f(self.model_time_horizon)
+
+        self.emissions_array = interp_data
 
     def get_emissions(self):
         """
