@@ -203,6 +203,7 @@ def plot_emissions_comparison_with_boxplots(
     column_widths=[0.8, 0.2],
     output_path=None,
     saving=False,
+    show_min_max=True,
 ):
 
     # Set the time horizon
@@ -263,32 +264,33 @@ def plot_emissions_comparison_with_boxplots(
         p25 = np.percentile(emissions, 25, axis=1)
 
         # Add traces for the envelopes
-        fig.add_trace(
-            go.Scatter(
-                x=emissions.index,
-                y=max_percentile,
-                mode="lines",
-                line=dict(color=color, width=0.5),
-                fill=None,
-                showlegend=False,
-            ),
-            row=1,
-            col=1,
-        )
+        if show_min_max:
+            fig.add_trace(
+                go.Scatter(
+                    x=emissions.index,
+                    y=max_percentile,
+                    mode="lines",
+                    line=dict(color=color, width=0.5),
+                    fill=None,
+                    showlegend=False,
+                ),
+                row=1,
+                col=1,
+            )
 
-        fig.add_trace(
-            go.Scatter(
-                x=emissions.index,
-                y=min_percentile,
-                mode="lines",
-                line=dict(color=color, width=0.5),
-                fill="tonexty",
-                opacity=opacity * 0.01,  # make it more transparent
-                showlegend=False,
-            ),
-            row=1,
-            col=1,
-        )
+            fig.add_trace(
+                go.Scatter(
+                    x=emissions.index,
+                    y=min_percentile,
+                    mode="lines",
+                    line=dict(color=color, width=0.5),
+                    fill="tonexty",
+                    opacity=opacity * 0.01,  # make it more transparent
+                    showlegend=False,
+                ),
+                row=1,
+                col=1,
+            )
 
         # Add traces for the 25th to 75th percentile envelope
         fig.add_trace(
@@ -559,6 +561,8 @@ def plot_comparison_with_boxplots(
     first_plot_proportion=[0, 0.8],
     second_plot_proportion=[0.95, 1],
     transpose_data=True,
+    show_min_max=True,
+    dtick=1,  # Make Y axis label for every 1 unit
 ):
     # Set the time horizon
     time_horizon = TimeHorizon(
@@ -582,7 +586,11 @@ def plot_comparison_with_boxplots(
             data = pd.read_csv(path)
         # Check if data is 3D. Then take the mean across the first dimension
         if len(data.shape) == 3:
+            print("Data is 3D")
+            # Print shape of data
+            print("Shape of data: ", data.shape)
             data = np.sum(data, axis=0)
+            print("Shape of data after summing: ", data.shape)
 
         if transpose_data:
             data = data.T
@@ -623,31 +631,32 @@ def plot_comparison_with_boxplots(
             row=1,
             col=col,
         )
-        fig.add_trace(
-            go.Scatter(
-                x=median.index,
-                y=max_vals.values,
-                mode="lines",
-                line=dict(width=0),
-                fillcolor=color,
-                showlegend=False,
-            ),
-            row=1,
-            col=col,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=median.index,
-                y=min_vals.values,
-                mode="lines",
-                fill="tonexty",
-                fillcolor=color,
-                line=dict(width=0),
-                showlegend=False,
-            ),
-            row=1,
-            col=col,
-        )
+        if show_min_max:
+            fig.add_trace(
+                go.Scatter(
+                    x=median.index,
+                    y=max_vals.values,
+                    mode="lines",
+                    line=dict(width=0),
+                    fillcolor=color,
+                    showlegend=False,
+                ),
+                row=1,
+                col=col,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=median.index,
+                    y=min_vals.values,
+                    mode="lines",
+                    fill="tonexty",
+                    fillcolor=color,
+                    line=dict(width=0),
+                    showlegend=False,
+                ),
+                row=1,
+                col=col,
+            )
 
         if show_interquartile_range:
             # Add traces for the 25-75 percentile envelope
@@ -724,7 +733,7 @@ def plot_comparison_with_boxplots(
     fig.update_xaxes(showgrid=False, title_text=xaxis_title, row=1, col=1)
 
     # Make Y axis label for every 1 unit
-    fig.update_yaxes(tick0=0, dtick=1, row=1, col=1)
+    fig.update_yaxes(tick0=0, dtick=dtick, row=1, col=1)
 
     if show_red_dashed_line:
         # Add a red dashed line at 2°C for reference
@@ -1547,7 +1556,9 @@ def visualize_tradeoffs(
     top_percentage=0.1,
     objective_of_interest="welfare_utilitarian",
     show_best_solutions=False,
-    temperature_filter=False,
+    highlight_indices=None,  # ← new: list of row‐indices you want to highlight
+    highlight_factor=3,  # ← new: how many× thicker for highlighted rows
+    # temperature_filter=False,
     saving=False,
 ):
 
@@ -1587,26 +1598,43 @@ def visualize_tradeoffs(
     # Reset index for concatenated_df
     concatenated_df.reset_index(drop=True, inplace=True)
 
-    # Determine top 10% indices for the objective of interest
     top_indices = {}
     if show_best_solutions:
-        for file in input_data:
-            df_type = concatenated_df[concatenated_df["type"] == file]
+        top_indices = highlight_indices.copy()
+        print("Top indices:", top_indices)
+        # Adjust top_indices because the files were merged and indices were reset.
+        size_of_first_file = concatenated_df[
+            concatenated_df["type"] == input_data[0]
+        ].shape[0]
+        # Print the size of the first file
+        print("Size of first file:", size_of_first_file)
+        for file in input_data[1:]:
+            # Adjust the indices for the subsequent files
+            top_indices[file] = [
+                index + size_of_first_file for index in top_indices[file]
+            ]
+            size_of_first_file += concatenated_df[
+                concatenated_df["type"] == file
+            ].shape[0]
+        print("Adjusted top indices:", top_indices)
 
-            top_indices[file] = (
-                df_type[objective_of_interest]
-                .nsmallest(int(df_type.shape[0] * top_percentage))
-                .index
-            )
-            print(file, len(top_indices[file]))
+        # for file in input_data:
+        #     df_type = concatenated_df[concatenated_df["type"] == file]
 
-            # Now within the top_indices, find the index with lowest years_above_temperature_threshold
-            if temperature_filter:
-                index = df_type.loc[top_indices[file]][
-                    "years_above_temperature_threshold"
-                ].idxmin()
-                print(index)
-                top_indices[file] = [index]
+        #     top_indices[file] = (
+        #         df_type[objective_of_interest]
+        #         .nsmallest(int(df_type.shape[0] * top_percentage))
+        #         .index
+        #     )
+        # print(file, len(top_indices[file]))
+
+        # Now within the top_indices, find the index with lowest years_above_temperature_threshold
+        # if temperature_filter:
+        #     index = df_type.loc[top_indices[file]][
+        #         "years_above_temperature_threshold"
+        #     ].idxmin()
+        #     print(index)
+        #     top_indices[file] = [index]
 
     if scaling:
         # Printing min max values of the objectives
@@ -1634,37 +1662,35 @@ def visualize_tradeoffs(
     # Plot each row with its corresponding color
     for idx, row in concatenated_df.iterrows():
         if show_best_solutions:
-            # Default to gray for all lines, except top indices get color
+            # default to gray
             file_color = "gray"
-            adjusted_linewidth = linewidth
+            # start with the base linewidth
+            lw = linewidth
             for _type, indices in top_indices.items():
                 if idx in indices:
+                    # this is one of your highlighted solutions:
                     file_color = color_mapping[_type]
-                    if temperature_filter:
-                        adjusted_linewidth = linewidth * 5
+                    # make it thicker
+                    lw = linewidth * 3  # or whatever factor you like
                     break
+
+            # gray lines at half‐opacity, best ones fully opaque
+            alpha_here = 0.2 if file_color == "gray" else 1.0
+
         else:
-            # Color differentiation based on file type
-            file_color = color_mapping.get(
-                row["type"], "green"
-            )  # Default to 'green' if no specific color is set
+            file_color = color_mapping.get(row["type"], "green")
+            lw = linewidth
+            alpha_here = alpha
 
         _sliced_data = pd.DataFrame(row[list_of_objectives].values).T
         _sliced_data.columns = pretty_labels
-        if show_best_solutions or temperature_filter:
-            axes.plot(
-                _sliced_data,
-                color=file_color,
-                linewidth=adjusted_linewidth,
-                alpha=alpha if (show_best_solutions and file_color == "gray") else 1.0,
-            )
-        else:
-            axes.plot(
-                _sliced_data,
-                color=file_color,
-                linewidth=adjusted_linewidth,
-                alpha=alpha,
-            )
+
+        axes.plot(
+            _sliced_data,
+            color=file_color,
+            linewidth=lw,
+            alpha=alpha_here,
+        )
 
     # Creating a legend
     if show_legend:  # Only show legend when not highlighting best solutions

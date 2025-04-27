@@ -1336,6 +1336,25 @@ def compare_test_vs_old(test_dir: str):
     return summary
 
 
+def minimax_regret_policy(df: pd.DataFrame) -> int:
+    """
+    Given a DataFrame with policy indices as rows and scenarios as columns,
+    compute for each policy the maximum value across scenarios (the "regret"),
+    then return the index of the policy with the smallest of those maxima.
+
+    Parameters:
+      df : pd.DataFrame
+           index = policy indices, columns = scenarios
+
+    Returns:
+      int : the policy index that minimizes the maximum regret
+    """
+    # 1) compute the 'regret' for each policy (the row‐wise maximum)
+    row_max = df.max(axis=1)
+    # 2) find the policy with the smallest regret
+    return int(row_max.idxmin())
+
+
 if __name__ == "__main__":
 
     # reevaluate_all_for_utilitarian_prioritarian(
