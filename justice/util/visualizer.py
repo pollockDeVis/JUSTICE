@@ -407,15 +407,14 @@ def plot_emissions_comparison_with_boxplots(
         showline=True, linewidth=1, linecolor="black", ticks="outside", row=1, col=1
     )
 
-    # Show the figure
-    fig.show()
-
     if saving:
         filename = "_".join(
             [os.path.splitext(os.path.basename(path))[0] for path in data_paths]
         )
         # Save the plot
         fig.write_image(f"{output_path}/{filename}.svg")
+
+    return fig
 
 
 def plot_median_emission_comparison_with_baseline(
@@ -794,13 +793,12 @@ def plot_comparison_with_boxplots(
         showline=True, linewidth=1, linecolor="black", ticks="outside", row=1, col=1
     )
 
-    # Show the plot
-    fig.show()
-
     if saving:
         filename = data_paths[0].split("/")[-1].split(".")[0]
         # Save the plot
         fig.write_image(f"{output_path}/{filename}.svg")
+
+    return fig
 
 
 def plot_reevaluated_welfare(
@@ -1512,6 +1510,7 @@ def visualize_tradeoffs_with_annotations(
         if not os.path.exists(path_to_output):
             os.makedirs(path_to_output)
         plt.savefig(os.path.join(path_to_output, output_file_name), dpi=300)
+        print(f"Figure saved at {os.path.join(path_to_output, output_file_name)}")
 
     plt.show()
     return concatenated_df
@@ -2498,8 +2497,6 @@ def plot_choropleth_2D_data(
                 + ".svg"
             )
 
-        fig.show()
-
     return fig, processed_data_dict
 
 
@@ -3353,7 +3350,14 @@ def plot_stacked_area_chart_with_baseline_emissions(
                 output_file_name = (
                     variable_name + "_" + output_titles[idx] + "_" + scenario
                 )
-                print("Saving plot for: ", scenario, " - ", output_file_name)
+                print(
+                    "Saving plot for: ",
+                    scenario,
+                    " - ",
+                    output_file_name,
+                    " at ",
+                    path_to_output,
+                )
                 fig.write_image(
                     path_to_output + "/" + output_file_name + "_v2_with_abated" + ".svg"
                 )

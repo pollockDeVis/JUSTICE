@@ -146,6 +146,7 @@ def reevaluate_optimal_policy(
     min_temperature=0.0,
     max_difference=2.0,
     min_difference=0.0,
+    model_hard_reset=False,
 ):
     """
     Function to generate data for the optimal policy. It runs JUSTICE on the optimal policy and saves the data as a pickle file.
@@ -212,7 +213,7 @@ def reevaluate_optimal_policy(
                     rbf_policy_index,
                 )
 
-                scenario_datasets, _ = run_model_with_optimal_policy(
+                scenario_datasets, model = run_model_with_optimal_policy(
                     scenario_list=scenario_list,
                     path_to_rbf_weights=path_to_rbf_weights + file,
                     saving=False,
@@ -229,15 +230,6 @@ def reevaluate_optimal_policy(
                 )
 
                 output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
-                # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-                #     pickle.dump(scenario_datasets, f)
-
-                # for key in scenario_datasets.keys():
-                #     # Save the processed data as a pickle file
-                #     with open(
-                #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
-                #     ) as f:
-                #         pickle.dump(scenario_datasets[key], f)
 
                 # Now save in hdf5 format
                 with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
@@ -252,11 +244,15 @@ def reevaluate_optimal_policy(
 
                 print(f"File saved as {output_file_name} at location {path_to_output}")
 
+                if model_hard_reset:
+                    print("Hard reset model")
+                    model.hard_reset()
+
         elif objective_of_interest is None and rbf_policy_index is not None:
 
             print("index for policy: ", rbf_policy_index)
 
-            scenario_datasets, _ = run_model_with_optimal_policy(
+            scenario_datasets, model = run_model_with_optimal_policy(
                 scenario_list=scenario_list,
                 path_to_rbf_weights=path_to_rbf_weights + file,
                 saving=False,
@@ -273,8 +269,6 @@ def reevaluate_optimal_policy(
             )
             output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
 
-            # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-            #     pickle.dump(scenario_datasets, f)
             # Save as HDF5 file
             with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
                 for scenario, arrays in scenario_datasets.items():
@@ -286,13 +280,17 @@ def reevaluate_optimal_policy(
                             key, data=array
                         )  # Save each array in its respective group
             print(f"File saved as {output_file_name} at location {path_to_output}")
+
+            if model_hard_reset:
+                print("Hard reset model")
+                model.hard_reset()
 
         elif objective_of_interest is not None and rbf_policy_index is None:
             # Choose column in df by index
             rbf_policy_index = df[objective_of_interest].idxmin()
             print("index for obj of interest: ", rbf_policy_index)
 
-            scenario_datasets, _ = run_model_with_optimal_policy(
+            scenario_datasets, model = run_model_with_optimal_policy(
                 scenario_list=scenario_list,
                 path_to_rbf_weights=path_to_rbf_weights + file,
                 saving=False,
@@ -309,8 +307,6 @@ def reevaluate_optimal_policy(
             )
             output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
 
-            # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-            #     pickle.dump(scenario_datasets, f)
             # Save as HDF5 file
             with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
                 for scenario, arrays in scenario_datasets.items():
@@ -322,15 +318,12 @@ def reevaluate_optimal_policy(
                             key, data=array
                         )  # Save each array in its respective group
             print(f"File saved as {output_file_name} at location {path_to_output}")
-            # for key in scenario_datasets.keys():
-            #     # Save the processed data as a pickle file
-            #     with open(
-            #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
-            #     ) as f:
-            #         pickle.dump(scenario_datasets[key], f)
-            #         # Print file saved as filename at location path
 
             print(f"File saved as {output_file_name} at location {path_to_output}")
+
+            if model_hard_reset:
+                print("Hard reset model")
+                model.hard_reset()
 
 
 #######################################################################################
@@ -462,7 +455,7 @@ def run_model_with_optimal_policy(
         )
 
         print("Keys of the scenario data: ", scenario_data.keys())
-    return scenario_data, model_object
+    return scenario_data, model_object[scenarios]
 
 
 def interpolator(data_array, data_time_horizon, model_time_horizon):
