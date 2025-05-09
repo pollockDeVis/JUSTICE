@@ -516,8 +516,6 @@ def plot_median_emission_comparison_with_baseline(
     fig.update_xaxes(showline=True, linewidth=1, linecolor="black", ticks="outside")
     fig.update_yaxes(showline=True, linewidth=1, linecolor="black", ticks="outside")
 
-    fig.show()
-
     if saving:
         if not os.path.exists(path_to_output):
             os.makedirs(path_to_output)
@@ -2685,8 +2683,7 @@ def plot_violin_comparison_sorted(
     if saving and path_to_output and output_file_name:
         plt.savefig(f"{path_to_output}/{output_file_name}.svg", format="svg")
 
-    # Show plot
-    plt.show()
+    return plt
 
 
 def process_economic_data_for_barchart(
@@ -4048,7 +4045,7 @@ def plot_regional_emissions_with_boxplots(
         fig.write_image(f"{output_path}/emission_pathways_{region_name}_emissions.svg")
 
     # Show the figure
-    fig.show()
+    return fig
 
 
 def plot_regret_heatmap(
