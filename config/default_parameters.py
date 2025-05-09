@@ -151,6 +151,30 @@ class SocialWelfareDefaults:
                 "limitarian_threshold_emissions": 422.0,  # Emergent constraints on cumulative carbon budgets, and remaining carbon budgets from the beginning of 2020 for 2°C. Confidence Intervals: [258, 586] PgC or GtC
                 "limitarian_start_year_of_remaining_budget": 2020,
             },
+            "CONSUMPTION_CORRIDOR_UTILITARIAN": {
+                "risk_aversion": 0,  # Risk aversion parameter.
+                "elasticity_of_marginal_utility_of_consumption": 1.45,
+                "pure_rate_of_social_time_preference": 0.015,
+                "inequality_aversion": 0.0,
+                "sufficiency_threshold": (
+                    (1.25 * 365.25) / 1e3
+                ),  # World bank stipulated the poverty line of US$1.25 for 2005 USD PPP.
+                "egality_strictness": 0.0,  # Range: [0,1]
+                "limitarian_threshold_emissions": 422.0,  # Emergent constraints on cumulative carbon budgets, and remaining carbon budgets from the beginning of 2020 for 2°C. Confidence Intervals: [258, 586] PgC or GtC
+                "limitarian_start_year_of_remaining_budget": 2020,
+            },
+            "CONSUMPTION_CORRIDOR_PRIORITARIAN": {
+                "risk_aversion": 0,  # Risk aversion parameter.
+                "elasticity_of_marginal_utility_of_consumption": 1.45,
+                "pure_rate_of_social_time_preference": 0.0,
+                "inequality_aversion": 2.0,
+                "sufficiency_threshold": (
+                    (1.25 * 365.25) / 1e3
+                ),  # World bank stipulated the poverty line of US$1.25 for 2005 USD PPP.
+                "egality_strictness": 0.0,  # Range: [0,1]
+                "limitarian_threshold_emissions": 422.0,  # Emergent constraints on cumulative carbon budgets, and remaining carbon budgets from the beginning of 2020 for 2°C. Confidence Intervals: [258, 586] PgC or GtC
+                "limitarian_start_year_of_remaining_budget": 2020,
+            },
         }
 
     def get_defaults(self, type):

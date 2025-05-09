@@ -223,7 +223,10 @@ data/reevaluation/*
 data/convergence_metrics/*
 tests/raw_data/*
 limitarianism.ipynb
+limitarian_analysis.py
 paper_data_figures_generator.ipynb
+paper_data_figures_generator_codeocean.ipynb
+reproducing_data_and_plots.py
 # tests/verification_data/*
 #Mac
 .DS_Store

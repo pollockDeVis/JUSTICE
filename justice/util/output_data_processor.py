@@ -1,9 +1,7 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import pandas as pd
 from scipy.interpolate import interp1d
-from JUSTICE_example import JUSTICE_stepwise_run
+from JUSTICE_example import JUSTICE_stepwise_run, JUSTICE_run_policy_index
 from justice.util.enumerations import *
 import pickle
 from justice.util.enumerations import Scenario
@@ -12,10 +10,12 @@ from justice.util.data_loader import DataLoader
 import os
 import h5py
 from ema_workbench import load_results, ema_logging
-import pandas as pd
 from justice.welfare.social_welfare_function import SocialWelfareFunction
 from config.default_parameters import SocialWelfareDefaults
-from justice.util.enumerations import get_economic_scenario
+from justice.objectives.objective_functions import fraction_of_ensemble_above_threshold
+from pathlib import Path
+import filecmp
+import multiprocessing as mp
 
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
@@ -146,6 +146,7 @@ def reevaluate_optimal_policy(
     min_temperature=0.0,
     max_difference=2.0,
     min_difference=0.0,
+    model_hard_reset=False,
 ):
     """
     Function to generate data for the optimal policy. It runs JUSTICE on the optimal policy and saves the data as a pickle file.
@@ -212,7 +213,7 @@ def reevaluate_optimal_policy(
                     rbf_policy_index,
                 )
 
-                scenario_datasets, _ = run_model_with_optimal_policy(
+                scenario_datasets, model = run_model_with_optimal_policy(
                     scenario_list=scenario_list,
                     path_to_rbf_weights=path_to_rbf_weights + file,
                     saving=False,
@@ -229,15 +230,6 @@ def reevaluate_optimal_policy(
                 )
 
                 output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
-                # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-                #     pickle.dump(scenario_datasets, f)
-
-                # for key in scenario_datasets.keys():
-                #     # Save the processed data as a pickle file
-                #     with open(
-                #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
-                #     ) as f:
-                #         pickle.dump(scenario_datasets[key], f)
 
                 # Now save in hdf5 format
                 with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
@@ -252,11 +244,15 @@ def reevaluate_optimal_policy(
 
                 print(f"File saved as {output_file_name} at location {path_to_output}")
 
+                if model_hard_reset:
+                    print("Hard reset model")
+                    model.hard_reset()
+
         elif objective_of_interest is None and rbf_policy_index is not None:
 
             print("index for policy: ", rbf_policy_index)
 
-            scenario_datasets, _ = run_model_with_optimal_policy(
+            scenario_datasets, model = run_model_with_optimal_policy(
                 scenario_list=scenario_list,
                 path_to_rbf_weights=path_to_rbf_weights + file,
                 saving=False,
@@ -273,8 +269,6 @@ def reevaluate_optimal_policy(
             )
             output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
 
-            # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-            #     pickle.dump(scenario_datasets, f)
             # Save as HDF5 file
             with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
                 for scenario, arrays in scenario_datasets.items():
@@ -286,13 +280,17 @@ def reevaluate_optimal_policy(
                             key, data=array
                         )  # Save each array in its respective group
             print(f"File saved as {output_file_name} at location {path_to_output}")
+
+            if model_hard_reset:
+                print("Hard reset model")
+                model.hard_reset()
 
         elif objective_of_interest is not None and rbf_policy_index is None:
             # Choose column in df by index
             rbf_policy_index = df[objective_of_interest].idxmin()
             print("index for obj of interest: ", rbf_policy_index)
 
-            scenario_datasets, _ = run_model_with_optimal_policy(
+            scenario_datasets, model = run_model_with_optimal_policy(
                 scenario_list=scenario_list,
                 path_to_rbf_weights=path_to_rbf_weights + file,
                 saving=False,
@@ -309,8 +307,6 @@ def reevaluate_optimal_policy(
             )
             output_file_name = output_file_name + "_idx" + str(rbf_policy_index)
 
-            # with open(path_to_output + output_file_name + ".pkl", "wb") as f:
-            #     pickle.dump(scenario_datasets, f)
             # Save as HDF5 file
             with h5py.File(path_to_output + output_file_name + ".h5", "w") as f:
                 for scenario, arrays in scenario_datasets.items():
@@ -322,15 +318,91 @@ def reevaluate_optimal_policy(
                             key, data=array
                         )  # Save each array in its respective group
             print(f"File saved as {output_file_name} at location {path_to_output}")
-            # for key in scenario_datasets.keys():
-            #     # Save the processed data as a pickle file
-            #     with open(
-            #         path_to_output + output_file_name + "_" + key + ".pkl", "wb"
-            #     ) as f:
-            #         pickle.dump(scenario_datasets[key], f)
-            #         # Print file saved as filename at location path
 
             print(f"File saved as {output_file_name} at location {path_to_output}")
+
+            if model_hard_reset:
+                print("Hard reset model")
+                model.hard_reset()
+
+
+#######################################################################################
+#
+#
+##########################################################################################
+
+
+def reevaluate_optimal_policy_for_robustness(
+    model=None,
+    filename=None,
+    path_to_rbf_weights=None,
+    path_to_output=None,
+    rbf_policy_index=None,
+    n_inputs_rbf=2,
+    max_annual_growth_rate=0.04,
+    emission_control_start_timestep=10,
+    min_emission_control_rate=0.01,
+    max_temperature=16.0,
+    min_temperature=0.0,
+    max_difference=2.0,
+    min_difference=0.0,
+    temperature_year_of_interest=2100,
+    temperature_threshold=2.0,
+):
+
+    # Assert if any arguments are None
+    assert filename is not None, "Input data not provided"
+    assert path_to_rbf_weights is not None, "Path to RBF weights not provided"
+    assert path_to_output is not None, "Path to output not provided"
+
+    time_horizon = model.__getattribute__("time_horizon")
+    data_loader = model.__getattribute__("data_loader")
+
+    temperature_year_of_interest_index = time_horizon.year_to_timestep(
+        year=temperature_year_of_interest, timestep=time_horizon.timestep
+    )
+
+    datasets = JUSTICE_run_policy_index(
+        model=model,
+        path_to_rbf_weights=path_to_rbf_weights + filename,
+        rbf_policy_index=rbf_policy_index,
+        time_horizon=time_horizon,
+        data_loader=data_loader,
+        n_inputs_rbf=n_inputs_rbf,
+        max_annual_growth_rate=max_annual_growth_rate,
+        emission_control_start_timestep=emission_control_start_timestep,
+        min_emission_control_rate=min_emission_control_rate,
+        allow_emission_fallback=False,  # Default is False
+        endogenous_savings_rate=True,
+        max_temperature=max_temperature,
+        min_temperature=min_temperature,
+        max_difference=max_difference,
+        min_difference=min_difference,
+    )
+
+    fraction_above_threshold = fraction_of_ensemble_above_threshold(
+        temperature=datasets["global_temperature"],
+        temperature_year_index=temperature_year_of_interest_index,
+        threshold=temperature_threshold,
+    )
+
+    global_temperature = datasets["global_temperature"][
+        temperature_year_of_interest_index, :
+    ]
+    utilitarian_welfare = datasets["welfare_utilitarian"]
+    prioritarian_welfare = datasets["welfare_prioritarian"]
+
+    print("index for policy: ", rbf_policy_index)
+    print(f"Fraction above threshold Reeval: {fraction_above_threshold}")
+    # Print
+    print("Utilitarian Welfare Reeval: ", utilitarian_welfare)
+    print("Prioritarian Welfare Reeval: ", prioritarian_welfare)
+
+    return (
+        global_temperature,
+        utilitarian_welfare,
+        prioritarian_welfare,
+    )
 
 
 def read_hdf5_file(file_path):
@@ -383,7 +455,7 @@ def run_model_with_optimal_policy(
         )
 
         print("Keys of the scenario data: ", scenario_data.keys())
-    return scenario_data, model_object
+    return scenario_data, model_object[scenarios]
 
 
 def interpolator(data_array, data_time_horizon, model_time_horizon):
@@ -712,6 +784,35 @@ def get_selected_policy_indices_based_on_welfare_temperature(
     return selected_indices
 
 
+def select_policy_index_for_fraction_below_threshold(
+    file_path, num_last_columns, fraction_column, threshold, objective_column
+):
+    """
+    Reads the CSV file, selects a subset of columns, filters the rows
+    based on the fraction_column being <= threshold, and returns the index
+    of the policy with the minimum value in the objective_column.
+
+    Parameters:
+        file_path (str): Path to the CSV file.
+        num_last_columns (int): Number of columns from the end to select.
+        fraction_column (str): Column name for the fraction to check.
+        threshold (float): Maximum allowed value for the fraction_column.
+        objective_column (str): Column name whose minimum value determines the selection.
+
+    Returns:
+        numpy.int64: Index of the selected policy.
+    """
+
+    # Load the data
+    data = pd.read_csv(file_path)
+    # Select the last num_last_columns columns
+    data_subset = data.iloc[:, -num_last_columns:]
+    # Filter policies where fraction_column is less than or equal to threshold
+    filtered = data_subset[data_subset[fraction_column] <= threshold]
+
+    return list(filtered.index)
+
+
 def get_best_performing_policies(
     input_data=[],
     direction_of_optimization=[],  # ["min", "min", "min", "min"],
@@ -968,6 +1069,283 @@ def reevaluate_all_for_utilitarian_prioritarian(
         reference_set_df.to_csv(
             path_to_output + output_file_name + "_reevaluated" + ".csv"
         )
+
+
+##############################################################################
+#
+#          LIMITARIAN ANALYSIS
+#
+###############################################################################
+
+
+def read_reference_set_policy_mapping(
+    base_dir, sw_name, mapping_subdir="mapping", hdf5_filename_template="mapping_{}.h5"
+):
+    """
+    Reads the reference set policy mapping from an HDF5 file.
+
+    Arguments:
+        base_dir (Path or str): The base directory path.
+        sw_name (str): The social welfare name to use in the HDF5 filename.
+        mapping_subdir (str): The subdirectory under base_dir where the mapping file is stored.
+        hdf5_filename_template (str): A template for the HDF5 filename, where '{}' will be replaced with sw_name.
+
+    Returns:
+        dict: A dictionary containing the policy mapping.
+    """
+    import h5py
+    from pathlib import Path
+
+    base_dir = Path(base_dir + "/" + sw_name)
+    mapping_dir = base_dir / mapping_subdir
+    h5_path = mapping_dir / hdf5_filename_template.format(sw_name)
+
+    mapping = {}
+    with h5py.File(h5_path, "r") as h5f:
+        for pi_str, grp_pi in h5f.items():
+            pi = int(pi_str)
+            welfare = grp_pi.attrs["welfare"]
+            frac_above = grp_pi.attrs["fraction_above_threshold"]
+            mapping[pi] = {
+                "welfare": welfare,
+                "fraction_above_threshold": frac_above,
+            }
+            for scenario, grp_s in grp_pi.items():
+                gt = grp_s["global_temperature"][()]  # numpy array
+                u0 = grp_s.attrs["utilitarian_welfare"]
+                p0 = grp_s.attrs["prioritarian_welfare"]
+                mapping[pi][scenario] = {
+                    "global_temperature": gt,
+                    "utilitarian_welfare": u0,
+                    "prioritarian_welfare": p0,
+                }
+    return mapping
+
+
+def generate_reference_set_policy_mapping(
+    swf,
+    data_root,
+    scenario_list,
+    saving=True,
+    output_directory=None,
+):
+    """
+    Build and optionally save an HDF5 mapping from a reference‐set CSV
+    to per‐scenario reevaluation data for each policy index.
+
+    Args:
+      swf             : WelfareFunction enum member
+      data_root       : Path or str, base folder up to "limitarian/50k"
+      scenario_list   : list of scenario codes, e.g. ["SSP119",…]
+      saving          : bool, whether to write out mapping_<sw_name>.h5
+
+    Returns:
+      mapping dict with structure:
+        { policy_index: {
+            "welfare": float,
+            "fraction_above_threshold": float,
+            "<scenario>": {
+               "global_temperature": np.ndarray,
+               "utilitarian_welfare": float,
+               "prioritarian_welfare": float
+            }, …
+          }, … }
+    """
+    sw_name = swf.value[1]
+    base_dir = Path(data_root) / sw_name
+    ref_file = base_dir / f"{sw_name}_reference_set.csv"
+    out_dir = base_dir
+
+    # load reference set
+    ref_df = pd.read_csv(ref_file)
+    policy_indices = list(range(len(ref_df)))
+    print(f"Found {len(policy_indices)} policies (0 to {policy_indices[-1]})")
+
+    mapping = {}
+    missing_files = []
+
+    for pi in policy_indices:
+        row = ref_df.iloc[pi]
+        mapping[pi] = {
+            "welfare": float(row["welfare"]),
+            "fraction_above_threshold": float(row["fraction_above_threshold"]),
+        }
+        for scenario in scenario_list:
+            fname = out_dir / f"{pi}_{scenario}_{sw_name}_global_temperature_.csv"
+            if not fname.exists():
+                missing_files.append(str(fname))
+                continue
+
+            df = pd.read_csv(fname)
+            mapping[pi][scenario] = {
+                "global_temperature": df["global_temperature"].to_numpy(),
+                "utilitarian_welfare": float(df["utilitarian_welfare"].iloc[0]),
+                "prioritarian_welfare": float(df["prioritarian_welfare"].iloc[0]),
+            }
+
+    if missing_files:
+        print("Missing reevaluation files:")
+        for fn in missing_files:
+            print("   ", fn)
+    else:
+        print("All files loaded successfully.")
+
+    if saving:
+        mapping_dir = base_dir / output_directory
+        mapping_dir.mkdir(parents=True, exist_ok=True)
+        h5_path = mapping_dir / f"{output_directory}_{sw_name}.h5"
+        with h5py.File(h5_path, "w") as h5f:
+            for pi, pi_dict in mapping.items():
+                grp_pi = h5f.create_group(str(pi))
+                grp_pi.attrs["welfare"] = pi_dict["welfare"]
+                grp_pi.attrs["fraction_above_threshold"] = pi_dict[
+                    "fraction_above_threshold"
+                ]
+                for scen, scen_data in pi_dict.items():
+                    if scen in ("welfare", "fraction_above_threshold"):
+                        continue
+                    grp_s = grp_pi.create_group(scen)
+                    grp_s.create_dataset(
+                        "global_temperature", data=scen_data["global_temperature"]
+                    )
+                    grp_s.attrs["utilitarian_welfare"] = scen_data[
+                        "utilitarian_welfare"
+                    ]
+                    grp_s.attrs["prioritarian_welfare"] = scen_data[
+                        "prioritarian_welfare"
+                    ]
+        print(f"Wrote mapping to {h5_path}")
+
+    return mapping
+
+
+def process_scenario(swf, policy_indices, scenario: str):
+    """
+    Worker that runs all of your policies under a single SSP scenario.
+    This executes in a fresh Python process, so JUSTICE will load the
+    right CSVs for that scenario.
+    """
+    # re‑import inside the worker so each process has a clean namespace
+    from justice.model import JUSTICE
+    from justice.util.enumerations import (
+        Scenario,
+        Economy,
+        DamageFunction,
+        Abatement,
+    )
+
+    # re‑construct exactly the same path / filename logic
+    sw_name = swf.value[1]
+    path = f"data/optimized_rbf_weights/limitarian/50k/{sw_name}/"
+    filename = f"{sw_name}_reference_set.csv"
+
+    # build the model for this one SSP
+    scenario_idx = Scenario[scenario].value[0]
+    print(
+        f"\n--- [PID {mp.current_process().pid}] Building JUSTICE for {scenario} ({scenario_idx}) ---"
+    )
+    model = JUSTICE(
+        scenario=scenario_idx,
+        economy_type=Economy.NEOCLASSICAL,
+        damage_function_type=DamageFunction.KALKUHL,
+        abatement_type=Abatement.ENERDATA,
+        social_welfare_function=swf,
+    )
+
+    # run your robustness‐check loop
+    for pi in policy_indices:
+        T, uW, pW = reevaluate_optimal_policy_for_robustness(
+            model=model,
+            filename=filename,
+            path_to_rbf_weights=path,
+            path_to_output=path,
+            rbf_policy_index=pi,
+            n_inputs_rbf=2,
+            max_annual_growth_rate=0.04,
+            emission_control_start_timestep=10,
+            min_emission_control_rate=0.01,
+            max_temperature=16.0,
+            min_temperature=0.0,
+            max_difference=2.0,
+            min_difference=0.0,
+            temperature_year_of_interest=2100,
+            temperature_threshold=2.0,
+        )
+
+        out_df = pd.DataFrame(
+            {
+                "utilitarian_welfare": uW,
+                "prioritarian_welfare": pW,
+                "global_temperature": T,
+            }
+        )
+        out_fname = f"{pi}_{scenario}_{swf.value[1]}_global_temperature_.csv"
+        out_df.to_csv(path + out_fname, index=False)
+
+        # clear only the *time series* so you can rerun the same model object
+        model.reset()
+
+
+def compare_test_vs_old(test_dir: str):
+    """
+    Compare every .csv in test_dir against the file of the same name
+    in its parent directory.  Returns a dict with lists of
+    'identical', 'different', and 'missing'.
+    """
+    test_path = Path(test_dir)
+    old_path = test_path.parent
+
+    summary = {
+        "identical": [],
+        "different": [],
+        "missing": [],
+    }
+
+    for test_file in test_path.glob("*.csv"):
+        old_file = old_path / test_file.name
+        if not old_file.exists():
+            summary["missing"].append(test_file.name)
+            continue
+
+        # first try a fast, byte‐for‐byte compare
+        if filecmp.cmp(test_file, old_file, shallow=False):
+            summary["identical"].append(test_file.name)
+            continue
+
+        # if the byte‐compare fails, do a pandas DataFrame compare
+        df_new = pd.read_csv(test_file)
+        df_old = pd.read_csv(old_file)
+        try:
+            pd.testing.assert_frame_equal(
+                df_new,
+                df_old,
+                check_dtype=False,  # allow int64 vs float64 if harmless
+                check_like=True,  # ignore column‐order
+            )
+            summary["identical"].append(test_file.name)
+        except AssertionError:
+            summary["different"].append(test_file.name)
+
+    return summary
+
+
+def minimax_regret_policy(df: pd.DataFrame) -> int:
+    """
+    Given a DataFrame with policy indices as rows and scenarios as columns,
+    compute for each policy the maximum value across scenarios (the "regret"),
+    then return the index of the policy with the smallest of those maxima.
+
+    Parameters:
+      df : pd.DataFrame
+           index = policy indices, columns = scenarios
+
+    Returns:
+      int : the policy index that minimizes the maximum regret
+    """
+    # 1) compute the 'regret' for each policy (the row‐wise maximum)
+    row_max = df.max(axis=1)
+    # 2) find the policy with the smallest regret
+    return int(row_max.idxmin())
 
 
 if __name__ == "__main__":

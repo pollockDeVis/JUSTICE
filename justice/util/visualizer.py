@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import seaborn as sns
+from pathlib import Path
 import os
 from matplotlib.lines import Line2D
 from justice.util.model_time import TimeHorizon
@@ -202,6 +203,7 @@ def plot_emissions_comparison_with_boxplots(
     column_widths=[0.8, 0.2],
     output_path=None,
     saving=False,
+    show_min_max=True,
 ):
 
     # Set the time horizon
@@ -262,32 +264,33 @@ def plot_emissions_comparison_with_boxplots(
         p25 = np.percentile(emissions, 25, axis=1)
 
         # Add traces for the envelopes
-        fig.add_trace(
-            go.Scatter(
-                x=emissions.index,
-                y=max_percentile,
-                mode="lines",
-                line=dict(color=color, width=0.5),
-                fill=None,
-                showlegend=False,
-            ),
-            row=1,
-            col=1,
-        )
+        if show_min_max:
+            fig.add_trace(
+                go.Scatter(
+                    x=emissions.index,
+                    y=max_percentile,
+                    mode="lines",
+                    line=dict(color=color, width=0.5),
+                    fill=None,
+                    showlegend=False,
+                ),
+                row=1,
+                col=1,
+            )
 
-        fig.add_trace(
-            go.Scatter(
-                x=emissions.index,
-                y=min_percentile,
-                mode="lines",
-                line=dict(color=color, width=0.5),
-                fill="tonexty",
-                opacity=opacity * 0.01,  # make it more transparent
-                showlegend=False,
-            ),
-            row=1,
-            col=1,
-        )
+            fig.add_trace(
+                go.Scatter(
+                    x=emissions.index,
+                    y=min_percentile,
+                    mode="lines",
+                    line=dict(color=color, width=0.5),
+                    fill="tonexty",
+                    opacity=opacity * 0.01,  # make it more transparent
+                    showlegend=False,
+                ),
+                row=1,
+                col=1,
+            )
 
         # Add traces for the 25th to 75th percentile envelope
         fig.add_trace(
@@ -404,15 +407,14 @@ def plot_emissions_comparison_with_boxplots(
         showline=True, linewidth=1, linecolor="black", ticks="outside", row=1, col=1
     )
 
-    # Show the figure
-    fig.show()
-
     if saving:
         filename = "_".join(
             [os.path.splitext(os.path.basename(path))[0] for path in data_paths]
         )
         # Save the plot
         fig.write_image(f"{output_path}/{filename}.svg")
+
+    return fig
 
 
 def plot_median_emission_comparison_with_baseline(
@@ -514,8 +516,6 @@ def plot_median_emission_comparison_with_baseline(
     fig.update_xaxes(showline=True, linewidth=1, linecolor="black", ticks="outside")
     fig.update_yaxes(showline=True, linewidth=1, linecolor="black", ticks="outside")
 
-    fig.show()
-
     if saving:
         if not os.path.exists(path_to_output):
             os.makedirs(path_to_output)
@@ -558,6 +558,8 @@ def plot_comparison_with_boxplots(
     first_plot_proportion=[0, 0.8],
     second_plot_proportion=[0.95, 1],
     transpose_data=True,
+    show_min_max=True,
+    dtick=1,  # Make Y axis label for every 1 unit
 ):
     # Set the time horizon
     time_horizon = TimeHorizon(
@@ -581,7 +583,11 @@ def plot_comparison_with_boxplots(
             data = pd.read_csv(path)
         # Check if data is 3D. Then take the mean across the first dimension
         if len(data.shape) == 3:
+            print("Data is 3D")
+            # Print shape of data
+            print("Shape of data: ", data.shape)
             data = np.sum(data, axis=0)
+            print("Shape of data after summing: ", data.shape)
 
         if transpose_data:
             data = data.T
@@ -622,31 +628,32 @@ def plot_comparison_with_boxplots(
             row=1,
             col=col,
         )
-        fig.add_trace(
-            go.Scatter(
-                x=median.index,
-                y=max_vals.values,
-                mode="lines",
-                line=dict(width=0),
-                fillcolor=color,
-                showlegend=False,
-            ),
-            row=1,
-            col=col,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=median.index,
-                y=min_vals.values,
-                mode="lines",
-                fill="tonexty",
-                fillcolor=color,
-                line=dict(width=0),
-                showlegend=False,
-            ),
-            row=1,
-            col=col,
-        )
+        if show_min_max:
+            fig.add_trace(
+                go.Scatter(
+                    x=median.index,
+                    y=max_vals.values,
+                    mode="lines",
+                    line=dict(width=0),
+                    fillcolor=color,
+                    showlegend=False,
+                ),
+                row=1,
+                col=col,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=median.index,
+                    y=min_vals.values,
+                    mode="lines",
+                    fill="tonexty",
+                    fillcolor=color,
+                    line=dict(width=0),
+                    showlegend=False,
+                ),
+                row=1,
+                col=col,
+            )
 
         if show_interquartile_range:
             # Add traces for the 25-75 percentile envelope
@@ -723,7 +730,7 @@ def plot_comparison_with_boxplots(
     fig.update_xaxes(showgrid=False, title_text=xaxis_title, row=1, col=1)
 
     # Make Y axis label for every 1 unit
-    fig.update_yaxes(tick0=0, dtick=1, row=1, col=1)
+    fig.update_yaxes(tick0=0, dtick=dtick, row=1, col=1)
 
     if show_red_dashed_line:
         # Add a red dashed line at 2°C for reference
@@ -784,13 +791,12 @@ def plot_comparison_with_boxplots(
         showline=True, linewidth=1, linecolor="black", ticks="outside", row=1, col=1
     )
 
-    # Show the plot
-    fig.show()
-
     if saving:
         filename = data_paths[0].split("/")[-1].split(".")[0]
         # Save the plot
         fig.write_image(f"{output_path}/{filename}.svg")
+
+    return fig
 
 
 def plot_reevaluated_welfare(
@@ -1502,6 +1508,7 @@ def visualize_tradeoffs_with_annotations(
         if not os.path.exists(path_to_output):
             os.makedirs(path_to_output)
         plt.savefig(os.path.join(path_to_output, output_file_name), dpi=300)
+        print(f"Figure saved at {os.path.join(path_to_output, output_file_name)}")
 
     plt.show()
     return concatenated_df
@@ -1546,7 +1553,9 @@ def visualize_tradeoffs(
     top_percentage=0.1,
     objective_of_interest="welfare_utilitarian",
     show_best_solutions=False,
-    temperature_filter=False,
+    highlight_indices=None,  # ← new: list of row‐indices you want to highlight
+    highlight_factor=3,  # ← new: how many× thicker for highlighted rows
+    # temperature_filter=False,
     saving=False,
 ):
 
@@ -1586,26 +1595,43 @@ def visualize_tradeoffs(
     # Reset index for concatenated_df
     concatenated_df.reset_index(drop=True, inplace=True)
 
-    # Determine top 10% indices for the objective of interest
     top_indices = {}
     if show_best_solutions:
-        for file in input_data:
-            df_type = concatenated_df[concatenated_df["type"] == file]
+        top_indices = highlight_indices.copy()
+        print("Top indices:", top_indices)
+        # Adjust top_indices because the files were merged and indices were reset.
+        size_of_first_file = concatenated_df[
+            concatenated_df["type"] == input_data[0]
+        ].shape[0]
+        # Print the size of the first file
+        print("Size of first file:", size_of_first_file)
+        for file in input_data[1:]:
+            # Adjust the indices for the subsequent files
+            top_indices[file] = [
+                index + size_of_first_file for index in top_indices[file]
+            ]
+            size_of_first_file += concatenated_df[
+                concatenated_df["type"] == file
+            ].shape[0]
+        print("Adjusted top indices:", top_indices)
 
-            top_indices[file] = (
-                df_type[objective_of_interest]
-                .nsmallest(int(df_type.shape[0] * top_percentage))
-                .index
-            )
-            print(file, len(top_indices[file]))
+        # for file in input_data:
+        #     df_type = concatenated_df[concatenated_df["type"] == file]
 
-            # Now within the top_indices, find the index with lowest years_above_temperature_threshold
-            if temperature_filter:
-                index = df_type.loc[top_indices[file]][
-                    "years_above_temperature_threshold"
-                ].idxmin()
-                print(index)
-                top_indices[file] = [index]
+        #     top_indices[file] = (
+        #         df_type[objective_of_interest]
+        #         .nsmallest(int(df_type.shape[0] * top_percentage))
+        #         .index
+        #     )
+        # print(file, len(top_indices[file]))
+
+        # Now within the top_indices, find the index with lowest years_above_temperature_threshold
+        # if temperature_filter:
+        #     index = df_type.loc[top_indices[file]][
+        #         "years_above_temperature_threshold"
+        #     ].idxmin()
+        #     print(index)
+        #     top_indices[file] = [index]
 
     if scaling:
         # Printing min max values of the objectives
@@ -1633,37 +1659,35 @@ def visualize_tradeoffs(
     # Plot each row with its corresponding color
     for idx, row in concatenated_df.iterrows():
         if show_best_solutions:
-            # Default to gray for all lines, except top indices get color
+            # default to gray
             file_color = "gray"
-            adjusted_linewidth = linewidth
+            # start with the base linewidth
+            lw = linewidth
             for _type, indices in top_indices.items():
                 if idx in indices:
+                    # this is one of your highlighted solutions:
                     file_color = color_mapping[_type]
-                    if temperature_filter:
-                        adjusted_linewidth = linewidth * 5
+                    # make it thicker
+                    lw = linewidth * 3  # or whatever factor you like
                     break
+
+            # gray lines at half‐opacity, best ones fully opaque
+            alpha_here = 0.2 if file_color == "gray" else 1.0
+
         else:
-            # Color differentiation based on file type
-            file_color = color_mapping.get(
-                row["type"], "green"
-            )  # Default to 'green' if no specific color is set
+            file_color = color_mapping.get(row["type"], "green")
+            lw = linewidth
+            alpha_here = alpha
 
         _sliced_data = pd.DataFrame(row[list_of_objectives].values).T
         _sliced_data.columns = pretty_labels
-        if show_best_solutions or temperature_filter:
-            axes.plot(
-                _sliced_data,
-                color=file_color,
-                linewidth=adjusted_linewidth,
-                alpha=alpha if (show_best_solutions and file_color == "gray") else 1.0,
-            )
-        else:
-            axes.plot(
-                _sliced_data,
-                color=file_color,
-                linewidth=adjusted_linewidth,
-                alpha=alpha,
-            )
+
+        axes.plot(
+            _sliced_data,
+            color=file_color,
+            linewidth=lw,
+            alpha=alpha_here,
+        )
 
     # Creating a legend
     if show_legend:  # Only show legend when not highlighting best solutions
@@ -2471,8 +2495,6 @@ def plot_choropleth_2D_data(
                 + ".svg"
             )
 
-        fig.show()
-
     return fig, processed_data_dict
 
 
@@ -2661,8 +2683,7 @@ def plot_violin_comparison_sorted(
     if saving and path_to_output and output_file_name:
         plt.savefig(f"{path_to_output}/{output_file_name}.svg", format="svg")
 
-    # Show plot
-    plt.show()
+    return plt
 
 
 def process_economic_data_for_barchart(
@@ -3326,6 +3347,242 @@ def plot_stacked_area_chart_with_baseline_emissions(
                 output_file_name = (
                     variable_name + "_" + output_titles[idx] + "_" + scenario
                 )
+                print(
+                    "Saving plot for: ",
+                    scenario,
+                    " - ",
+                    output_file_name,
+                    " at ",
+                    path_to_output,
+                )
+                fig.write_image(
+                    path_to_output + "/" + output_file_name + "_v2_with_abated" + ".svg"
+                )
+
+    return fig, data, abated_emissions
+
+
+def plot_stacked_area_chart_with_baseline_emissions_v2(
+    variable_name=None,
+    region_name_path="data/input/rice50_region_names.json",
+    path_to_data="data/temporary",
+    path_to_output="./data/plots",
+    baseline_emissions=None,
+    input_data=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    output_titles=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
+    scenario_list=[],
+    title=None,
+    title_x=0.5,
+    xaxis_label=None,
+    yaxis_label=None,
+    legend_label=None,
+    colour_palette=px.colors.qualitative.Light24,
+    height=800,
+    width=1200,
+    visualization_start_year=2015,
+    visualization_end_year=2300,
+    start_year=2015,
+    end_year=2300,
+    data_timestep=5,
+    timestep=1,
+    template="plotly_white",
+    plot_title=None,
+    groupnorm=None,
+    region_aggegation=True,
+    region_dict=None,
+    saving=False,
+    fontsize=16,
+    yaxis_lower_limit=0,
+    yaxis_upper_limit=25,
+    show_legend=True,
+    filetype=".pkl",
+    regional_order=None,
+):
+
+    # Assert if input_data list, scenario_list and output_titles list is None
+    assert input_data, "No input data provided for visualization."
+    assert output_titles, "No output titles provided for visualization."
+    assert scenario_list, "No scenario list provided for visualization."
+
+    # Set the time horizon
+    time_horizon = TimeHorizon(
+        start_year=start_year,
+        end_year=end_year,
+        data_timestep=data_timestep,
+        timestep=timestep,
+    )
+    list_of_years = time_horizon.model_time_horizon
+
+    data_loader = DataLoader()
+
+    region_list = data_loader.REGION_LIST
+
+    if region_aggegation == True:
+        assert region_dict, "Region dictionary is not provided."
+
+    else:
+        with open(region_name_path, "r") as f:
+            region_names = json.load(f)
+
+        # Use region list to get the region names using the region names dictionary
+        region_list = [region_names[region] for region in region_list]
+        # Convert into a flat list
+        region_list = [item for sublist in region_list for item in sublist]
+
+    # Load the data
+    # Enumerate through the input data and load the data
+    for idx, file in enumerate(input_data):
+        for scenario in scenario_list:
+            print("Loading data for: ", scenario, " - ", file)
+            # Check if the file is pickle or numpy
+            if ".npy" in filetype:
+                data = np.load(
+                    path_to_data
+                    + "/"
+                    + file
+                    + "_"
+                    + scenario
+                    + "_"
+                    + variable_name
+                    + ".npy"
+                )
+            else:
+                with open(
+                    path_to_data
+                    + "/"
+                    + file
+                    + "_"
+                    + scenario
+                    + "_"
+                    + variable_name
+                    + ".pkl",
+                    "rb",
+                ) as f:
+                    data = pickle.load(f)
+
+            if baseline_emissions is not None:
+
+                print("Baseline emissions shape: ", baseline_emissions.shape)
+                # if shape is 2, tile it to 3
+                if len(baseline_emissions.shape) == 2:
+                    baseline_emissions = np.tile(
+                        baseline_emissions[:, :, np.newaxis], (1, 1, 1001)
+                    )
+
+                print("New Shape: ", baseline_emissions.shape)
+
+            # Check if region_aggegation is True
+            if region_aggegation:
+                # Aggregated Input Data
+                region_list, data = justice_region_aggregator(
+                    data_loader=data_loader, region_config=region_dict, data=data
+                )
+
+                if baseline_emissions is not None:
+
+                    region_list, baseline_emissions = justice_region_aggregator(
+                        data_loader=data_loader,
+                        region_config=region_dict,
+                        data=baseline_emissions,
+                    )
+                    # Take mean over the ensemble dimension
+                    baseline_emissions = np.mean(baseline_emissions, axis=2)
+
+                    # Convert to dataframe
+                    baseline_emissions = pd.DataFrame(
+                        baseline_emissions, index=region_list, columns=list_of_years
+                    )
+
+                    # Create the slice according to visualization years
+                    baseline_emissions = baseline_emissions.loc[
+                        :, visualization_start_year:visualization_end_year
+                    ]
+
+            # Check shape of data
+            if len(data.shape) == 3:
+                data = np.mean(data, axis=2)
+
+            # Create a dataframe from the data
+            data = pd.DataFrame(data, index=region_list, columns=list_of_years)
+
+            # Create the slice according to visualization years
+            data = data.loc[:, visualization_start_year:visualization_end_year]
+
+            if baseline_emissions is not None:
+                abated_emissions = baseline_emissions - data
+                # Make sure no negative values
+                abated_emissions[abated_emissions < 0] = 0
+
+                # Update the name of regions in the abated_emissions dataframe by adding _abated
+                abated_emissions.index = [
+                    region + "_abated" for region in abated_emissions.index
+                ]
+
+                # Concatenate the dataframes abaated_emissions and data but keep the similar region names together
+                data = pd.concat([data, abated_emissions])
+
+            print("Region list: ", region_list)
+
+            if regional_order is not None:
+                region_list = regional_order
+
+            # Create plotly figure
+            fig = px.area(
+                data.T,
+                x=data.columns,
+                y=data.index,
+                title=plot_title,
+                template=template,
+                labels={"value": variable_name, "variable": "Region", "x": "Year"},
+                height=height,
+                width=width,
+                color_discrete_sequence=colour_palette,
+                groupnorm=groupnorm,
+                category_orders={"variable": region_list},
+            )
+            if groupnorm is None:
+                fig.update_layout(yaxis_range=[yaxis_lower_limit, yaxis_upper_limit])
+
+            # Update layout
+            fig.update_layout(
+                legend_title_text=legend_label,
+                # X-axis label
+                xaxis_title=xaxis_label,
+                # Y-axis label
+                yaxis_title=yaxis_label,
+                title_text=title,
+                title_x=title_x,
+                font=dict(size=fontsize),
+                legend_traceorder="reversed",
+                # legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
+            )
+            # Check if display legend is True
+            if show_legend == False:
+                fig.update_layout(showlegend=False)
+
+            # Remove gridlines
+            fig.update_xaxes(showgrid=False)
+            fig.update_yaxes(showgrid=False)
+
+            # Show ticks on x and y axes with axis lines
+            fig.update_xaxes(
+                showline=True, linewidth=1, linecolor="black", ticks="outside"
+            )
+            fig.update_yaxes(
+                showline=True, linewidth=1, linecolor="black", ticks="outside"
+            )
+
+            # Set fontsize for tick labels
+            fig.update_xaxes(tickfont=dict(size=fontsize))
+
+            if saving:
+                # Save the figure
+                if not os.path.exists(path_to_output):
+                    os.makedirs(path_to_output)
+
+                output_file_name = (
+                    variable_name + "_" + output_titles[idx] + "_" + scenario
+                )
                 print("Saving plot for: ", scenario, " - ", output_file_name)
                 fig.write_image(
                     path_to_output + "/" + output_file_name + "_v2_with_abated" + ".svg"
@@ -3788,7 +4045,92 @@ def plot_regional_emissions_with_boxplots(
         fig.write_image(f"{output_path}/emission_pathways_{region_name}_emissions.svg")
 
     # Show the figure
-    fig.show()
+    return fig
+
+
+def plot_regret_heatmap(
+    data,
+    figsize=(15, 10),
+    font_scale=1.5,
+    set_style="white",
+    cmap="vlag",
+    center=0,
+    square=False,
+    linewidths=0,
+    cbar_shrink=0.8,
+    cbar_label="",
+    title="",
+    xlabel="Scenario",
+    ylabel="Policy Index",
+    show_values=False,
+    fmt=".2f",
+    annot_kws=None,
+    save_path=None,
+    show=True,
+    xtick_labelsize=None,
+    ytick_labelsize=None,
+    scaling=False,  # ← new flag: if True, min–max scale to [-1,1]
+):
+    """
+    Plot a seaborn heatmap of `data` (DataFrame).
+    If scaling=True, data is min–max scaled into [-1,1] before plotting.
+    """
+    sns.set_theme(font_scale=font_scale)
+    sns.set_style(set_style)
+    plt.figure(figsize=figsize)
+
+    # 1) optionally scale the data into [-1,1]
+    if scaling:
+        d = data.astype(float)
+        mn, mx = d.values.min(), d.values.max()
+        if mx != mn:
+            plot_data = (d - mn) / (mx - mn) * 2 - 1
+        else:
+            plot_data = d * 0.0
+        vmin, vmax = -1, 1
+    else:
+        plot_data = data
+        vmin = vmax = None
+
+    # 2) draw the heatmap
+    ax = sns.heatmap(
+        plot_data,
+        cmap=cmap,
+        center=center,
+        square=square,
+        linewidths=linewidths,
+        vmin=vmin,
+        vmax=vmax,
+        cbar_kws={"shrink": cbar_shrink, "label": cbar_label},
+        annot=show_values,
+        fmt=fmt,
+        annot_kws=annot_kws or {},
+        xticklabels=True,
+        yticklabels=True,
+    )
+    ax.set_aspect("auto")
+
+    # 3) adjust tick label sizes
+    if xtick_labelsize is not None:
+        ax.tick_params(axis="x", labelsize=xtick_labelsize)
+    if ytick_labelsize is not None:
+        ax.tick_params(axis="y", labelsize=ytick_labelsize)
+
+    # 4) titles and labels
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    plt.tight_layout()
+
+    # 5) save or show
+    if save_path:
+        p = Path(save_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(p, dpi=300)
+    if show:
+        plt.show()
+
+    return ax
 
 
 # def plot_hypervolume(
