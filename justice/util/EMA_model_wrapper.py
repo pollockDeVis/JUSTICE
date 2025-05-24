@@ -34,7 +34,8 @@ def model_wrapper_emodps(**kwargs):
         damage_function_type = DamageFunction.from_index(kwargs["damage_function_type"])
     if "abatement_type" in kwargs:
         abatement_type = Abatement.from_index(kwargs["abatement_type"])
-
+    if "stochastic_run" in kwargs:
+        stochastic_run = kwargs.pop("stochastic_run")
     # Loading the constants
     n_regions = kwargs.pop("n_regions")
     n_timesteps = kwargs.pop("n_timesteps")
@@ -89,6 +90,7 @@ def model_wrapper_emodps(**kwargs):
             damage_function_type=damage_function_type,
             abatement_type=abatement_type,
             social_welfare_function_type=social_welfare_function_type,
+            stochastic_run=stochastic_run,  # Enable stochastic run for EMA Workbench
         )
     else:
         # Subsequent calls: perform only a light reset

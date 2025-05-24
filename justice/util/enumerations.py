@@ -141,3 +141,20 @@ class Abatement(Enum):
             if enum.value == index:
                 return enum
         return None
+
+
+class Optimizer(Enum):
+    """
+    Optimizer Types
+    """
+
+    EpsNSGAII = 0
+    BorgMOEA = 1
+    MOMARL = 2
+
+    @staticmethod
+    def from_index(index):
+        for enum in Optimizer:
+            if enum.value == index:
+                return enum
+        return None

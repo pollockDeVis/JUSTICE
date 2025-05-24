@@ -55,9 +55,23 @@ class EmissionControlConstraint:
 
             # Initialize the constrained_emission_control_rate
             if timestep == self.emission_control_start_timestep:
-                scaled_emission_control_rate = (
-                    emission_control_rate - np.min(emission_control_rate)
-                ) / (np.max(emission_control_rate) - np.min(emission_control_rate))
+                global_min_ecr = np.min(emission_control_rate)
+                global_max_ecr = np.max(emission_control_rate)
+                global_range_ecr = global_max_ecr - global_min_ecr
+
+                # Check if the range is smaller than 1e-16
+                if global_range_ecr < 1e-16:
+                    # If the range is too small, set the emission_control_rate to a small value
+                    scaled_emission_control_rate = np.zeros_like(emission_control_rate)
+                else:
+                    scaled_emission_control_rate = (
+                        emission_control_rate - global_min_ecr
+                    ) / global_range_ecr
+                # scaled_emission_control_rate = (
+                #     emission_control_rate - np.min(emission_control_rate)
+                # ) / (
+                #     np.max(emission_control_rate) - np.min(emission_control_rate)
+                # )  # TODO: Requires logic to avoid division by zero
                 # Adjusting the feature range
                 scaled_emission_control_rate = (
                     scaled_emission_control_rate
