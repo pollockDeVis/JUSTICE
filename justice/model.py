@@ -898,6 +898,10 @@ class JUSTICE:
         self.emissions.reset()
         self.damage_function.reset()
 
+    # Added for EMA Workbench Support
+    def reset_model(self):
+        self.reset()
+
     @classmethod
     def hard_reset(cls):
         """

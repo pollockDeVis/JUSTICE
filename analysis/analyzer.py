@@ -9,7 +9,9 @@ import os
 import random
 from justice.util.enumerations import *
 import json
+
 from solvers.moea.borgMOEA import BorgMOEA
+from ema_workbench.em_framework.optimization import EpsNSGAII
 
 # Suppress numpy version warnings
 import warnings
@@ -55,10 +57,8 @@ from config.default_parameters import SocialWelfareDefaults
 
 def run_optimization_adaptive(
     config_path,
-    # n_rbfs=n_rbfs,
-    # n_inputs=n_inputs,
     nfe=None,
-    population_size=2,
+    population_size=None,
     swf=0,
     seed=None,
     datapath="./data",
@@ -67,6 +67,8 @@ def run_optimization_adaptive(
     economy_type=Economy.NEOCLASSICAL,
     damage_function_type=DamageFunction.KALKUHL,
     abatement_type=Abatement.ENERDATA,
+    optimizer=Optimizer.EpsNSGAII,
+    stochastic_run=False,
 ):
 
     # Load configuration from file
@@ -121,6 +123,7 @@ def run_optimization_adaptive(
         Constant(
             "temperature_year_of_interest_index", temperature_year_of_interest_index
         ),
+        Constant("stochastic_run", stochastic_run),
     ]
 
     # Speicify uncertainties
@@ -174,16 +177,16 @@ def run_optimization_adaptive(
             variable_name="welfare",
             kind=ScalarOutcome.MINIMIZE,
         ),
-        ScalarOutcome(
-            "years_above_temperature_threshold",
-            variable_name="years_above_threshold",
-            kind=ScalarOutcome.MINIMIZE,
-        ),
         # ScalarOutcome(
-        #     "fraction_above_threshold",
-        #     variable_name="fraction_above_threshold",
+        #     "years_above_temperature_threshold",
+        #     variable_name="years_above_threshold",
         #     kind=ScalarOutcome.MINIMIZE,
         # ),
+        ScalarOutcome(
+            "fraction_above_threshold",
+            variable_name="fraction_above_threshold",
+            kind=ScalarOutcome.MINIMIZE,
+        ),
         ScalarOutcome(
             "welfare_loss_damage",
             variable_name="welfare_loss_damage",
@@ -221,7 +224,11 @@ def run_optimization_adaptive(
         ),
         EpsilonProgress(),
     ]
-
+    algorithm = None
+    if optimizer == Optimizer.EpsNSGAII:
+        algorithm = EpsNSGAII
+    elif optimizer == Optimizer.BorgMOEA:
+        algorithm = BorgMOEA
     # with MPIEvaluator(model) as evaluator:  # Use this for HPC
     with SequentialEvaluator(model) as evaluator:  # Use this for local machine
         # with MultiprocessingEvaluator(model) as evaluator:
@@ -232,6 +239,7 @@ def run_optimization_adaptive(
             reference=reference_scenario,
             convergence=convergence_metrics,
             population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
+            algorithm=algorithm,
         )
 
 
