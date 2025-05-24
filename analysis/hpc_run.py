@@ -2,7 +2,11 @@ from analysis.analyzer import run_optimization_adaptive
 import sys
 import random
 import numpy as np
+from justice.util.enumerations import Optimizer
 
+config_path = (
+    "analysis/limitarian_opt_config.json"  # This loads the config used in the Paper
+)
 
 if __name__ == "__main__":
     nfe = int(sys.argv[1]) if len(sys.argv) > 1 else 5  # default value 5
@@ -12,4 +16,11 @@ if __name__ == "__main__":
     # Setting the seed
     random.seed(seed)
     np.random.seed(seed)
-    run_optimization_adaptive(n_rbfs=4, n_inputs=2, nfe=nfe, swf=swf, seed=seed)
+    run_optimization_adaptive(
+        config_path=config_path,
+        nfe=nfe,
+        swf=swf,
+        seed=seed,
+        datapath="./data",
+        optimizer=Optimizer.BorgMOEA,
+    )

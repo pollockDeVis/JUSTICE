@@ -58,7 +58,7 @@ from config.default_parameters import SocialWelfareDefaults
 def run_optimization_adaptive(
     config_path,
     nfe=None,
-    population_size=None,
+    population_size=100,  # Default population size. For local machine, use smaller values like 5 or less
     swf=0,
     seed=None,
     datapath="./data",
