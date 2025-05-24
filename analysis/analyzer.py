@@ -9,6 +9,7 @@ import os
 import random
 from justice.util.enumerations import *
 import json
+from solvers.moea.borgMOEA import BorgMOEA
 
 # Suppress numpy version warnings
 import warnings

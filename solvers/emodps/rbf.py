@@ -3,7 +3,7 @@ RBF Class
 Adapted from: https://github.com/JazminZatarain/MUSEH2O/blob/main/rbf/rbf_functions.py
 
 This is the RBF class. It uses the modified squared exponential kernel, which was found to be the best performing kernel in the following paper.
-Zatarain-Salazar, Jazmin, Jan H. Kwakkel, and Mark Witvliet. 
+Zatarain-Salazar, Jazmin, Jan H. Kwakkel, and Mark Witvliet.
 "Evaluating the choice of radial basis functions in multiobjective optimal control applications.
 " Environmental Modelling & Software (2023): 105889.
 """
@@ -113,9 +113,18 @@ def original_rbf_vectorized(rbf_input, centers, radii, weights):
     # Adding extra axis to centers and radii to ensure correct broadcasting for squared distance calculation
     squared_distance = np.square(rbf_input_reshaped - centers[:, :, np.newaxis])
 
+    denominator = np.square(radii[:, :, np.newaxis])
+
+    # Check for zero radii to avoid division by zero
+    # This will create a mask where radii are zero
+    zero_radii_mask = denominator == 0
+    # Replace zero radii with a small value to avoid division by zero
+    denominator = np.where(zero_radii_mask, 1e-10, denominator)
+
     # Sum of the negative squared distance over radii
     squared_distance_over_radii_summed = np.sum(
-        -squared_distance / np.square(radii[:, :, np.newaxis]), axis=1
+        -squared_distance / denominator,  # np.square(radii[:, :, np.newaxis])
+        axis=1,  # TODO Needs additional logic to avoid division by zero
     )
     # calculate RBF scores by exponentiating the sum of the negative squared distance over radii
     rbf_scores = np.exp(squared_distance_over_radii_summed)
