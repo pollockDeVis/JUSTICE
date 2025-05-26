@@ -11,6 +11,8 @@ from justice.objectives.objective_functions import (
     calculate_gini_index_c1,
 )
 
+SMALL_NUMBER = 1e-9  # Small number to avoid division by zero or log of zero
+
 
 # TODO: Need to change the name of this class to a more general name
 class SocialWelfareFunction:
@@ -70,9 +72,12 @@ class SocialWelfareFunction:
         This method calculates the welfare.
         """
         # Check if consumption_per_capita has negative values # FIXME Optimize this
-        consumption_per_capita = np.where(
-            consumption_per_capita <= 0, 1e-6, consumption_per_capita
-        )
+        # consumption_per_capita = np.where(
+        #     consumption_per_capita <= 0, 1e-6, consumption_per_capita
+        # )
+
+        # Use max instead of where to avoid negative values
+        consumption_per_capita = np.maximum(consumption_per_capita, SMALL_NUMBER)
 
         # Aggregate the states dimension
         states_aggregated_consumption_per_capita = self.states_aggregator(
@@ -149,9 +154,11 @@ class SocialWelfareFunction:
         This method calculates the welfare.
         """
         # New feature: consumption_per_capita is checked to have negative values
-        consumption_per_capita = np.where(
-            consumption_per_capita < 0, 1e-6, consumption_per_capita
-        )
+        # consumption_per_capita = np.where(
+        #     consumption_per_capita < 0, 1e-6, consumption_per_capita
+        # )
+
+        consumption_per_capita = np.maximum(consumption_per_capita, SMALL_NUMBER)
 
         # Aggregate the states dimension
         states_aggregated_consumption_per_capita = self.states_aggregator(
@@ -187,7 +194,10 @@ class SocialWelfareFunction:
         """
         if parameter == 1:
             utility = np.log(data)
+
         else:
+            # Use np.maximum to ensure no negative or zero values are passed to np.power
+            data = np.maximum(data, SMALL_NUMBER)  # Avoid division by zero
             utility = np.power(data, 1 - parameter) / (1 - parameter)
         return utility
 
@@ -199,6 +209,8 @@ class SocialWelfareFunction:
         if parameter == 1:
             utility = np.exp(data)
         else:
+            # Use np.maximum to ensure no negative or zero values are passed to np.power
+            data = np.maximum(data, SMALL_NUMBER)  # Avoid division by zero
             utility = np.power((data * (1 - parameter)), 1 / (1 - parameter))
         return utility
 

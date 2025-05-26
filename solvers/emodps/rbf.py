@@ -16,6 +16,8 @@ import numpy as np
 # import numba
 from scipy.spatial.distance import cdist
 
+SMALL_NUMBER = 1e-9
+
 
 def original_rbf(rbf_input, centers, radii, weights):
     """
@@ -119,7 +121,10 @@ def original_rbf_vectorized(rbf_input, centers, radii, weights):
     # This will create a mask where radii are zero
     zero_radii_mask = denominator == 0
     # Replace zero radii with a small value to avoid division by zero
-    denominator = np.where(zero_radii_mask, 1e-10, denominator)
+    denominator = np.where(
+        zero_radii_mask, 1e-10, denominator
+    )  # TODO Use np.maximum for efficiency. Use small number instead of hardcoded value
+    # denominator = np.maximum(denominator, 1e-10)  # Avoid division by zero
 
     # Sum of the negative squared distance over radii
     squared_distance_over_radii_summed = np.sum(

@@ -4,6 +4,8 @@ This is a helper module that contains the emission control constraint function f
 
 import numpy as np
 
+SMALL_NUMBER = 1e-9
+
 
 class EmissionControlConstraint:
     """
@@ -59,7 +61,7 @@ class EmissionControlConstraint:
                 global_max_ecr = np.max(emission_control_rate)
                 global_range_ecr = global_max_ecr - global_min_ecr
 
-                # Check if the range is smaller than 1e-16
+                # Check if the range is smaller than 1e-16 # TODO Update this from the hardcoded value
                 if global_range_ecr < 1e-16:
                     # If the range is too small, set the emission_control_rate to a small value
                     scaled_emission_control_rate = np.zeros_like(emission_control_rate)
