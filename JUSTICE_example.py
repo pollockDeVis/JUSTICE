@@ -670,7 +670,7 @@ def setup_RBF_for_emission_control(
 if __name__ == "__main__":
     datasets = JUSTICE_run(
         scenarios=2,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
+        social_welfare_function=WelfareFunction.PRIORITARIAN,
         # climate_ensembles takes a single index '570'. Takes Int and List @OPTIONAL: This is to select a specific climate ensemble or a list of ensemble
         # A subset of climate ensembles containing 100 ensemble members sampled using Latin Hypercube Sampling (LHS)
         # climate_ensembles=[
