@@ -93,7 +93,7 @@ def model_wrapper_emodps(**kwargs):
             abatement_type=abatement_type,
             social_welfare_function_type=social_welfare_function_type,
             stochastic_run=stochastic_run,
-            # climate_ensembles=climate_ensemble_members,
+            climate_ensembles=climate_ensemble_members,
         )
     else:
         # Subsequent calls: perform only a light reset
