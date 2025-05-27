@@ -48,6 +48,8 @@ def model_wrapper_emodps(**kwargs):
         "temperature_year_of_interest_index"
     )
 
+    climate_ensemble_members = kwargs.pop("climate_ensemble_members")
+
     rbf = RBF(
         n_rbfs=(n_inputs_rbf + 2), n_inputs=n_inputs_rbf, n_outputs=n_outputs_rbf
     )  # n_inputs_rbf is a rule of thumb. Hasn't been verified yet for complex models
@@ -90,7 +92,8 @@ def model_wrapper_emodps(**kwargs):
             damage_function_type=damage_function_type,
             abatement_type=abatement_type,
             social_welfare_function_type=social_welfare_function_type,
-            stochastic_run=stochastic_run,  # Enable stochastic run for EMA Workbench
+            stochastic_run=stochastic_run,
+            # climate_ensembles=climate_ensemble_members,
         )
     else:
         # Subsequent calls: perform only a light reset
@@ -154,9 +157,9 @@ def model_wrapper_emodps(**kwargs):
     welfare = np.abs(datasets["welfare"])
 
     # Get the years above temperature threshold
-    years_above_threshold = years_above_temperature_threshold(
-        datasets["global_temperature"], 2.0
-    )
+    # years_above_threshold = years_above_temperature_threshold(
+    #     datasets["global_temperature"], 2.0
+    # )
 
     # Calculate the fraction of ensemble above the temperature threshold temperature, temperature_year_index, threshold
     fraction_above_threshold = fraction_of_ensemble_above_threshold(
@@ -165,24 +168,26 @@ def model_wrapper_emodps(**kwargs):
         threshold=2.0,
     )
 
-    # Transform the damage cost per capita to welfare loss value
-    _, _, _, welfare_loss_damage = model.welfare_function.calculate_welfare(
-        datasets["damage_cost_per_capita"], welfare_loss=True
-    )
-    welfare_loss_damage = np.abs(welfare_loss_damage)
+    # TODO: Temporarily commented out for bi-objective optimization
 
-    # Transform the abatement cost to welfare loss value
-    _, _, _, welfare_loss_abatement = model.welfare_function.calculate_welfare(
-        datasets["abatement_cost_per_capita"], welfare_loss=True
-    )
-    welfare_loss_abatement = np.abs(welfare_loss_abatement)
+    # Transform the damage cost per capita to welfare loss value
+    # _, _, _, welfare_loss_damage = model.welfare_function.calculate_welfare(
+    #     datasets["damage_cost_per_capita"], welfare_loss=True
+    # )
+    # welfare_loss_damage = np.abs(welfare_loss_damage)
+
+    # # Transform the abatement cost to welfare loss value
+    # _, _, _, welfare_loss_abatement = model.welfare_function.calculate_welfare(
+    #     datasets["abatement_cost_per_capita"], welfare_loss=True
+    # )
+    # welfare_loss_abatement = np.abs(welfare_loss_abatement)
 
     return (
         welfare,
         fraction_above_threshold,
         # years_above_threshold,
-        welfare_loss_damage,
-        welfare_loss_abatement,
+        # welfare_loss_damage,
+        # welfare_loss_abatement,
     )  # ,
 
 

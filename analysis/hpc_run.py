@@ -22,5 +22,5 @@ if __name__ == "__main__":
         swf=swf,
         seed=seed,
         datapath="./data",
-        optimizer=Optimizer.BorgMOEA,
+        optimizer=Optimizer.EpsNSGAII,  # Optimizer.BorgMOEA,
     )

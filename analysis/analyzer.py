@@ -54,6 +54,8 @@ from justice.util.data_loader import DataLoader
 from justice.util.enumerations import WelfareFunction, get_welfare_function_name
 from config.default_parameters import SocialWelfareDefaults
 
+SMALL_NUMBER = 1e-9  # Used to avoid division by zero in RBF calculations
+
 
 def run_optimization_adaptive(
     config_path,
@@ -68,7 +70,7 @@ def run_optimization_adaptive(
     damage_function_type=DamageFunction.KALKUHL,
     abatement_type=Abatement.ENERDATA,
     optimizer=Optimizer.EpsNSGAII,
-    stochastic_run=False,
+    evaluator=Evaluator.SequentialEvaluator,
 ):
 
     # Load configuration from file
@@ -85,6 +87,8 @@ def run_optimization_adaptive(
     epsilons = config["epsilons"]
     temperature_year_of_interest = config["temperature_year_of_interest"]
     reference_ssp_rcp_scenario_index = config["reference_ssp_rcp_scenario_index"]
+    climate_ensemble_members = config["climate_ensemble_members"]
+    stochastic_run = (config["stochastic_run"],)
 
     social_welfare_function = WelfareFunction.from_index(swf)
     social_welfare_function_type = social_welfare_function.value[
@@ -124,6 +128,7 @@ def run_optimization_adaptive(
             "temperature_year_of_interest_index", temperature_year_of_interest_index
         ),
         Constant("stochastic_run", stochastic_run),
+        Constant("climate_ensemble_members", climate_ensemble_members),
     ]
 
     # Speicify uncertainties
@@ -161,11 +166,13 @@ def run_optimization_adaptive(
         centers_levers.append(
             RealParameter(f"center {i}", -1.0, 1.0)
         )  # TODO should have a configuration file for optimizations
-        radii_levers.append(RealParameter(f"radii {i}", 0.0, 1.0))
+        radii_levers.append(
+            RealParameter(f"radii {i}", SMALL_NUMBER, 1.0)
+        )  # Changed from 0 to SMALL_NUMBER to avoid division by zero in RBF calculations
 
     for i in range(weights_shape):
         weights_levers.append(
-            RealParameter(f"weights {i}", 0.0, 1.0)
+            RealParameter(f"weights {i}", SMALL_NUMBER, 1.0)
         )  # Probably this range determines the min and max values of the ECR
 
     # Set the model levers
@@ -187,16 +194,17 @@ def run_optimization_adaptive(
             variable_name="fraction_above_threshold",
             kind=ScalarOutcome.MINIMIZE,
         ),
-        ScalarOutcome(
-            "welfare_loss_damage",
-            variable_name="welfare_loss_damage",
-            kind=ScalarOutcome.MAXIMIZE,
-        ),
-        ScalarOutcome(
-            "welfare_loss_abatement",
-            variable_name="welfare_loss_abatement",
-            kind=ScalarOutcome.MAXIMIZE,
-        ),
+        # NOTE : Temporarily commented out for bi-objective optimization
+        # ScalarOutcome(
+        #     "welfare_loss_damage",
+        #     variable_name="welfare_loss_damage",
+        #     kind=ScalarOutcome.MAXIMIZE,
+        # ),
+        # ScalarOutcome(
+        #     "welfare_loss_abatement",
+        #     variable_name="welfare_loss_abatement",
+        #     kind=ScalarOutcome.MAXIMIZE,
+        # ),
     ]
 
     reference_scenario = Scenario(
@@ -229,18 +237,42 @@ def run_optimization_adaptive(
         algorithm = EpsNSGAII
     elif optimizer == Optimizer.BorgMOEA:
         algorithm = BorgMOEA
-    # with MPIEvaluator(model) as evaluator:  # Use this for HPC
-    with SequentialEvaluator(model) as evaluator:  # Use this for local machine
-        # with MultiprocessingEvaluator(model) as evaluator:
-        results = evaluator.optimize(
-            searchover="levers",
-            nfe=nfe,
-            epsilons=epsilons,
-            reference=reference_scenario,
-            convergence=convergence_metrics,
-            population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
-            algorithm=algorithm,
-        )
+
+    if evaluator == Evaluator.MPIEvaluator:
+        with MPIEvaluator(model) as evaluator:  # Use this for HPC
+            results = evaluator.optimize(
+                searchover="levers",
+                nfe=nfe,
+                epsilons=epsilons,
+                reference=reference_scenario,
+                convergence=convergence_metrics,
+                population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
+                algorithm=algorithm,
+            )
+    elif evaluator == Evaluator.MultiprocessingEvaluator:
+        with MultiprocessingEvaluator(model) as evaluator:
+            results = evaluator.optimize(
+                searchover="levers",
+                nfe=nfe,
+                epsilons=epsilons,
+                reference=reference_scenario,
+                convergence=convergence_metrics,
+                population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
+                algorithm=algorithm,
+            )
+    else:
+
+        # with MPIEvaluator(model) as evaluator:  # Use this for HPC
+        with SequentialEvaluator(model) as evaluator:  # Use this for local machine
+            results = evaluator.optimize(
+                searchover="levers",
+                nfe=nfe,
+                epsilons=epsilons,
+                reference=reference_scenario,
+                convergence=convergence_metrics,
+                population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
+                algorithm=algorithm,
+            )
 
 
 #######################################################################################################################################################
@@ -528,17 +560,23 @@ if __name__ == "__main__":
         6075612,
         521475,
     ]
-    # TODO: Implement seed later
-    # for seed_index, seed in enumerate(seeds):
-    #     random.seed(seed)
-    #     np.random.seed(seed)
+    config_path = "analysis/normative_uncertainty_optimization.json"  # This loads the config used in the Paper
 
-    ema_logging.log_to_stderr(ema_logging.INFO)
+    ema_logging.log_to_stderr(ema_logging.DEBUG)
+
     seed = seeds[4]
     random.seed(seed)
     np.random.seed(seed)
     # perform_exploratory_analysis(number_of_experiments=10, filename=None, folder=None)
+    # run_optimization_adaptive(
+    #     n_rbfs=4, n_inputs=2, nfe=5, swf=4, filename=None, folder=None, seed=seed
+    # )
     run_optimization_adaptive(
-        n_rbfs=4, n_inputs=2, nfe=5, swf=4, filename=None, folder=None, seed=seed
+        config_path=config_path,
+        nfe=5,
+        swf=0,
+        seed=seed,
+        datapath="./data",
+        optimizer=Optimizer.EpsNSGAII,
+        population_size=2,  # Optimizer.BorgMOEA,
     )
-    # run_optimization_static(nfe=5, filename=None, folder=None)
