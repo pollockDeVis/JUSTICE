@@ -2,7 +2,7 @@ from analysis.analyzer import run_optimization_adaptive
 import sys
 import random
 import numpy as np
-from justice.util.enumerations import Optimizer
+from justice.util.enumerations import Optimizer, Evaluator
 
 config_path = (
     "analysis/limitarian_opt_config.json"  # This loads the config used in the Paper
@@ -23,4 +23,5 @@ if __name__ == "__main__":
         seed=seed,
         datapath="./data",
         optimizer=Optimizer.EpsNSGAII,  # Optimizer.BorgMOEA,
+        evaluator=Evaluator.SequentialEvaluator,
     )

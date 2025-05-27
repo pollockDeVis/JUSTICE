@@ -87,8 +87,14 @@ def run_optimization_adaptive(
     epsilons = config["epsilons"]
     temperature_year_of_interest = config["temperature_year_of_interest"]
     reference_ssp_rcp_scenario_index = config["reference_ssp_rcp_scenario_index"]
-    climate_ensemble_members = config["climate_ensemble_members"]
-    stochastic_run = (config["stochastic_run"],)
+
+    stochastic_run = config["stochastic_run"]
+
+    # Check if climate_ensemble_members is in the config, if not set it to None
+    if "climate_ensemble_members" in config:
+        climate_ensemble_members = config["climate_ensemble_members"]
+    else:
+        climate_ensemble_members = None
 
     social_welfare_function = WelfareFunction.from_index(swf)
     social_welfare_function_type = social_welfare_function.value[
@@ -246,7 +252,7 @@ def run_optimization_adaptive(
                 epsilons=epsilons,
                 reference=reference_scenario,
                 convergence=convergence_metrics,
-                population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
+                population_size=population_size,
                 algorithm=algorithm,
             )
     elif evaluator == Evaluator.MultiprocessingEvaluator:
@@ -257,7 +263,7 @@ def run_optimization_adaptive(
                 epsilons=epsilons,
                 reference=reference_scenario,
                 convergence=convergence_metrics,
-                population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
+                population_size=population_size,
                 algorithm=algorithm,
             )
     else:
@@ -560,9 +566,10 @@ if __name__ == "__main__":
         6075612,
         521475,
     ]
+
     config_path = "analysis/normative_uncertainty_optimization.json"  # This loads the config used in the Paper
 
-    ema_logging.log_to_stderr(ema_logging.DEBUG)
+    ema_logging.log_to_stderr(ema_logging.INFO)
 
     seed = seeds[4]
     random.seed(seed)
@@ -579,4 +586,5 @@ if __name__ == "__main__":
         datapath="./data",
         optimizer=Optimizer.EpsNSGAII,
         population_size=2,  # Optimizer.BorgMOEA,
+        evaluator=Evaluator.SequentialEvaluator,
     )
