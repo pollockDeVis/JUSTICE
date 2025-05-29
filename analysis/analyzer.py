@@ -60,7 +60,7 @@ SMALL_NUMBER = 1e-9  # Used to avoid division by zero in RBF calculations
 def run_optimization_adaptive(
     config_path,
     nfe=None,
-    population_size=100,  # Default population size. For local machine, use smaller values like 5 or less
+    # population_size=100,  # Default population size. For local machine, use smaller values like 5 or less
     swf=0,
     seed=None,
     datapath="./data",
@@ -252,7 +252,7 @@ def run_optimization_adaptive(
                 epsilons=epsilons,
                 reference=reference_scenario,
                 convergence=convergence_metrics,
-                population_size=population_size,
+                # population_size=population_size,
                 algorithm=algorithm,
             )
     elif evaluator == Evaluator.MultiprocessingEvaluator:
@@ -263,7 +263,7 @@ def run_optimization_adaptive(
                 epsilons=epsilons,
                 reference=reference_scenario,
                 convergence=convergence_metrics,
-                population_size=population_size,
+                # population_size=population_size,
                 algorithm=algorithm,
             )
     else:
@@ -276,7 +276,7 @@ def run_optimization_adaptive(
                 epsilons=epsilons,
                 reference=reference_scenario,
                 convergence=convergence_metrics,
-                population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
+                # population_size=population_size,  # NOTE set population parameters for local machine. It is faster for testing
                 algorithm=algorithm,
             )
 

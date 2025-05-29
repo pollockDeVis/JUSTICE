@@ -11,6 +11,8 @@ import datetime
 from sklearn.preprocessing import MinMaxScaler
 from itertools import chain
 from solvers.convergence import pareto
+from pathlib import Path
+from typing import List, Tuple, Union
 
 # Suppress warnings
 import warnings
@@ -32,48 +34,68 @@ def transform_data(data, scaler, direction_of_optimization=[]):
 
 
 def load_archives(
-    list_of_objectives=[],
-    data_path=None,
-    file_name=None,
-):
+    list_of_objectives: List[str] = None,
+    data_path: Union[str, Path] = None,
+    file_name: str = None,
+) -> Tuple[dict, List[pd.DataFrame]]:
     """
+    Load archives from a tar.gz file containing multiple CSVs and extracts a list of DataFrames with relevant objective columns.
+
+    Parameters
+    ----------
+    list_of_objectives : List[str]
+        List of objective column names to extract from CSV files.
+    data_path : str or Path
+        Directory path containing the archive file.
+    file_name : str
+        Archive filename (tar.gz).
 
     Returns
     -------
-
-
+    archives : dict
+        Raw loaded archives dictionary.
+    list_of_archives : List[pandas.DataFrame]
+        List of DataFrames, one per generation, each containing only the selected objectives.
     """
-    # Assert if arguments are None
-    assert data_path is not None, "data_path is None"
-    assert file_name is not None, "file_name is None"
-    # Assert if list_of_objectives is empty
-    assert list_of_objectives, "list_of_objectives is empty"
 
-    archives = ArchiveLogger.load_archives(f"{data_path}/{file_name}")
+    if list_of_objectives is None:
+        raise ValueError("list_of_objectives cannot be None or empty.")
+    if data_path is None:
+        raise ValueError("data_path cannot be None.")
+    if file_name is None:
+        raise ValueError("file_name cannot be None.")
+
+    full_path = Path(data_path) / file_name
+    archives = ArchiveLogger.load_archives(str(full_path))
 
     list_of_archives = []
-    number_of_objectives = len(list_of_objectives)
-    print("Loading archives for ", file_name)
-    for keys in archives.keys():
-        # print(keys)
+    num_objectives = len(list_of_objectives)
 
-        archives_by_keys = archives[keys]
+    print(f"Loading archives for {file_name}")
 
-        generations = []
-        for nfe, generation in archives_by_keys.groupby("Unnamed: 0"):
-            # print("NFE: ", nfe, "\n")
+    for key, df in archives.items():
+        # If "Unnamed: 0" exists, group by it. Otherwise, group by the index.
+        group_key = "Unnamed: 0" if "Unnamed: 0" in df.columns else None
+
+        grouped = (
+            df.groupby(group_key)
+            if group_key
+            else ((idx, group) for idx, group in df.groupby(df.index))
+        )
+
+        for nfe, generation in grouped:
+            # Rename columns from 0-based indices to objective names for only the last N columns
+            # It assumes that the last `num_objectives` columns correspond to objectives.
             generation = generation.rename(
                 {str(i): name for i, name in enumerate(list_of_objectives)},
                 axis=1,
             )
-            # Select only the last 4 columns
-            generation = generation.iloc[:, -number_of_objectives:]
 
-            # print(generation.columns)
-            generations.append((nfe, generation))
+            # Select only the last n objective columns
+            generation = generation.iloc[:, -num_objectives:]
+
             list_of_archives.append(generation)
 
-            # archives[keys][int(i.split("_")[0])] = generations
     print("Archives loaded")
     return archives, list_of_archives
 
