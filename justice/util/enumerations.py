@@ -158,3 +158,20 @@ class Optimizer(Enum):
             if enum.value == index:
                 return enum
         return None
+
+
+class Evaluator(Enum):
+    """
+    Evaluator Types
+    """
+
+    MultiprocessingEvaluator = 0
+    SequentialEvaluator = 1
+    MPIEvaluator = 2
+
+    @staticmethod
+    def from_index(index):
+        for enum in Evaluator:
+            if enum.value == index:
+                return enum
+        return None

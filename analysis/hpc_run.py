@@ -2,11 +2,9 @@ from analysis.analyzer import run_optimization_adaptive
 import sys
 import random
 import numpy as np
-from justice.util.enumerations import Optimizer
+from justice.util.enumerations import Optimizer, Evaluator
 
-config_path = (
-    "analysis/limitarian_opt_config.json"  # This loads the config used in the Paper
-)
+config_path = "analysis/normative_uncertainty_optimization.json"  # This loads the config used in the Paper
 
 if __name__ == "__main__":
     nfe = int(sys.argv[1]) if len(sys.argv) > 1 else 5  # default value 5
@@ -22,5 +20,6 @@ if __name__ == "__main__":
         swf=swf,
         seed=seed,
         datapath="./data",
-        optimizer=Optimizer.BorgMOEA,
+        optimizer=Optimizer.BorgMOEA,  # Optimizer.BorgMOEA, Optimizer.EpsNSGAII
+        evaluator=Evaluator.SequentialEvaluator,
     )

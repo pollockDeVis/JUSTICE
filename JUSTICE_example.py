@@ -671,6 +671,20 @@ if __name__ == "__main__":
     datasets = JUSTICE_run(
         scenarios=2,
         social_welfare_function=WelfareFunction.UTILITARIAN,
+        # climate_ensembles takes a single index '570'. Takes Int and List @OPTIONAL: This is to select a specific climate ensemble or a list of ensemble
+        # A subset of climate ensembles containing 100 ensemble members sampled using Latin Hypercube Sampling (LHS)
+        # climate_ensembles=[
+        #     887,
+        #     899,
+        #     763,
+        #     4,
+        #     454,
+        #     728,
+        #     942,
+        #     543,
+        #     510,
+        #     913,
+        # ],
     )
 
     # Stepwise run
