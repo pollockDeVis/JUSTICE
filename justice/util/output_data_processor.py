@@ -35,6 +35,10 @@ def reevaluated_optimal_policy_variable_extractor(
     input_data=None,
     output_file_names=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
 ):
+    # convert to Path
+    path_to_data = Path(path_to_data)
+    path_to_output = Path(path_to_output)
+
     # Assert if any arguments are None
     assert scenario_list is not None, "Scenario list not provided"
     assert region_list is not None, "Region list not provided"
@@ -65,14 +69,11 @@ def reevaluated_optimal_policy_variable_extractor(
 
         # Get the string out of the input_data list
         file_name = input_data[plotting_idx]
-        # Load the scenario data from the pickle file
-        # with open(
-        #     path_to_data + "/" + file_name, "rb"
-        # ) as f:  # input_data[plotting_idx]
-        #     scenario_data = pickle.load(f)
+
         scenario_data = {}
         # HDF5 file
-        with h5py.File(path_to_data + "/" + file_name.split(".")[0] + ".h5", "r") as f:
+        h5_path = path_to_data / f"{file_name.split('.')[0]}.h5"
+        with h5py.File(h5_path, "r") as f:
             for scenario in f.keys():
                 scenario_data[scenario] = {}
                 scenario_group = f[scenario]
@@ -92,11 +93,10 @@ def reevaluated_optimal_policy_variable_extractor(
                 processed_data = data_scenario[idx, :, :, :]
 
             if output_file_names is None:
-                # Construct the output file name using the base name, its last underscore part, the scenario, and the variable name.
                 output_file_name = (
-                    input_data[plotting_idx].split(".")[0]
+                    file_name.split(".")[0]
                     + "_"
-                    + input_data[plotting_idx].split(".")[0].split("_")[-1]
+                    + file_name.split(".")[0].split("_")[-1]
                     + "_"
                     + scenarios
                     + "_"
@@ -106,23 +106,16 @@ def reevaluated_optimal_policy_variable_extractor(
                 output_file_name = (
                     output_file_names[plotting_idx]
                     + "_"
-                    + input_data[plotting_idx].split(".")[0].split("_")[-1]
+                    + file_name.split(".")[0].split("_")[-1]
                     + "_"
                     + scenarios
                     + "_"
                     + variable_name
                 )
 
-            # TODO: Change from pickle to hdf5
-            # Save the processed data as a pickle file
-            # with open(path_to_output + "/" + output_file_name, "wb") as f:
-            #     pickle.dump(processed_data, f)
-
             # Save it as npy file
-            np.save(
-                path_to_output + "/" + output_file_name + ".npy",
-                processed_data,
-            )
+            out_path = path_to_output / f"{output_file_name}.npy"
+            np.save(out_path, processed_data)
 
             # Print file saved as filename at location path
             print(f"File saved as {output_file_name} at location {path_to_output}")
@@ -751,7 +744,6 @@ def find_closest_pairs_of_pareto_solutions(
     return index_pairs, temperature_index_pairs
 
 
-# Read the file 'UTILITARIAN_reference_set.csv' from the 'data/convergence_metrics' folder
 def get_selected_policy_indices_based_on_welfare_temperature(
     rival_framings,
     data_dir,
@@ -760,27 +752,48 @@ def get_selected_policy_indices_based_on_welfare_temperature(
     suffix="_reference_set.csv",
     second_objective_of_interest="years_above_temperature_threshold",
 ):
+
+    data_dir = Path(data_dir)
     selected_indices = []
     for rival in rival_framings:
-        file_path = f"{data_dir}/{rival}{suffix}"
+        file_path = data_dir / f"{rival}{suffix}"
+        if not file_path.exists():
+            raise FileNotFoundError(f"File {file_path} does not exist.")
+        print(f"Reading {file_path}")
         data = pd.read_csv(file_path)
 
-        # Keep the last 4 columns of the data
-        data = data.iloc[:, -number_of_objectives:]
+        # Check if columns are present
+        if "welfare" not in data.columns:
+            raise KeyError(f"'welfare' column not found in {file_path}")
 
-        # Find the index of the lowest 10% of values in the 'welfare' column
-        lowest_n_percent_indices = (
-            data["welfare"].nsmallest(int(data.shape[0] * n_percent)).index
-        )
+        if second_objective_of_interest not in data.columns:
+            raise KeyError(
+                f"'{second_objective_of_interest}' column not found in {file_path}"
+            )
 
-        # Find the index of the lowest 'years_above_temperature_threshold' within the selected indices
-        selected_policy_index = data.loc[
-            lowest_n_percent_indices, second_objective_of_interest
-        ].idxmin()
-        print(f"Index of interest for {rival}: ", selected_policy_index)
-        print(data.loc[selected_policy_index])
+        # Optionally skip slicing if it removes required columns:
+        # data = data.iloc[:, -number_of_objectives:]
 
-        selected_indices.append(selected_policy_index)
+        # Determine number of rows to select
+        lowest_n = max(int(data.shape[0] * n_percent), 1)
+
+        # Find the index of the lowest n_percent of values in the 'welfare' column
+        lowest_indices = data["welfare"].nsmallest(lowest_n).index
+
+        # Subset of the second objective in the lowest welfare group
+        subset = data.loc[lowest_indices, second_objective_of_interest]
+
+        if subset.empty:
+            raise ValueError(
+                f"No data available for {second_objective_of_interest} in lowest welfare group "
+                f"for rival {rival}. Please check your data."
+            )
+
+        selected_idx = subset.idxmin()
+        print(f"Index of interest for {rival}: {selected_idx}")
+        # print(data.loc[selected_idx])
+
+        selected_indices.append(selected_idx)
     return selected_indices
 
 
