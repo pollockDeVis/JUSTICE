@@ -17,6 +17,7 @@ from pathlib import Path
 import filecmp
 import multiprocessing as mp
 
+
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
 # To run the code, you need to run the following command in the terminal to add the path to the PYTHONPATH
@@ -1106,8 +1107,6 @@ def read_reference_set_policy_mapping(
     Returns:
         dict: A dictionary containing the policy mapping.
     """
-    import h5py
-    from pathlib import Path
 
     base_dir = Path(base_dir + "/" + sw_name)
     mapping_dir = base_dir / mapping_subdir
