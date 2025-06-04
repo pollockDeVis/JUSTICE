@@ -385,6 +385,8 @@ def reevaluate_optimal_policy_for_robustness(
     ]
     utilitarian_welfare = datasets["welfare_utilitarian"]
     prioritarian_welfare = datasets["welfare_prioritarian"]
+    # welfare_utilitarian_state_disaggregated = datasets["welfare_utilitarian_state_disaggregated"]
+    # welfare_prioritarian_state_disaggregated = datasets["welfare_prioritarian_state_disaggregated"]
 
     print("index for policy: ", rbf_policy_index)
     print(f"Fraction above threshold Reeval: {fraction_above_threshold}")
@@ -396,6 +398,8 @@ def reevaluate_optimal_policy_for_robustness(
         global_temperature,
         utilitarian_welfare,
         prioritarian_welfare,
+        # welfare_utilitarian_state_disaggregated,
+        # welfare_prioritarian_state_disaggregated,
     )
 
 
@@ -1231,7 +1235,7 @@ def generate_reference_set_policy_mapping(
     return mapping
 
 
-def process_scenario(swf, policy_indices, scenario: str):
+def process_scenario(social_welfare_function, policy_indices, scenario: str):
     """
     Worker that runs all of your policies under a single SSP scenario.
     This executes in a fresh Python process, so JUSTICE will load the
@@ -1247,8 +1251,8 @@ def process_scenario(swf, policy_indices, scenario: str):
     )
 
     # re‑construct exactly the same path / filename logic
-    sw_name = swf.value[1]
-    path = f"data/optimized_rbf_weights/limitarian/50k/{sw_name}/"
+    sw_name = social_welfare_function.value[1]
+    path = "data/temporary/NU_DATA/combined/SSP2/"  # TODO remove hardcoded path
     filename = f"{sw_name}_reference_set.csv"
 
     # build the model for this one SSP
@@ -1261,7 +1265,7 @@ def process_scenario(swf, policy_indices, scenario: str):
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
-        social_welfare_function=swf,
+        social_welfare_function=social_welfare_function,
     )
 
     # run your robustness‐check loop
@@ -1291,7 +1295,7 @@ def process_scenario(swf, policy_indices, scenario: str):
                 "global_temperature": T,
             }
         )
-        out_fname = f"{pi}_{scenario}_{swf.value[1]}_global_temperature_.csv"
+        out_fname = f"{pi}_{scenario}_{social_welfare_function.value[1]}_global_temperature_.csv"
         out_df.to_csv(path + out_fname, index=False)
 
         # clear only the *time series* so you can rerun the same model object
