@@ -5,7 +5,6 @@ This is the main JUSTICE model.
 import numpy as np
 import json
 from typing import Any
-from pathlib import Path
 
 from justice.util.data_loader import DataLoader
 from justice.util.enumerations import (
@@ -101,7 +100,6 @@ class JUSTICE:
         social_welfare_function=WelfareFunction.UTILITARIAN,
         clustering = False,
         cluster_level = None,
-        data_path = Path("./data"),
         **kwargs,
     ):
         # If already initialized, do not repeat heavy initialization.
@@ -133,15 +131,15 @@ class JUSTICE:
         
         if self.clustering:
             if self.cluster_level == 12:
-                with open(data_path / "rice_12_regions_dict.json") as f:
+                with open("data/input/rice_12_regions_dict.json") as f:
                     rice_5_json = json.load(f)
             elif self.cluster_level == 5:
-                with open(data_path / "5_regions.json") as f:
+                with open("data/input/rice_12_regions_dict.json") as f:
                     rice_5_json = json.load(f)
             else:
                 raise ValueError("Cluster level not supported")
             
-            with open(data_path / "rice50_regions_dict.json") as f:
+            with open("data/input/rice_12_regions_dict.json") as f:
                 rice_50_json = json.load(f)
 
             self.clusters = list(rice_5_json.keys())
