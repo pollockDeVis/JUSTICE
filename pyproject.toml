@@ -18,15 +18,23 @@ dependencies = [
     "plotly (>=5.19.0)",
     "pycountry (>=24.6.1)",
     "seaborn (>=0.13.0)",
+    "tyro (>=0.9.24)",
+    "wandb (==0.20.1)",
+    "numpy (==1.24.3)",
+    "torch (==2.4.1)",
+    "SuperSuit (==3.9.3)",
+    "pettingzoo (==1.24.3)",
+    "python-cdd (==0.0.98)",
+    "momaland (==0.1.1)",
+    "gymnasium (==0.28.1)",
+    "morl-baselines (==1.0.0)",
+    "tensorboard (==2.19.0)"
 ]
 
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
 
-[tool.poetry]
-packages = [{ include = "justice" }]
-
-[tool.poetry.dev-dependencies]
-pytest = "8.3.5"
+[tool.setuptools]
+packages = ["justice", "rl", "solvers", "analysis"]

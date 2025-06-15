@@ -3,7 +3,7 @@ This is the main JUSTICE model.
 """
 
 import numpy as np
-import pandas as pd
+import json
 from typing import Any
 
 from justice.util.data_loader import DataLoader
@@ -98,6 +98,8 @@ class JUSTICE:
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
         social_welfare_function=WelfareFunction.UTILITARIAN,
+        clustering = False,
+        cluster_level = None,
         **kwargs,
     ):
         # If already initialized, do not repeat heavy initialization.
@@ -113,6 +115,8 @@ class JUSTICE:
         self.damage_function_type = damage_function_type
         self.abatement_type = abatement_type
         self.scenario = scenario
+        self.clustering = clustering
+        self.cluster_level = cluster_level
 
         if "social_welfare_function_type" in kwargs:
             self.welfare_function_type = WelfareFunction.from_index(
@@ -124,6 +128,45 @@ class JUSTICE:
         # Load the datasets by instantiating the DataLoader class
         self.data_loader = DataLoader()
         self.region_list = self.data_loader.REGION_LIST
+        
+        if self.clustering:
+            if self.cluster_level == 12:
+                with open("data/input/rice_12_regions_dict.json") as f:
+                    rice_json = json.load(f)
+            elif self.cluster_level == 5:
+                with open("data/input/5_regions.json") as f:
+                    rice_json = json.load(f)
+            else:
+                raise ValueError("Cluster level not supported")
+            
+            with open("data/input/rice50_regions_dict.json") as f:
+                rice_50_json = json.load(f)
+
+            self.clusters = list(rice_json.keys())
+            
+            region_list = self.region_list.tolist()
+
+            region_to_index = {region: idx for idx, region in enumerate(region_list)}
+            cluster_to_index = {cluster: idx for idx, cluster in enumerate(self.clusters)}
+
+            #create a mapping from region to cluster
+            self.country_to_cluster = {}
+            for region, country_codes in rice_50_json.items():
+                region_index = region_to_index.get(region)  
+                for code in country_codes:
+                    for cluster, cluster_codes in rice_json.items():
+                        if code in cluster_codes:
+                            cluster_index = cluster_to_index[cluster] 
+                            self.country_to_cluster[region_index] = cluster_index
+                            break  # Break the loop as soon as we find a match for efficiency
+
+            #create an inverse mapping from cluster to region
+            self.cluster_to_country = {}
+            for region, cluster in self.country_to_cluster.items():
+                if cluster not in self.cluster_to_country:
+                    self.cluster_to_country[cluster] = []
+                self.cluster_to_country[cluster].append(region)
+                        
 
         # Instantiate the TimeHorizon class # TODO: Need to do the data slicing here for different start and end years
         self.time_horizon = TimeHorizon(
@@ -425,15 +468,27 @@ class JUSTICE:
 
         if endogenous_savings_rate:
             self.savings_rate[:, timestep] = self.fixed_savings_rate[:, timestep]
-        else:
+        elif not self.clustering:
             self.savings_rate[:, timestep] = savings_rate
+        else:
+            for key, value in self.country_to_cluster.items(): #[('region', 'cluster')]
+                self.savings_rate[key, timestep] = savings_rate[value]
+            savings_rate = self.savings_rate[:, timestep]
 
         # Check the shape of the emission_control_rate whether it is 1D or 2D
         if len(emission_control_rate.shape) == 1:
             emission_control_rate = np.tile(
                 emission_control_rate[:, np.newaxis], (1, self.no_of_ensembles)
             )
+            
+        if not self.clustering:
+            self.emission_control_rate[:, timestep, :] = emission_control_rate
 
+        else:
+            for key, value in self.country_to_cluster.items(): #[('region', 'cluster')]
+                self.emission_control_rate[key, timestep, :] = emission_control_rate[value]
+            emission_control_rate = self.emission_control_rate[:, timestep, :]
+            
         self.emission_control_rate[:, timestep, :] = emission_control_rate
 
         gross_output = self.economy.run(
