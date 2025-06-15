@@ -1,0 +1,63 @@
+{
+    "model": {
+        "network_model": "magic",
+        "encoder": {
+            "obs_encoder": {
+                "output_dim": 64,
+                "use_layer_norm": "True",
+                "mlp_hidden_dims": [
+                    64
+                ],
+                "activation": "relu"
+            },
+            "lstm_cell": {
+                "hidden_dim": 64
+            },
+            "message_encoder": {
+                "output_dim": 64,
+                "use_layer_norm": "True",
+                "mlp_hidden_dims": [
+                    64
+                ],
+                "activation": "relu"
+            }
+        },
+        "schedulers": [
+            {
+                "learn_graph": "False",
+                "directed": "True",
+                "gnn_encoder": {
+                    "out_features": 64,
+                    "dropout": 0.1,
+                    "negative_slope": 0.1,
+                    "number_heads": 4
+                },
+                "mlp": {
+                    "output_dim": 64,
+                    "use_layer_norm": "True",
+                    "mlp_hidden_dims": [
+                        64
+                    ],
+                    "activation": "relu"
+                }
+            }
+        ],
+        "processors": [
+            {
+                "gnn_encoder": {
+                    "out_features": 64,
+                    "dropout": 0.2,
+                    "negative_slope": 0.01,
+                    "number_heads": 4
+                }
+            }
+        ],
+        "decoder": {
+            "output_dim": 64,
+            "mlp_hidden_dims": [
+                64
+            ],
+            "use_layer_norm": "False"
+        }
+    }
+}
