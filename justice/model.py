@@ -132,17 +132,17 @@ class JUSTICE:
         if self.clustering:
             if self.cluster_level == 12:
                 with open("data/input/rice_12_regions_dict.json") as f:
-                    rice_5_json = json.load(f)
+                    rice_json = json.load(f)
             elif self.cluster_level == 5:
-                with open("data/input/rice_12_regions_dict.json") as f:
-                    rice_5_json = json.load(f)
+                with open("data/input/5_regions.json") as f:
+                    rice_json = json.load(f)
             else:
                 raise ValueError("Cluster level not supported")
             
-            with open("data/input/rice_12_regions_dict.json") as f:
+            with open("data/input/rice50_regions_dict.json") as f:
                 rice_50_json = json.load(f)
 
-            self.clusters = list(rice_5_json.keys())
+            self.clusters = list(rice_json.keys())
             
             region_list = self.region_list.tolist()
 
@@ -154,7 +154,7 @@ class JUSTICE:
             for region, country_codes in rice_50_json.items():
                 region_index = region_to_index.get(region)  
                 for code in country_codes:
-                    for cluster, cluster_codes in rice_5_json.items():
+                    for cluster, cluster_codes in rice_json.items():
                         if code in cluster_codes:
                             cluster_index = cluster_to_index[cluster] 
                             self.country_to_cluster[region_index] = cluster_index

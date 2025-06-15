@@ -8,11 +8,13 @@ This script can be used to evaluate a trained policy on a given evaluation seed 
 
 """
 
+import os
+import pickle
+import pandas as pd
 
 import random, numpy as np, torch, supersuit as ss, json, re
 
 from dataclasses import asdict
-from paper.eval_utils import *
 from rl.env import JusticeMOMARLEnv
 from rl.agent import AgentDiscrete
 from rl.args import Args
@@ -258,7 +260,7 @@ def evaluate_seed(base_emissions, loaded_args: Args, checkpoint_path: str, eval_
 
 if __name__ == "__main__":
 
-    CURRENT_WORKING_DIR = os.path.dirname(os.path.realpath(__file__))
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     
     # Take a checkpoint path as input from command line
     parser = ArgumentParser()
@@ -272,7 +274,7 @@ if __name__ == "__main__":
     loaded_args = Args()
 
     # Load base emissions for abated emissions calculations
-    baselines_emissions_data_path = os.path.join(CURRENT_WORKING_DIR, "paper", "baseline_emissions.csv")
+    baselines_emissions_data_path = os.path.join(ROOT_DIR, "paper", "baseline_emissions.csv")
     base_emissions = pd.read_csv(baselines_emissions_data_path, delimiter=";")
     base_emissions = base_emissions.iloc[:, 1:]
     base_emissions = base_emissions.to_numpy()

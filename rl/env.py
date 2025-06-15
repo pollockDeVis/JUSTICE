@@ -293,7 +293,6 @@ class JusticeMOMARLEnv(MOParallelEnv):
             climate_ensembles=ensemble,
             clustering=self.env_config["clustering"],
             cluster_level=self.num_agents,
-            data_path=self.env_config["data_path"],
         )
 
         self.timestep = 0

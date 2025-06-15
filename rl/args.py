@@ -27,9 +27,6 @@ class EnvConfig:
     start_year: int = 2015 # Start year of the simulation
     end_year: int = 2300 # End year of the simulation
     timestep: int = 1 # Timestep of the simulation
-
-    """ Paths """
-    data_path: Path = Path("justice/data")
     
     climate_ensembles: Optional[List[int]] = field(default_factory=lambda: [500])
 
