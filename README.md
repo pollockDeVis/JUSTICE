@@ -56,6 +56,3 @@ Once models have been trained for different weight combinations and the checkpoi
 python eval.py --checkpoint_path="Absolute path to the checkpoint for policy" --seed=0 --output_path="Directory where evaluation results are saved""
 ```
 The evaluation script will run the MOMARL policy in the JUSTICE simulation and save the evolution of various economic and climate metrics over time where the Emission Control Rate and Savings Rates are set by the trained policy in each time step.
-
-### Reproducibility
-For the paper, we trained 100 uniformly distributed weight combinations across 10 training seeds and performed the evaluation for each trained policy on 10 evaluation seeds. You can access the trained policies for each weight and seed combination in `/paper/training_results/`. More information about reproducing the results of the paper using the trained policies is provided in `/paper/README.md`.
