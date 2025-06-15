@@ -31,7 +31,7 @@ class EnvConfig:
     """ Paths """
     data_path: Path = Path("justice/data")
     
-    climate_ensembles: Optional[list] = [500]
+    climate_ensembles: Optional[List[int]] = field(default_factory=lambda: [500])
 
     """ RL parameters """
     num_discrete_actions: int = 11 # Number of discrete actions
