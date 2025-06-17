@@ -383,23 +383,27 @@ def reevaluate_optimal_policy_for_robustness(
     global_temperature = datasets["global_temperature"][
         temperature_year_of_interest_index, :
     ]
-    utilitarian_welfare = datasets["welfare_utilitarian"]
-    prioritarian_welfare = datasets["welfare_prioritarian"]
-    # welfare_utilitarian_state_disaggregated = datasets["welfare_utilitarian_state_disaggregated"]
-    # welfare_prioritarian_state_disaggregated = datasets["welfare_prioritarian_state_disaggregated"]
+    # utilitarian_welfare = datasets["welfare_utilitarian"]
+    # prioritarian_welfare = datasets["welfare_prioritarian"]
+    welfare_utilitarian_state_disaggregated = datasets[
+        "welfare_utilitarian_state_disaggregated"
+    ]
+    welfare_prioritarian_state_disaggregated = datasets[
+        "welfare_prioritarian_state_disaggregated"
+    ]
 
     print("index for policy: ", rbf_policy_index)
     print(f"Fraction above threshold Reeval: {fraction_above_threshold}")
     # Print
-    print("Utilitarian Welfare Reeval: ", utilitarian_welfare)
-    print("Prioritarian Welfare Reeval: ", prioritarian_welfare)
+    # print("Utilitarian Welfare Reeval: ", utilitarian_welfare)
+    # print("Prioritarian Welfare Reeval: ", prioritarian_welfare)
 
     return (
         global_temperature,
-        utilitarian_welfare,
-        prioritarian_welfare,
-        # welfare_utilitarian_state_disaggregated,
-        # welfare_prioritarian_state_disaggregated,
+        # utilitarian_welfare,
+        # prioritarian_welfare,
+        welfare_utilitarian_state_disaggregated,
+        welfare_prioritarian_state_disaggregated,
     )
 
 
@@ -1112,7 +1116,7 @@ def read_reference_set_policy_mapping(
         dict: A dictionary containing the policy mapping.
     """
 
-    base_dir = Path(base_dir + "/" + sw_name)
+    base_dir = Path(base_dir)
     mapping_dir = base_dir / mapping_subdir
     h5_path = mapping_dir / hdf5_filename_template.format(sw_name)
 
@@ -1128,8 +1132,14 @@ def read_reference_set_policy_mapping(
             }
             for scenario, grp_s in grp_pi.items():
                 gt = grp_s["global_temperature"][()]  # numpy array
-                u0 = grp_s.attrs["utilitarian_welfare"]
-                p0 = grp_s.attrs["prioritarian_welfare"]
+                # u0 = grp_s.attrs["utilitarian_welfare"]
+                # p0 = grp_s.attrs["prioritarian_welfare"]
+                u0 = grp_s["utilitarian_welfare"][
+                    ()
+                ]  # utilitarian_welfare_state_disaggregated
+                p0 = grp_s["prioritarian_welfare"][
+                    ()
+                ]  # prioritarian_welfare_state_disaggregated
                 mapping[pi][scenario] = {
                     "global_temperature": gt,
                     "utilitarian_welfare": u0,
@@ -1162,13 +1172,13 @@ def generate_reference_set_policy_mapping(
             "fraction_above_threshold": float,
             "<scenario>": {
                "global_temperature": np.ndarray,
-               "utilitarian_welfare": float,
-               "prioritarian_welfare": float
+               "utilitarian_welfare": float, # also np.ndarray
+               "prioritarian_welfare": float # also np.ndarray
             }, …
           }, … }
     """
     sw_name = swf.value[1]
-    base_dir = Path(data_root) / sw_name
+    base_dir = Path(data_root)  # / sw_name
     ref_file = base_dir / f"{sw_name}_reference_set.csv"
     out_dir = base_dir
 
@@ -1192,11 +1202,17 @@ def generate_reference_set_policy_mapping(
                 missing_files.append(str(fname))
                 continue
 
-            df = pd.read_csv(fname)
+            temp_df = pd.read_csv(fname)
             mapping[pi][scenario] = {
-                "global_temperature": df["global_temperature"].to_numpy(),
-                "utilitarian_welfare": float(df["utilitarian_welfare"].iloc[0]),
-                "prioritarian_welfare": float(df["prioritarian_welfare"].iloc[0]),
+                "global_temperature": temp_df["global_temperature"].to_numpy(),
+                # "utilitarian_welfare": float(df["utilitarian_welfare"].iloc[0]),
+                # "prioritarian_welfare": float(df["prioritarian_welfare"].iloc[0]),
+                "utilitarian_welfare": temp_df[  # utilitarian_welfare_state_disaggregated
+                    "utilitarian_welfare"
+                ].to_numpy(),
+                "prioritarian_welfare": temp_df[  # prioritarian_welfare_state_disaggregated
+                    "prioritarian_welfare"
+                ].to_numpy(),
             }
 
     if missing_files:
@@ -1224,18 +1240,26 @@ def generate_reference_set_policy_mapping(
                     grp_s.create_dataset(
                         "global_temperature", data=scen_data["global_temperature"]
                     )
-                    grp_s.attrs["utilitarian_welfare"] = scen_data[
-                        "utilitarian_welfare"
-                    ]
-                    grp_s.attrs["prioritarian_welfare"] = scen_data[
-                        "prioritarian_welfare"
-                    ]
+                    # grp_s.attrs["utilitarian_welfare"] = scen_data[
+                    #     "utilitarian_welfare"
+                    # ]
+                    # grp_s.attrs["prioritarian_welfare"] = scen_data[
+                    #     "prioritarian_welfare"
+                    # ]
+                    grp_s.create_dataset(  # utilitarian_welfare_state_disaggregated
+                        "utilitarian_welfare",
+                        data=scen_data["utilitarian_welfare"],
+                    )
+                    grp_s.create_dataset(  # prioritarian_welfare_state_disaggregated
+                        "prioritarian_welfare",
+                        data=scen_data["prioritarian_welfare"],
+                    )
         print(f"Wrote mapping to {h5_path}")
 
     return mapping
 
 
-def process_scenario(social_welfare_function, policy_indices, scenario: str):
+def process_scenario(social_welfare_function, path, policy_indices, scenario: str):
     """
     Worker that runs all of your policies under a single SSP scenario.
     This executes in a fresh Python process, so JUSTICE will load the
@@ -1252,7 +1276,7 @@ def process_scenario(social_welfare_function, policy_indices, scenario: str):
 
     # re‑construct exactly the same path / filename logic
     sw_name = social_welfare_function.value[1]
-    path = "data/temporary/NU_DATA/combined/SSP2/"  # TODO remove hardcoded path
+    # path = "data/temporary/NU_DATA/combined/SSP2/"  # TODO remove hardcoded path
     filename = f"{sw_name}_reference_set.csv"
 
     # build the model for this one SSP
