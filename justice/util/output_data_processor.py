@@ -1154,6 +1154,7 @@ def generate_reference_set_policy_mapping(
     scenario_list,
     saving=True,
     output_directory=None,
+    delete_loaded_files=True,
 ):
     """
     Build and optionally save an HDF5 mapping from a reference‐set CSV
@@ -1189,7 +1190,7 @@ def generate_reference_set_policy_mapping(
 
     mapping = {}
     missing_files = []
-
+    loaded_files = []
     for pi in policy_indices:
         row = ref_df.iloc[pi]
         mapping[pi] = {
@@ -1203,6 +1204,10 @@ def generate_reference_set_policy_mapping(
                 continue
 
             temp_df = pd.read_csv(fname)
+
+            # Track files that were successfully loaded for deleting later
+            loaded_files.append(str(fname))
+
             mapping[pi][scenario] = {
                 "global_temperature": temp_df["global_temperature"].to_numpy(),
                 # "utilitarian_welfare": float(df["utilitarian_welfare"].iloc[0]),
@@ -1255,6 +1260,16 @@ def generate_reference_set_policy_mapping(
                         data=scen_data["prioritarian_welfare"],
                     )
         print(f"Wrote mapping to {h5_path}")
+
+        if delete_loaded_files:
+            print("Deleting loaded CSV files...")
+            # Delete the loaded CSV files after saving
+            for csv_file in loaded_files:
+                try:
+                    os.remove(csv_file)
+                    print(f"Deleted file: {csv_file}")
+                except OSError as e:
+                    print(f"Error deleting file {csv_file}: {e}")
 
     return mapping
 
