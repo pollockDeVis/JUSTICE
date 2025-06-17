@@ -1341,6 +1341,122 @@ def process_scenario(social_welfare_function, path, policy_indices, scenario: st
         model.reset()
 
 
+def compute_p90_regret_dataframe(
+    base_path,
+    welfare_function_name,
+    baseline_scenario,
+    scenario_list,
+    variable_of_interest="global_temperature",
+    direction_of_interest="min",
+    mapping_subdir="mapping",
+    hdf5_filename_template="mapping_{}.h5",
+    save_df=False,
+    df_output_path=None,
+):
+    """
+    Reads mapping, selects policy index based on median baseline scenario variable,
+    computes 90th percentile normalized delta regret across scenarios, returns dataframe,
+    and optionally saves it.
+
+    Args:
+        base_path (str or Path): Path to folder containing mapping files and reference set csv.
+        welfare_function_name (str): e.g., swf.value[1] like 'prioritarian'
+        baseline_scenario (str): Scenario to use as baseline, e.g. 'SSP245'
+        scenario_list (list of str): List of scenarios to analyze.
+        variable_of_interest (str): Variable name to analyze, default 'global_temperature'.
+        direction_of_interest (str): 'min' or 'max', selects policy with min or max median baseline var.
+        mapping_subdir (str): Subdirectory under base_path where mapping file is stored.
+        hdf5_filename_template (str): Template for mapping HDF5 filename.
+        save_df (bool): Whether to save the resulting dataframe to CSV.
+        df_output_path (str or Path): Full file path to save dataframe CSV if save_df is True.
+
+    Returns:
+        pd.DataFrame: DataFrame indexed by policy index and columns=scenario_list with 90th percentile normalized changes.
+    """
+
+    base_path = Path(base_path)
+
+    # Read the mapping file
+    mapping = read_reference_set_policy_mapping(
+        base_path,
+        welfare_function_name,
+        mapping_subdir=mapping_subdir,
+        hdf5_filename_template=hdf5_filename_template,
+    )
+
+    median_list = []
+    # Find the policy index in the baseline scenario with the lowest (or highest) median variable_of_interest
+    for pi in mapping.keys():
+        baseline_data = mapping[pi][baseline_scenario].get(variable_of_interest, None)
+        if baseline_data is not None:
+            median_val = np.percentile(baseline_data, 50)
+            median_list.append((pi, median_val))
+
+    if not median_list:
+        raise ValueError(
+            "No valid baseline data found in mapping for baseline_scenario and variable_of_interest."
+        )
+
+    # Sort list by median value
+    median_list.sort(key=lambda x: x[1])
+
+    if direction_of_interest == "min":
+        selected_policy_index = median_list[0][0]
+    elif direction_of_interest == "max":
+        selected_policy_index = median_list[-1][0]
+    else:
+        raise ValueError("direction_of_interest must be 'min' or 'max'")
+
+    baseline_data = mapping[selected_policy_index][baseline_scenario][
+        variable_of_interest
+    ]
+
+    # Load the reference set CSV to get policy indices
+    reference_set_file = f"{welfare_function_name}_reference_set.csv"
+    reference_set_path = base_path / reference_set_file
+    reference_set_df = pd.read_csv(reference_set_path)
+    policy_indices = list(range(len(reference_set_df)))
+
+    # Create DataFrame for p90 normalized delta data
+    p90_delta_data = pd.DataFrame(
+        index=policy_indices, columns=scenario_list, dtype=float
+    )
+
+    for pi in policy_indices:
+        for scenario in scenario_list:
+            data_idx_scen = mapping[pi][scenario].get(variable_of_interest, None)
+            if data_idx_scen is None:
+                p90_delta_data.at[pi, scenario] = np.nan
+                continue
+            delta_data = data_idx_scen - baseline_data
+
+            # Avoid division by zero - set normalized_data to nan if baseline_data is zero
+            with np.errstate(divide="ignore", invalid="ignore"):
+                normalized_data = np.true_divide(delta_data, baseline_data)
+                normalized_data[~np.isfinite(normalized_data)] = (
+                    np.nan
+                )  # set inf, -inf to nan
+
+            p90_data = (
+                np.percentile(normalized_data[~np.isnan(normalized_data)], 90)
+                if np.any(~np.isnan(normalized_data))
+                else np.nan
+            )
+            p90_delta_data.at[pi, scenario] = p90_data
+
+    if save_df:
+        if df_output_path is None:
+            # Default path: save next to base_path with a descriptive name
+            df_output_path = (
+                base_path
+                / f"p90_regret_{welfare_function_name}_{variable_of_interest}.csv"
+            )
+        p90_delta_data.to_csv(df_output_path)
+        print(f"Saved p90 delta data to {df_output_path}")
+
+    return p90_delta_data
+
+
 def compare_test_vs_old(test_dir: str):
     """
     Compare every .csv in test_dir against the file of the same name
