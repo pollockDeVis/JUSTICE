@@ -560,6 +560,7 @@ def plot_comparison_with_boxplots(
     transpose_data=True,
     show_min_max=True,
     dtick=1,  # Make Y axis label for every 1 unit
+    output_name_suffix="",
 ):
     # Set the time horizon
     time_horizon = TimeHorizon(
@@ -792,7 +793,7 @@ def plot_comparison_with_boxplots(
     )
 
     if saving:
-        filename = data_paths[0].split("/")[-1].split(".")[0]
+        filename = data_paths[0].split("/")[-1].split(".")[0] + "_" + output_name_suffix
         # Save the plot
         fig.write_image(f"{output_path}/{filename}.svg")
 

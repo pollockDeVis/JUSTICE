@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     social_welfare_function = WelfareFunction.PRIORITARIAN
     nfe = 50_000
-    ssp = SSP.SSP2
+    ssp = SSP.SSP3
 
     sw_name = social_welfare_function.value[1]
     path = f"data/temporary/NU_DATA/combined/{str(ssp).split('.')[1]}/"

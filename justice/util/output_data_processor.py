@@ -432,13 +432,13 @@ def run_model_with_optimal_policy(
 ):
     # Create a dictionary to store the data for each scenario
     scenario_data = {}
-    model_object = {}
+    # model_object = {}
 
     for _, scenarios in enumerate(scenario_list):
         scneario_idx = Scenario[scenarios].value[0]
         print(scneario_idx, scenarios)
 
-        scenario_data[scenarios], model_object[scenarios] = JUSTICE_stepwise_run(
+        scenario_data[scenarios], model = JUSTICE_stepwise_run(
             scenarios=scneario_idx,
             path_to_rbf_weights=path_to_rbf_weights,
             saving=saving,
@@ -456,8 +456,10 @@ def run_model_with_optimal_policy(
             min_difference=min_difference,
         )
 
+        model.hard_reset()  # Reset the model after each scenario run
+
         print("Keys of the scenario data: ", scenario_data.keys())
-    return scenario_data, model_object[scenarios]
+    return scenario_data, model
 
 
 def interpolator(data_array, data_time_horizon, model_time_horizon):
