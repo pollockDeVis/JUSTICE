@@ -2684,7 +2684,7 @@ def plot_violin_comparison_sorted(
     if saving and path_to_output and output_file_name:
         plt.savefig(f"{path_to_output}/{output_file_name}.svg", format="svg")
 
-    return plt
+    return plt, economic_dataframes
 
 
 def process_economic_data_for_barchart(
