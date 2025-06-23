@@ -28,9 +28,9 @@ dependencies = [
     "momaland (==0.1.1)",
     "gymnasium (==0.28.1)",
     "morl-baselines (==1.0.0)",
-    "tensorboard (==2.19.0)"
+    "tensorboard (==2.19.0)",
+    "pytest (>=8.0)",
 ]
-
 
 [build-system]
 requires = ["setuptools>=61"]
