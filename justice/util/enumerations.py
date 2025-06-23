@@ -175,3 +175,26 @@ class Evaluator(Enum):
             if enum.value == index:
                 return enum
         return None
+
+
+class Rewards(Enum):
+    """
+    Rewards
+    """
+
+    SPATIALLY_AGGREGATED = (0, "spatially_aggregated_welfare")
+    STEPWISE_WELFARE = (1, "stepwise_marl_reward")
+    TEMPORALLY_DISAGGREGATED = (2, "temporally_disaggregated_welfare")
+    WELFARE = (3, "welfare")
+    CONSUMPTION_PER_CAPITA = (4, "consumption_per_capita")
+    INVERSE_GLOBAL_TEMPERATURE = (5, "inverse_global_temperature")
+    INVERSE_LOCAL_TEMPERATURE = (6, "inverse_local_temperature")
+    NET_ECONOMIC_OUTPUT_REV = (7, "net_economic_output_rev")
+    GLOBAL_ECONOMIC_OUTPUT = (8, "global_economic_output")
+
+    @staticmethod
+    def from_index(index):
+        for enum in Rewards:
+            if enum.value[0] == index:
+                return enum
+        return None

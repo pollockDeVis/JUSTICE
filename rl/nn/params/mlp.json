@@ -1,0 +1,14 @@
+{
+    "model": {
+        "network_model": "mlp",
+        
+        "mlp": {
+            "output_dim": 64,
+            "use_layer_norm": "True",
+            "mlp_hidden_dims": [
+                64
+            ],
+            "activation": "relu"
+        }
+}
+}
