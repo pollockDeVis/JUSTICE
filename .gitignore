@@ -200,6 +200,11 @@ coverage.xml
 ./docs/source/getting_started/changelog.md
 
 
+# Normative Uncertainty Analysis - Ignore files at the root of the project. nu_analysis.py and nu_analysis.ipynb should be ignored
+nu_analysis.py
+nu_analysis.ipynb
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
