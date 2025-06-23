@@ -2842,7 +2842,7 @@ def plot_violin_comparison_sorted_all_SSPs(
         plt.axhline(y=region, color="gray", linestyle="-", linewidth=0.5, alpha=0.5)
 
     # Add a vertical line at x=0 for reference
-    plt.axvline(x=0, color="black", linestyle="-", linewidth=0.5, alpha=0.5)
+    # plt.axvline(x=0, color="black", linestyle="-", linewidth=0.5, alpha=0.5)
 
     # Improve layout
     plt.tight_layout()
