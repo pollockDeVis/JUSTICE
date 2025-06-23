@@ -17,6 +17,7 @@ from pathlib import Path
 import filecmp
 import multiprocessing as mp
 
+
 ema_logging.log_to_stderr(level=ema_logging.DEFAULT_LEVEL)
 
 # To run the code, you need to run the following command in the terminal to add the path to the PYTHONPATH
@@ -35,6 +36,10 @@ def reevaluated_optimal_policy_variable_extractor(
     input_data=None,
     output_file_names=["Utilitarian", "Egalitarian", "Prioritarian", "Sufficientarian"],
 ):
+    # convert to Path
+    path_to_data = Path(path_to_data)
+    path_to_output = Path(path_to_output)
+
     # Assert if any arguments are None
     assert scenario_list is not None, "Scenario list not provided"
     assert region_list is not None, "Region list not provided"
@@ -65,14 +70,11 @@ def reevaluated_optimal_policy_variable_extractor(
 
         # Get the string out of the input_data list
         file_name = input_data[plotting_idx]
-        # Load the scenario data from the pickle file
-        # with open(
-        #     path_to_data + "/" + file_name, "rb"
-        # ) as f:  # input_data[plotting_idx]
-        #     scenario_data = pickle.load(f)
+
         scenario_data = {}
         # HDF5 file
-        with h5py.File(path_to_data + "/" + file_name.split(".")[0] + ".h5", "r") as f:
+        h5_path = path_to_data / f"{file_name.split('.')[0]}.h5"
+        with h5py.File(h5_path, "r") as f:
             for scenario in f.keys():
                 scenario_data[scenario] = {}
                 scenario_group = f[scenario]
@@ -92,11 +94,10 @@ def reevaluated_optimal_policy_variable_extractor(
                 processed_data = data_scenario[idx, :, :, :]
 
             if output_file_names is None:
-                # Construct the output file name using the base name, its last underscore part, the scenario, and the variable name.
                 output_file_name = (
-                    input_data[plotting_idx].split(".")[0]
+                    file_name.split(".")[0]
                     + "_"
-                    + input_data[plotting_idx].split(".")[0].split("_")[-1]
+                    + file_name.split(".")[0].split("_")[-1]
                     + "_"
                     + scenarios
                     + "_"
@@ -106,23 +107,16 @@ def reevaluated_optimal_policy_variable_extractor(
                 output_file_name = (
                     output_file_names[plotting_idx]
                     + "_"
-                    + input_data[plotting_idx].split(".")[0].split("_")[-1]
+                    + file_name.split(".")[0].split("_")[-1]
                     + "_"
                     + scenarios
                     + "_"
                     + variable_name
                 )
 
-            # TODO: Change from pickle to hdf5
-            # Save the processed data as a pickle file
-            # with open(path_to_output + "/" + output_file_name, "wb") as f:
-            #     pickle.dump(processed_data, f)
-
             # Save it as npy file
-            np.save(
-                path_to_output + "/" + output_file_name + ".npy",
-                processed_data,
-            )
+            out_path = path_to_output / f"{output_file_name}.npy"
+            np.save(out_path, processed_data)
 
             # Print file saved as filename at location path
             print(f"File saved as {output_file_name} at location {path_to_output}")
@@ -389,19 +383,27 @@ def reevaluate_optimal_policy_for_robustness(
     global_temperature = datasets["global_temperature"][
         temperature_year_of_interest_index, :
     ]
-    utilitarian_welfare = datasets["welfare_utilitarian"]
-    prioritarian_welfare = datasets["welfare_prioritarian"]
+    # utilitarian_welfare = datasets["welfare_utilitarian"]
+    # prioritarian_welfare = datasets["welfare_prioritarian"]
+    welfare_utilitarian_state_disaggregated = datasets[
+        "welfare_utilitarian_state_disaggregated"
+    ]
+    welfare_prioritarian_state_disaggregated = datasets[
+        "welfare_prioritarian_state_disaggregated"
+    ]
 
     print("index for policy: ", rbf_policy_index)
     print(f"Fraction above threshold Reeval: {fraction_above_threshold}")
     # Print
-    print("Utilitarian Welfare Reeval: ", utilitarian_welfare)
-    print("Prioritarian Welfare Reeval: ", prioritarian_welfare)
+    # print("Utilitarian Welfare Reeval: ", utilitarian_welfare)
+    # print("Prioritarian Welfare Reeval: ", prioritarian_welfare)
 
     return (
         global_temperature,
-        utilitarian_welfare,
-        prioritarian_welfare,
+        # utilitarian_welfare,
+        # prioritarian_welfare,
+        welfare_utilitarian_state_disaggregated,
+        welfare_prioritarian_state_disaggregated,
     )
 
 
@@ -430,13 +432,13 @@ def run_model_with_optimal_policy(
 ):
     # Create a dictionary to store the data for each scenario
     scenario_data = {}
-    model_object = {}
+    # model_object = {}
 
     for _, scenarios in enumerate(scenario_list):
         scneario_idx = Scenario[scenarios].value[0]
         print(scneario_idx, scenarios)
 
-        scenario_data[scenarios], model_object[scenarios] = JUSTICE_stepwise_run(
+        scenario_data[scenarios], model = JUSTICE_stepwise_run(
             scenarios=scneario_idx,
             path_to_rbf_weights=path_to_rbf_weights,
             saving=saving,
@@ -454,8 +456,10 @@ def run_model_with_optimal_policy(
             min_difference=min_difference,
         )
 
+        model.hard_reset()  # Reset the model after each scenario run
+
         print("Keys of the scenario data: ", scenario_data.keys())
-    return scenario_data, model_object[scenarios]
+    return scenario_data, model
 
 
 def interpolator(data_array, data_time_horizon, model_time_horizon):
@@ -751,7 +755,6 @@ def find_closest_pairs_of_pareto_solutions(
     return index_pairs, temperature_index_pairs
 
 
-# Read the file 'UTILITARIAN_reference_set.csv' from the 'data/convergence_metrics' folder
 def get_selected_policy_indices_based_on_welfare_temperature(
     rival_framings,
     data_dir,
@@ -760,27 +763,48 @@ def get_selected_policy_indices_based_on_welfare_temperature(
     suffix="_reference_set.csv",
     second_objective_of_interest="years_above_temperature_threshold",
 ):
+
+    data_dir = Path(data_dir)
     selected_indices = []
     for rival in rival_framings:
-        file_path = f"{data_dir}/{rival}{suffix}"
+        file_path = data_dir / f"{rival}{suffix}"
+        if not file_path.exists():
+            raise FileNotFoundError(f"File {file_path} does not exist.")
+        print(f"Reading {file_path}")
         data = pd.read_csv(file_path)
 
-        # Keep the last 4 columns of the data
-        data = data.iloc[:, -number_of_objectives:]
+        # Check if columns are present
+        if "welfare" not in data.columns:
+            raise KeyError(f"'welfare' column not found in {file_path}")
 
-        # Find the index of the lowest 10% of values in the 'welfare' column
-        lowest_n_percent_indices = (
-            data["welfare"].nsmallest(int(data.shape[0] * n_percent)).index
-        )
+        if second_objective_of_interest not in data.columns:
+            raise KeyError(
+                f"'{second_objective_of_interest}' column not found in {file_path}"
+            )
 
-        # Find the index of the lowest 'years_above_temperature_threshold' within the selected indices
-        selected_policy_index = data.loc[
-            lowest_n_percent_indices, second_objective_of_interest
-        ].idxmin()
-        print(f"Index of interest for {rival}: ", selected_policy_index)
-        print(data.loc[selected_policy_index])
+        # Optionally skip slicing if it removes required columns:
+        # data = data.iloc[:, -number_of_objectives:]
 
-        selected_indices.append(selected_policy_index)
+        # Determine number of rows to select
+        lowest_n = max(int(data.shape[0] * n_percent), 1)
+
+        # Find the index of the lowest n_percent of values in the 'welfare' column
+        lowest_indices = data["welfare"].nsmallest(lowest_n).index
+
+        # Subset of the second objective in the lowest welfare group
+        subset = data.loc[lowest_indices, second_objective_of_interest]
+
+        if subset.empty:
+            raise ValueError(
+                f"No data available for {second_objective_of_interest} in lowest welfare group "
+                f"for rival {rival}. Please check your data."
+            )
+
+        selected_idx = subset.idxmin()
+        print(f"Index of interest for {rival}: {selected_idx}")
+        # print(data.loc[selected_idx])
+
+        selected_indices.append(selected_idx)
     return selected_indices
 
 
@@ -1093,10 +1117,8 @@ def read_reference_set_policy_mapping(
     Returns:
         dict: A dictionary containing the policy mapping.
     """
-    import h5py
-    from pathlib import Path
 
-    base_dir = Path(base_dir + "/" + sw_name)
+    base_dir = Path(base_dir)
     mapping_dir = base_dir / mapping_subdir
     h5_path = mapping_dir / hdf5_filename_template.format(sw_name)
 
@@ -1112,8 +1134,14 @@ def read_reference_set_policy_mapping(
             }
             for scenario, grp_s in grp_pi.items():
                 gt = grp_s["global_temperature"][()]  # numpy array
-                u0 = grp_s.attrs["utilitarian_welfare"]
-                p0 = grp_s.attrs["prioritarian_welfare"]
+                # u0 = grp_s.attrs["utilitarian_welfare"]
+                # p0 = grp_s.attrs["prioritarian_welfare"]
+                u0 = grp_s["utilitarian_welfare"][
+                    ()
+                ]  # utilitarian_welfare_state_disaggregated
+                p0 = grp_s["prioritarian_welfare"][
+                    ()
+                ]  # prioritarian_welfare_state_disaggregated
                 mapping[pi][scenario] = {
                     "global_temperature": gt,
                     "utilitarian_welfare": u0,
@@ -1128,6 +1156,7 @@ def generate_reference_set_policy_mapping(
     scenario_list,
     saving=True,
     output_directory=None,
+    delete_loaded_files=True,
 ):
     """
     Build and optionally save an HDF5 mapping from a reference‐set CSV
@@ -1146,13 +1175,13 @@ def generate_reference_set_policy_mapping(
             "fraction_above_threshold": float,
             "<scenario>": {
                "global_temperature": np.ndarray,
-               "utilitarian_welfare": float,
-               "prioritarian_welfare": float
+               "utilitarian_welfare": float, # also np.ndarray
+               "prioritarian_welfare": float # also np.ndarray
             }, …
           }, … }
     """
     sw_name = swf.value[1]
-    base_dir = Path(data_root) / sw_name
+    base_dir = Path(data_root)  # / sw_name
     ref_file = base_dir / f"{sw_name}_reference_set.csv"
     out_dir = base_dir
 
@@ -1163,7 +1192,7 @@ def generate_reference_set_policy_mapping(
 
     mapping = {}
     missing_files = []
-
+    loaded_files = []
     for pi in policy_indices:
         row = ref_df.iloc[pi]
         mapping[pi] = {
@@ -1176,11 +1205,21 @@ def generate_reference_set_policy_mapping(
                 missing_files.append(str(fname))
                 continue
 
-            df = pd.read_csv(fname)
+            temp_df = pd.read_csv(fname)
+
+            # Track files that were successfully loaded for deleting later
+            loaded_files.append(str(fname))
+
             mapping[pi][scenario] = {
-                "global_temperature": df["global_temperature"].to_numpy(),
-                "utilitarian_welfare": float(df["utilitarian_welfare"].iloc[0]),
-                "prioritarian_welfare": float(df["prioritarian_welfare"].iloc[0]),
+                "global_temperature": temp_df["global_temperature"].to_numpy(),
+                # "utilitarian_welfare": float(df["utilitarian_welfare"].iloc[0]),
+                # "prioritarian_welfare": float(df["prioritarian_welfare"].iloc[0]),
+                "utilitarian_welfare": temp_df[  # utilitarian_welfare_state_disaggregated
+                    "utilitarian_welfare"
+                ].to_numpy(),
+                "prioritarian_welfare": temp_df[  # prioritarian_welfare_state_disaggregated
+                    "prioritarian_welfare"
+                ].to_numpy(),
             }
 
     if missing_files:
@@ -1208,18 +1247,36 @@ def generate_reference_set_policy_mapping(
                     grp_s.create_dataset(
                         "global_temperature", data=scen_data["global_temperature"]
                     )
-                    grp_s.attrs["utilitarian_welfare"] = scen_data[
-                        "utilitarian_welfare"
-                    ]
-                    grp_s.attrs["prioritarian_welfare"] = scen_data[
-                        "prioritarian_welfare"
-                    ]
+                    # grp_s.attrs["utilitarian_welfare"] = scen_data[
+                    #     "utilitarian_welfare"
+                    # ]
+                    # grp_s.attrs["prioritarian_welfare"] = scen_data[
+                    #     "prioritarian_welfare"
+                    # ]
+                    grp_s.create_dataset(  # utilitarian_welfare_state_disaggregated
+                        "utilitarian_welfare",
+                        data=scen_data["utilitarian_welfare"],
+                    )
+                    grp_s.create_dataset(  # prioritarian_welfare_state_disaggregated
+                        "prioritarian_welfare",
+                        data=scen_data["prioritarian_welfare"],
+                    )
         print(f"Wrote mapping to {h5_path}")
+
+        if delete_loaded_files:
+            print("Deleting loaded CSV files...")
+            # Delete the loaded CSV files after saving
+            for csv_file in loaded_files:
+                try:
+                    os.remove(csv_file)
+                    print(f"Deleted file: {csv_file}")
+                except OSError as e:
+                    print(f"Error deleting file {csv_file}: {e}")
 
     return mapping
 
 
-def process_scenario(swf, policy_indices, scenario: str):
+def process_scenario(social_welfare_function, path, policy_indices, scenario: str):
     """
     Worker that runs all of your policies under a single SSP scenario.
     This executes in a fresh Python process, so JUSTICE will load the
@@ -1235,8 +1292,8 @@ def process_scenario(swf, policy_indices, scenario: str):
     )
 
     # re‑construct exactly the same path / filename logic
-    sw_name = swf.value[1]
-    path = f"data/optimized_rbf_weights/limitarian/50k/{sw_name}/"
+    sw_name = social_welfare_function.value[1]
+    # path = "data/temporary/NU_DATA/combined/SSP2/"  # TODO remove hardcoded path
     filename = f"{sw_name}_reference_set.csv"
 
     # build the model for this one SSP
@@ -1249,7 +1306,7 @@ def process_scenario(swf, policy_indices, scenario: str):
         economy_type=Economy.NEOCLASSICAL,
         damage_function_type=DamageFunction.KALKUHL,
         abatement_type=Abatement.ENERDATA,
-        social_welfare_function=swf,
+        social_welfare_function=social_welfare_function,
     )
 
     # run your robustness‐check loop
@@ -1279,11 +1336,127 @@ def process_scenario(swf, policy_indices, scenario: str):
                 "global_temperature": T,
             }
         )
-        out_fname = f"{pi}_{scenario}_{swf.value[1]}_global_temperature_.csv"
+        out_fname = f"{pi}_{scenario}_{social_welfare_function.value[1]}_global_temperature_.csv"
         out_df.to_csv(path + out_fname, index=False)
 
         # clear only the *time series* so you can rerun the same model object
         model.reset()
+
+
+def compute_p90_regret_dataframe(
+    base_path,
+    welfare_function_name,
+    baseline_scenario,
+    scenario_list,
+    variable_of_interest="global_temperature",
+    direction_of_interest="min",
+    mapping_subdir="mapping",
+    hdf5_filename_template="mapping_{}.h5",
+    save_df=False,
+    df_output_path=None,
+):
+    """
+    Reads mapping, selects policy index based on median baseline scenario variable,
+    computes 90th percentile normalized delta regret across scenarios, returns dataframe,
+    and optionally saves it.
+
+    Args:
+        base_path (str or Path): Path to folder containing mapping files and reference set csv.
+        welfare_function_name (str): e.g., swf.value[1] like 'prioritarian'
+        baseline_scenario (str): Scenario to use as baseline, e.g. 'SSP245'
+        scenario_list (list of str): List of scenarios to analyze.
+        variable_of_interest (str): Variable name to analyze, default 'global_temperature'.
+        direction_of_interest (str): 'min' or 'max', selects policy with min or max median baseline var.
+        mapping_subdir (str): Subdirectory under base_path where mapping file is stored.
+        hdf5_filename_template (str): Template for mapping HDF5 filename.
+        save_df (bool): Whether to save the resulting dataframe to CSV.
+        df_output_path (str or Path): Full file path to save dataframe CSV if save_df is True.
+
+    Returns:
+        pd.DataFrame: DataFrame indexed by policy index and columns=scenario_list with 90th percentile normalized changes.
+    """
+
+    base_path = Path(base_path)
+
+    # Read the mapping file
+    mapping = read_reference_set_policy_mapping(
+        base_path,
+        welfare_function_name,
+        mapping_subdir=mapping_subdir,
+        hdf5_filename_template=hdf5_filename_template,
+    )
+
+    median_list = []
+    # Find the policy index in the baseline scenario with the lowest (or highest) median variable_of_interest
+    for pi in mapping.keys():
+        baseline_data = mapping[pi][baseline_scenario].get(variable_of_interest, None)
+        if baseline_data is not None:
+            median_val = np.percentile(baseline_data, 50)
+            median_list.append((pi, median_val))
+
+    if not median_list:
+        raise ValueError(
+            "No valid baseline data found in mapping for baseline_scenario and variable_of_interest."
+        )
+
+    # Sort list by median value
+    median_list.sort(key=lambda x: x[1])
+
+    if direction_of_interest == "min":
+        selected_policy_index = median_list[0][0]
+    elif direction_of_interest == "max":
+        selected_policy_index = median_list[-1][0]
+    else:
+        raise ValueError("direction_of_interest must be 'min' or 'max'")
+
+    baseline_data = mapping[selected_policy_index][baseline_scenario][
+        variable_of_interest
+    ]
+
+    # Load the reference set CSV to get policy indices
+    reference_set_file = f"{welfare_function_name}_reference_set.csv"
+    reference_set_path = base_path / reference_set_file
+    reference_set_df = pd.read_csv(reference_set_path)
+    policy_indices = list(range(len(reference_set_df)))
+
+    # Create DataFrame for p90 normalized delta data
+    p90_delta_data = pd.DataFrame(
+        index=policy_indices, columns=scenario_list, dtype=float
+    )
+
+    for pi in policy_indices:
+        for scenario in scenario_list:
+            data_idx_scen = mapping[pi][scenario].get(variable_of_interest, None)
+            if data_idx_scen is None:
+                p90_delta_data.at[pi, scenario] = np.nan
+                continue
+            delta_data = data_idx_scen - baseline_data
+
+            # Avoid division by zero - set normalized_data to nan if baseline_data is zero
+            with np.errstate(divide="ignore", invalid="ignore"):
+                normalized_data = np.true_divide(delta_data, baseline_data)
+                normalized_data[~np.isfinite(normalized_data)] = (
+                    np.nan
+                )  # set inf, -inf to nan
+
+            p90_data = (
+                np.percentile(normalized_data[~np.isnan(normalized_data)], 90)
+                if np.any(~np.isnan(normalized_data))
+                else np.nan
+            )
+            p90_delta_data.at[pi, scenario] = p90_data
+
+    if save_df:
+        if df_output_path is None:
+            # Default path: save next to base_path with a descriptive name
+            df_output_path = (
+                base_path
+                / f"p90_regret_{welfare_function_name}_{variable_of_interest}.csv"
+            )
+        p90_delta_data.to_csv(df_output_path)
+        print(f"Saved p90 delta data to {df_output_path}")
+
+    return p90_delta_data
 
 
 def compare_test_vs_old(test_dir: str):

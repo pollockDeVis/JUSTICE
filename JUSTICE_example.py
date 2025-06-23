@@ -552,55 +552,17 @@ def calculate_welfare_for_different_swfs(
         )
     )
 
-    # timestep_2100 = time_horizon.year_to_timestep(2100, timestep=1)
-    # print("Timestep 2100: ", timestep_2100)
+    _, _, datasets["welfare_utilitarian_state_disaggregated"] = (
+        welfare_function_utilitarian.calculate_state_disaggregated_welfare(
+            consumption_per_capita=datasets["consumption_per_capita"]
+        )
+    )
 
-    # net_output = datasets["net_economic_output"]
-    # # Sum over all regions
-    # net_output = np.sum(net_output, axis=0)
-    # # Select the 2100 timestep
-    # net_output = net_output[timestep_2100, :]
-
-    # damages = datasets["economic_damage"]
-    # # Sum over all regions
-    # damages = np.sum(damages, axis=0)
-    # # Select the 2100 timestep
-    # damages = damages[timestep_2100, :]
-
-    # abatement = datasets["abatement_cost"]
-    # # Sum over all regions
-    # abatement = np.sum(abatement, axis=0)
-    # # Select the 2100 timestep
-    # abatement = abatement[timestep_2100, :]
-
-    # temperature = datasets["global_temperature"]
-    # # Select the 2100 timestep
-    # temperature = temperature[timestep_2100, :]
-
-    # consumption_per_capita = datasets["consumption_per_capita"]
-    # # Sum over all regions
-    # consumption_per_capita = np.sum(consumption_per_capita, axis=0)
-    # # Select the 2100 timestep
-    # consumption_per_capita = consumption_per_capita[timestep_2100, :]
-
-    # # Print the shapes of net_output, damages, abatement, temperature
-    # print("Net Output Shape: ", net_output.shape)
-    # print("Damages Shape: ", damages.shape)
-    # print("Abatement Shape: ", abatement.shape)
-    # print("Temperature Shape: ", temperature.shape)
-
-    # # Net Output, Damages, Abatement, Temperature have shape (1001,). Combine them in a single dataframe with 4 columns
-    # df = pd.DataFrame(
-    #     {
-    #         "Net Output": net_output,
-    #         "Consumption Per Capita": consumption_per_capita,
-    #         "Damages": damages,
-    #         "Abatement": abatement,
-    #         "Temperature": temperature,
-    #     }
-    # )
-
-    # return df
+    _, _, datasets["welfare_prioritarian_state_disaggregated"] = (
+        welfare_function_prioritarian.calculate_state_disaggregated_welfare(
+            consumption_per_capita=datasets["consumption_per_capita"]
+        )
+    )
 
 
 def setup_RBF_for_emission_control(
@@ -668,37 +630,37 @@ def setup_RBF_for_emission_control(
 
 
 if __name__ == "__main__":
-    datasets = JUSTICE_run(
-        scenarios=2,
-        social_welfare_function=WelfareFunction.UTILITARIAN,
-        # climate_ensembles takes a single index '570'. Takes Int and List @OPTIONAL: This is to select a specific climate ensemble or a list of ensemble
-        # A subset of climate ensembles containing 100 ensemble members sampled using Latin Hypercube Sampling (LHS)
-        # climate_ensembles=[
-        #     887,
-        #     899,
-        #     763,
-        #     4,
-        #     454,
-        #     728,
-        #     942,
-        #     543,
-        #     510,
-        #     913,
-        # ],
-    )
-
-    # Stepwise run
-    # datasets, _ = JUSTICE_stepwise_run(
+    # datasets = JUSTICE_run(
     #     scenarios=2,
     #     social_welfare_function=WelfareFunction.UTILITARIAN,
-    #     rbf_policy_index=66,
-    #     path_to_rbf_weights="data/convergence_metrics/UTILITARIAN_reference_set.csv",
-    #     saving=False,
-    #     path_to_output="data/reevaluation/util_90_welfare_temp/",
-    #     output_file_name="UTILITARIAN",
+    #     # climate_ensembles takes a single index '570'. Takes Int and List @OPTIONAL: This is to select a specific climate ensemble or a list of ensemble
+    #     # A subset of climate ensembles containing 100 ensemble members sampled using Latin Hypercube Sampling (LHS)
+    #     # climate_ensembles=[
+    #     #     887,
+    #     #     899,
+    #     #     763,
+    #     #     4,
+    #     #     454,
+    #     #     728,
+    #     #     942,
+    #     #     543,
+    #     #     510,
+    #     #     913,
+    #     # ],
     # )
+    ##########################################################
+    # Stepwise run
+    datasets, _ = JUSTICE_stepwise_run(
+        scenarios=2,
+        social_welfare_function=WelfareFunction.UTILITARIAN,
+        rbf_policy_index=1,
+        path_to_rbf_weights="data/temporary/NU_DATA/borg/SSP2/UTILITARIAN_reference_set.csv",
+        saving=False,
+        path_to_output="data/reevaluation/util_90_welfare_temp/",
+        output_file_name="UTILITARIAN",
+    )
 
     # Print the keys of the datasets
-    print("Welfare", datasets["welfare"])
+    print("Welfare", datasets["welfare_utilitarian_state_disaggregated"])
     # print("Welfare Utilitarian", datasets["welfare_utilitarian"])
     # print("Welfare Prioritarian", datasets["welfare_prioritarian"])

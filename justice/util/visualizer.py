@@ -560,6 +560,7 @@ def plot_comparison_with_boxplots(
     transpose_data=True,
     show_min_max=True,
     dtick=1,  # Make Y axis label for every 1 unit
+    output_name_suffix="",
 ):
     # Set the time horizon
     time_horizon = TimeHorizon(
@@ -792,7 +793,7 @@ def plot_comparison_with_boxplots(
     )
 
     if saving:
-        filename = data_paths[0].split("/")[-1].split(".")[0]
+        filename = data_paths[0].split("/")[-1].split(".")[0] + "_" + output_name_suffix
         # Save the plot
         fig.write_image(f"{output_path}/{filename}.svg")
 
@@ -2683,7 +2684,176 @@ def plot_violin_comparison_sorted(
     if saving and path_to_output and output_file_name:
         plt.savefig(f"{path_to_output}/{output_file_name}.svg", format="svg")
 
-    return plt
+    return plt, economic_dataframes
+
+
+def plot_violin_comparison_sorted_all_SSPs(
+    baseline_path,
+    utilitarian_path,
+    prioritarian_path,
+    region_mapping_path,
+    rice_region_dict_path,
+    start_year,
+    end_year,
+    splice_start_year,
+    splice_end_year,
+    plot_height=12,  # Swapped default width/height for portrait
+    plot_width=6,
+    color_palette=["salmon", "lightblue", "lightgreen", "orange", "purple"],
+    datanames=["Utilitarian", "Prioritarian"],
+    plot_title=None,
+    x_axis_title=None,
+    y_axis_title=None,
+    path_to_output=None,
+    output_file_name=None,
+    saving=False,
+    scenario_list=None,
+    scenario_index=None,
+    data_range=(0, 1200),
+    legend=False,
+    region_order=None,
+):
+    # Load baseline emissions
+    baseline_emissions = np.load(baseline_path)
+
+    # Select the scenario based on the index provided
+    if scenario_list and scenario_index is not None:
+        if scenario_index < 0 or scenario_index >= len(scenario_list):
+            raise ValueError(
+                "Scenario index is out of bounds for the provided scenario list."
+            )
+        scenario = scenario_list[scenario_index]
+        print(f"Selected Scenario: {scenario}")
+
+    baseline_emissions = baseline_emissions[:, :, scenario_index]
+    # Expand dimensions to match the shape of utilitarian and prioritarian emissions
+    baseline_emissions = np.expand_dims(baseline_emissions, axis=-1)
+
+    # Load UTILITARIAN and PRIORITARIAN emissions data
+    utilitarian_emissions_data = np.load(utilitarian_path)
+    prioritarian_emissions_data = np.load(prioritarian_path)
+
+    # Calculate abated emissions
+    abated_emissions_utilitarian = baseline_emissions - utilitarian_emissions_data
+    abated_emissions_prioritarian = baseline_emissions - prioritarian_emissions_data
+
+    # Process economic data
+    economic_dataframes = process_economic_data_for_abated_emissions(
+        input_data_arrays=[abated_emissions_utilitarian, abated_emissions_prioritarian],
+        region_mapping_path=region_mapping_path,
+        rice_region_dict_path=rice_region_dict_path,
+        start_year=start_year,
+        end_year=end_year,
+        splice_start_year=splice_start_year,
+        splice_end_year=splice_end_year,
+    )
+
+    # Calculate medians for each dataframe
+    medians = [df.median(axis=0) for df in economic_dataframes]
+
+    # Define the regions
+    regions = medians[0].index
+
+    # Calculate the differences for sorting
+    max_medians = np.max([median.values for median in medians], axis=0)
+    sorted_indices = np.argsort(-max_medians)
+    sorted_regions = regions[sorted_indices]
+
+    # Sort medians and economic dataframes
+    sorted_medians = [median.iloc[sorted_indices] for median in medians]
+    sorted_economic_dataframes = [
+        df.iloc[:, sorted_indices] for df in economic_dataframes
+    ]
+
+    # Prepare data for Seaborn
+    data_list = []
+    for dataname, df in zip(datanames, sorted_economic_dataframes):
+        df_sorted = df.iloc[:, sorted_indices]
+        df_melted = df_sorted.melt(var_name="Region", value_name="Value")
+        df_melted["DataType"] = dataname
+        data_list.append(df_melted)
+
+    # Concatenate all data
+    plot_df = pd.concat(data_list, ignore_index=True)
+
+    if region_order is not None:
+        # If a specific order is provided, use it
+        plot_df["Region"] = pd.Categorical(
+            plot_df["Region"], categories=region_order, ordered=True
+        )
+        sorted_regions = region_order
+    else:
+        # Otherwise, use the sorted regions from the median values
+        plot_df["Region"] = pd.Categorical(
+            plot_df["Region"], categories=sorted_regions, ordered=True
+        )
+    # Initialize the matplotlib figure (portrait orientation)
+    plt.figure(figsize=(plot_width, plot_height))
+
+    # Create the violin plot, swapping x <-> y
+    ax = sns.violinplot(
+        data=plot_df,
+        y="Region",
+        x="Value",
+        hue="DataType",
+        split=True,
+        inner="quartile",
+        palette=color_palette,
+        scale="width",
+        linewidth=1,
+        order=sorted_regions,
+    )
+
+    # Make outline color match fill for all violins
+    for artist in ax.collections:
+        if hasattr(artist, "set_edgecolor"):
+            artist.set_edgecolor(artist.get_facecolor())
+            artist.set_linewidth(1)
+
+    # Set the x-axis from 0 to 1000
+    plt.xlim(data_range)
+
+    handles, labels = plt.gca().get_legend_handles_labels()
+    plt.legend(handles[: len(datanames)], labels[: len(datanames)], title=None)
+
+    # Set titles and labels -- swap axis titles!
+    if plot_title:
+        plt.title(plot_title)
+    if x_axis_title:
+        plt.xlabel(x_axis_title)
+    if y_axis_title:
+        plt.ylabel(y_axis_title)
+
+    # Rotate y-axis labels if needed
+    plt.yticks(rotation=0)
+
+    # Remove small ticks on the Y axis
+    plt.tick_params(
+        axis="y",
+        which="both",
+        left=False,
+        right=False,
+        labelleft=True,
+        labelright=False,
+    )
+
+    # Add gray lines for each region to separate the violins with alpha 0.5
+    for region in sorted_regions:
+        plt.axhline(y=region, color="gray", linestyle="-", linewidth=0.5, alpha=0.5)
+
+    # Add a vertical line at x=0 for reference
+    # plt.axvline(x=0, color="black", linestyle="-", linewidth=0.5, alpha=0.5)
+
+    # Improve layout
+    plt.tight_layout()
+    sns.despine()
+    plt.legend().set_visible(legend)
+
+    # Save the plot if required
+    if saving and path_to_output and output_file_name:
+        plt.savefig(f"{path_to_output}/{output_file_name}.svg", format="svg")
+
+    return plt, economic_dataframes
 
 
 def process_economic_data_for_barchart(

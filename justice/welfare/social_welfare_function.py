@@ -149,6 +149,45 @@ class SocialWelfareFunction:
             welfare,
         )
 
+    def calculate_state_disaggregated_welfare(self, consumption_per_capita, **kwargs):
+        """
+        This method calculates the welfare.
+        """
+        # Use np.maximum instead of np.where to be more efficient
+        consumption_per_capita = np.maximum(consumption_per_capita, SMALL_NUMBER)
+
+        # Aggregate the states dimension
+        # states_aggregated_consumption_per_capita = self.states_aggregator(
+        #     consumption_per_capita,
+        #     self.climate_ensembles,
+        #     self.risk_aversion,
+        # )
+
+        # Aggregate the Spatial Dimension
+        spatially_aggregated_welfare = self.spatial_aggregator(
+            consumption_per_capita,
+            self.population_ratio,
+            self.elasticity_of_marginal_utility_of_consumption,
+            self.inequality_aversion,
+            self.egality_strictness,
+            self.sufficiency_threshold,
+            **kwargs,
+        )
+
+        # Aggregate the Temporal Dimension
+        temporally_disaggregated_welfare, welfare = self.temporal_aggregator(
+            data=spatially_aggregated_welfare,
+            pure_rate_of_social_time_preference=self.pure_rate_of_social_time_preference,
+            model_time_horizon=self.model_time_horizon,
+            timestep=self.timestep,
+        )
+
+        return (
+            spatially_aggregated_welfare,
+            temporally_disaggregated_welfare,
+            welfare,
+        )
+
     def calculate_stepwise_welfare(self, consumption_per_capita, timestep):
         """
         This method calculates the welfare.
@@ -245,10 +284,20 @@ class SocialWelfareFunction:
             data, inequality_aversion
         )
 
-        # Calculate the population weighted consumption per capita
-        population_weighted_utility = (
-            population_ratio * inequality_aversion_transformed_utility
+        population_weighted_utility = np.zeros_like(
+            inequality_aversion_transformed_utility
         )
+
+        # Check if inequality_aversion_transformed_utility is a 2D or a 3D array
+        if len(inequality_aversion_transformed_utility.shape) == 2:
+            population_weighted_utility = (
+                population_ratio * inequality_aversion_transformed_utility
+            )
+        elif len(inequality_aversion_transformed_utility.shape) == 3:
+            # Calculate the population weighted consumption per capita
+            population_weighted_utility = (
+                population_ratio[:, :, None] * inequality_aversion_transformed_utility
+            )
 
         # Aggregate Spatially
         weighted_sum_of_utility = np.sum(population_weighted_utility, axis=0)
@@ -299,7 +348,13 @@ class SocialWelfareFunction:
 
         # TODO: Change that -1 later
         # Calculate the welfare disaggregated temporally
-        temporally_disaggregated_welfare = (data - 1) * discount_rate
+        temporally_disaggregated_welfare = np.zeros_like(data)
+        # Check if data is 1D or 2D
+        if len(data.shape) == 1:
+            temporally_disaggregated_welfare = (data - 1) * discount_rate
+        elif len(data.shape) == 2:
+            # If data is 3D, we need to apply the discount rate across the first axis (regions)
+            temporally_disaggregated_welfare = (data - 1) * discount_rate[:, None]
 
         # Calculate the welfare
         welfare = np.sum(
