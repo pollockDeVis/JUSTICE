@@ -27,6 +27,23 @@ class WelfareFunction(Enum):
                 return enum
         return None
 
+    # Method to return string from index
+    @classmethod
+    def get_string(cls, index: int) -> str:
+        welfare_function = cls.from_index(index)
+        if welfare_function is not None:
+            return welfare_function.value[1]
+        else:
+            raise ValueError(f"Index {index} is not a valid WelfareFunction index.")
+
+    # Method to return index from string
+    @classmethod
+    def get_index(cls, name: str) -> int:
+        for welfare_function in cls:
+            if welfare_function.value[1] == name:
+                return welfare_function.value[0]
+        raise ValueError(f"{name} is not a valid WelfareFunction name.")
+
 
 class SSP(IntEnum):
     SSP1 = 0
@@ -34,6 +51,13 @@ class SSP(IntEnum):
     SSP3 = 2
     SSP4 = 3
     SSP5 = 4
+
+    @classmethod
+    def get_index(cls, name: str) -> int:
+        try:
+            return cls[name].value
+        except KeyError:
+            raise ValueError(f"{name} is not a valid {cls.__name__}")
 
 
 # TODO: Add the pretty strings in the tuple like (0, SSP.SSP1, "ssp119", "SSP1-RCP1.9")

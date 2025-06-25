@@ -2687,6 +2687,57 @@ def plot_violin_comparison_sorted(
     return plt, economic_dataframes
 
 
+def get_dataframe_for_abated_emissions(
+    baseline_path,
+    utilitarian_path,
+    prioritarian_path,
+    region_mapping_path,
+    rice_region_dict_path,
+    start_year,
+    end_year,
+    splice_start_year,
+    splice_end_year,
+    scenario_list=None,
+    scenario_index=None,
+):
+    # Load baseline emissions
+    baseline_emissions = np.load(baseline_path)
+
+    # Select the scenario based on the index provided
+    if scenario_list and scenario_index is not None:
+        if scenario_index < 0 or scenario_index >= len(scenario_list):
+            raise ValueError(
+                "Scenario index is out of bounds for the provided scenario list."
+            )
+        scenario = scenario_list[scenario_index]
+        print(f"Selected Scenario: {scenario}")
+
+    baseline_emissions = baseline_emissions[:, :, scenario_index]
+    # Expand dimensions to match the shape of utilitarian and prioritarian emissions
+    baseline_emissions = np.expand_dims(baseline_emissions, axis=-1)
+
+    # Load UTILITARIAN and PRIORITARIAN emissions data
+    utilitarian_emissions_data = np.load(utilitarian_path)
+    prioritarian_emissions_data = np.load(prioritarian_path)
+
+    # Calculate abated emissions
+    abated_emissions_utilitarian = baseline_emissions - utilitarian_emissions_data
+    abated_emissions_prioritarian = baseline_emissions - prioritarian_emissions_data
+
+    # Process economic data
+    economic_dataframes = process_economic_data_for_abated_emissions(
+        input_data_arrays=[abated_emissions_utilitarian, abated_emissions_prioritarian],
+        region_mapping_path=region_mapping_path,
+        rice_region_dict_path=rice_region_dict_path,
+        start_year=start_year,
+        end_year=end_year,
+        splice_start_year=splice_start_year,
+        splice_end_year=splice_end_year,
+    )
+
+    return economic_dataframes
+
+
 def plot_violin_comparison_sorted_all_SSPs(
     baseline_path,
     utilitarian_path,
