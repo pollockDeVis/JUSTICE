@@ -20,6 +20,14 @@ class EconomyDefaults:
                 "elasticity_of_output_to_capital": 0.004,
             },
             "POST_KEYNESIAN": {"capital_elasticity_in_production_function": 0.1},
+            "GREEN": {
+                "depreciation_rate_capital": 0.1,
+                "elasticity_of_output_to_capital": 0.004,
+                "elasticity_of_non_market_natural_capital": 0.3,  # TODO
+                "elasticity_of_market_natural_capital": 0.3,
+                "elasticity_of_labour": 0.7,
+                "elasticity_of_capital": 0.3,
+            },
         }
 
     def get_defaults(self, type):

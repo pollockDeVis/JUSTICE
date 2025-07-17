@@ -118,6 +118,7 @@ class Economy(Enum):
 
     NEOCLASSICAL = 0
     POST_KEYNESIAN = 1
+    GREEN = 2
 
     @staticmethod
     def from_index(index):
