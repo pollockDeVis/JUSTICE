@@ -126,8 +126,13 @@ class JUSTICE:
         else:
             self.welfare_function_type = social_welfare_function
 
+        # Instantiate the TimeHorizon class # TODO: Need to do the data slicing here for different start and end years
+        self.time_horizon = TimeHorizon(
+            start_year=start_year, end_year=end_year, data_timestep=5, timestep=timestep
+        )
+
         # Load the datasets by instantiating the DataLoader class
-        self.data_loader = DataLoader()
+        self.data_loader = DataLoader(self.time_horizon)
         self.region_list = self.data_loader.REGION_LIST
 
         if self.clustering:
@@ -169,11 +174,6 @@ class JUSTICE:
                 if cluster not in self.cluster_to_country:
                     self.cluster_to_country[cluster] = []
                 self.cluster_to_country[cluster].append(region)
-
-        # Instantiate the TimeHorizon class # TODO: Need to do the data slicing here for different start and end years
-        self.time_horizon = TimeHorizon(
-            start_year=start_year, end_year=end_year, data_timestep=5, timestep=timestep
-        )
 
         ############################################################################################################################################################
         #

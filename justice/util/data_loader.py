@@ -17,11 +17,14 @@ class DataLoader:
     # TODO: Future Optimization - Use scenario to instantiate the DataLoader and load only the required data
     # TODO: Bring the interpolation here from economy. Instantiation should take time horizon - Can also select specific years
 
-    def __init__(self):
+    def __init__(self, time_horizon):
         """
         This method initializes the DataLoader class.
 
         """
+
+        data_time_steps = len(time_horizon.data_time_horizon)
+
         # Get the current working directory
         current_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -37,15 +40,15 @@ class DataLoader:
 
         # Load GDP
         with h5py.File(os.path.join(data_file_path, "gdp_array.hdf5"), "r") as f:
-            self.GDP_ARRAY = f["gdp"][:]
+            self.GDP_ARRAY = f["gdp"][:, :data_time_steps, :]
 
         # Load the population
         with h5py.File(os.path.join(data_file_path, "population_array.hdf5"), "r") as f:
-            self.POPULATION_ARRAY = f["population"][:]
+            self.POPULATION_ARRAY = f["population"][:, :data_time_steps, :]
 
         # Load the emissions dictionary
         with h5py.File(os.path.join(data_file_path, "emissions_array.hdf5"), "r") as f:
-            self.EMISSIONS_ARRAY = f["emissions"][:]
+            self.EMISSIONS_ARRAY = f["emissions"][:, :data_time_steps, :]
 
         # Load the capital stock initial values
         with h5py.File(os.path.join(data_file_path, "capital_init.hdf5"), "r") as f:
@@ -65,7 +68,7 @@ class DataLoader:
 
         # Load PPP2MER conversion factor. Conversion factor for Purchasing Power Parity (PPP) to Market Exchange Rate (MER)
         with h5py.File(os.path.join(data_file_path, "ppp2mer.hdf5"), "r") as f:
-            self.PPP_TO_MER_CONVERSION_FACTOR = f["ppp2mer"][:]
+            self.PPP_TO_MER_CONVERSION_FACTOR = f["ppp2mer"][:, :data_time_steps]
 
         # Load the Temperature Downscaler Coefficients Alpha
         with h5py.File(
@@ -87,9 +90,13 @@ class DataLoader:
         with h5py.File(
             os.path.join(data_file_path, "abatement_coefficient_a.hdf5"), "r"
         ) as f:
-            self.ABATEMENT_COEFFICIENT_A = f["abatement_coefficient_a"][:]
+            self.ABATEMENT_COEFFICIENT_A = f["abatement_coefficient_a"][
+                :, :data_time_steps
+            ]
 
         with h5py.File(
             os.path.join(data_file_path, "abatement_coefficient_b.hdf5"), "r"
         ) as f:
-            self.ABATEMENT_COEFFICIENT_B = f["abatement_coefficient_b"][:]
+            self.ABATEMENT_COEFFICIENT_B = f["abatement_coefficient_b"][
+                :, :data_time_steps
+            ]
