@@ -5,12 +5,25 @@ This file contains the neoclassical economic part of the JUSTICE model.
 from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
+import pandas as pd
+
 import copy
 import h5py
-
+import json
 from config.default_parameters import EconomyDefaults
+from justice.util import data_loader
 from justice.util.enumerations import Economy, get_economic_scenario
 from justice.util.regional_configuration import justice_region_aggregator
+
+
+## Green RICE Stuff
+region_mapping_path = "data/input/5_regions_green.json"
+rice_region_dict_path = "data/input/rice50_regions_dict.json"
+start_year = 2015
+end_year = 2300
+data_timestep = 5
+timestep = 1
+####
 
 
 class GreenEconomyModel:
@@ -55,12 +68,28 @@ class GreenEconomyModel:
             econ_defaults["elasticity_of_output_to_capital"],
         )
 
+        self.capital_elasticity_in_production_function = kwargs.get(
+            "capital_elasticity_in_production_function",
+            econ_defaults["capital_elasticity_in_production_function"],
+        )
+
         self.elasticity_of_marginal_utility_of_consumption = (
             elasticity_of_marginal_utility_of_consumption
         )
         self.pure_rate_of_social_time_preference = pure_rate_of_social_time_preference
 
         self.region_list = input_dataset.REGION_LIST
+
+        # Green RICE Implementation
+        # Read the region list from the hdf5 file
+        with h5py.File("data/input/5_green_regions_list.h5", "r") as f:
+            region_list_read = f["region_list"][:]
+            region_list_read = [
+                x.decode("utf-8") for x in region_list_read
+            ]  # Convert byte strings to regular strings
+
+        self.green_region_list = region_list_read
+
         self.gdp_array = copy.deepcopy(input_dataset.GDP_ARRAY)
         self.population_array = copy.deepcopy(input_dataset.POPULATION_ARRAY)
 
@@ -73,9 +102,79 @@ class GreenEconomyModel:
         self.gdp_array = self.gdp_array[:, :, self.scenario]
         self.population_array = self.population_array[:, :, self.scenario]
 
+        self.timestep = time_horizon.timestep
+        self.data_timestep = time_horizon.data_timestep
+        self.data_time_horizon = time_horizon.data_time_horizon
+        self.model_time_horizon = time_horizon.model_time_horizon
+
+        ############ GREEN CAPITAL and ELASTICITIES #########################################################
+
         self.capital_init_arr = input_dataset.CAPITAL_INIT_ARRAY  # TODO - Change this
+        green_rice_capital_dataset = pd.read_csv("data/input/5_region_capital_data.csv")
+        green_rice_capital_dataset = (
+            green_rice_capital_dataset.set_index("Region")
+            .reindex(self.green_region_list)
+            .reset_index()
+        )
+        # data/input/SSP245_MHa_Forest.csv_Interpolated.csv #NOTE: ROUGH IMPLEMENTATION
+        ssp245_forest_Mha = pd.read_csv("data/input/SSP245_MHa_Forest_Interpolated.csv")
+
+        ssp245_forest_Mha = ssp245_forest_Mha.drop(columns=['Region'])
+
+        # Convert to numpy array
+        ssp245_forest_Mha = ssp245_forest_Mha.to_numpy()
+
+        # Green RICE Parameters
+        elasticity_of_market_natural_capital = green_rice_capital_dataset[
+            "elasticity_of_market_natural_capital"
+        ]
+        elasticity_of_labour = green_rice_capital_dataset["elasticity_of_labour"]
+        elasticity_of_capital = green_rice_capital_dataset["elasticity_of_capital"]
+        NK_Market = green_rice_capital_dataset["NK_Market"]
+        NK_NonMarket = green_rice_capital_dataset["NK_NonMarket"]
+        elasticity_of_non_market_natural_capital = green_rice_capital_dataset[
+            "elasticity_of_non_market_natural_capital"
+        ]
+        forest_initial = green_rice_capital_dataset["forest_initial"]
+
+        ############ GREEN SAVINGS #########################################################
 
         self.savings_rate_init_arr = input_dataset.SAVING_RATE_INIT_ARRAY
+
+        green_saving_rate_init_array = np.tile(
+            self.savings_rate_init_arr, (1, len(time_horizon.model_time_horizon))
+        )
+        # Now make the data 3D by adding a third dimension of size 1001 (number of ensembles)
+        green_saving_rate_init_array = np.expand_dims(
+            green_saving_rate_init_array, axis=2
+        )
+
+        # Load the region mapping from the JSON file
+        with open(region_mapping_path, "r") as f:
+            region_mapping_json = json.load(f)
+
+        # Load the rice region dictionary from the JSON file
+        with open(rice_region_dict_path, "r") as f:
+            rice_50_dict_ISO3 = json.load(f)
+
+        _, green_saving_rate_init_array, mapping_dictionary_savings = (
+            justice_region_aggregator(
+                input_dataset, region_mapping_json, green_saving_rate_init_array
+            )
+        )
+
+        self.green_saving_rate_init_array = green_saving_rate_init_array[:, 0, 0]
+
+        # Convert to a 2D intead of 1D
+        self.green_saving_rate_init_array = self.green_saving_rate_init_array.reshape(
+            -1, 1
+        )
+
+        fixed_savings_rate = self.get_green_fixed_savings_rate()
+
+        print("Fixed savings rate", fixed_savings_rate.shape)
+
+        ############ GREEN SAVINGS #########################################################
 
         # Load PPP2MER conversion factor. Conversion factor for Purchasing Power Parity (PPP) to Market Exchange Rate (MER)
         # PPP is widely used to calculate international ineqquality (Milanovic, 2005)
@@ -87,29 +186,56 @@ class GreenEconomyModel:
         # mer_to_ppp is a 2D array. Need to convert it to (regions, 1)
         self.mer_to_ppp = self.mer_to_ppp[:, 0:1]
 
-        self.timestep = time_horizon.timestep
-        self.data_timestep = time_horizon.data_timestep
-        self.data_time_horizon = time_horizon.data_time_horizon
-        self.model_time_horizon = time_horizon.model_time_horizon
-
         # Initializing the capital and TFP array This will be of the same shape as data with 5 year timestep
         # TODO check if this is needed
-        self.capital_tfp_data = np.zeros(
-            (len(self.region_list), len(self.data_time_horizon))
-        )
+        # self.capital_tfp_data = np.zeros(
+        #     (len(self.region_list), len(self.data_time_horizon))
+        # )
 
-        # Calculate the baseline TFP #TODO: Change this
-        self.tfp = self.initialize_tfp(
-            fixed_savings_rate=self.get_fixed_savings_rate(self.data_time_horizon),
-        )
+        # # Calculate the baseline TFP #TODO: Change this
+        # self.tfp = self.initialize_tfp(
+        #     fixed_savings_rate=self.get_fixed_savings_rate(self.data_time_horizon),
+        # )
 
         # Check if timestep is not equal to data timestep #If not, then interpolate
 
         if self.timestep != self.data_timestep:
             # Interpolate GDP
-            self._interpolate_tfp()
+            # self._interpolate_tfp()
             self._interpolate_gdp()
             self._interpolate_population()
+
+        #### TFP Init #################
+        print(self.gdp_array.shape)
+
+        gdp_array_extended = np.expand_dims(self.gdp_array, axis=2)
+
+        # Aggregate GDP
+        _, green_aggregated_gdp, mapping_dictionary_savings = justice_region_aggregator(
+            input_dataset, region_mapping_json, gdp_array_extended
+        )
+        print("Green Aggregated GDP Shape", green_aggregated_gdp.shape)
+        green_aggregated_gdp = green_aggregated_gdp[:, :, 0]
+
+        conversion_forest_NK_Market = NK_Market / forest_initial
+        conversion_forest_NK_NonMarket = NK_NonMarket / forest_initial
+
+
+        # NK_Market[t] = conversion_forest_NK_Market*forest_area[t] 
+
+        # NK_NonMarket[t] = conversion_forest_NK_NonMarket*forest_area[t] 
+
+        natural_capital_market = ssp245_forest_Mha * conversion_forest_NK_Market
+        natural_capital_non_market = ssp245_forest_Mha * conversion_forest_NK_NonMarket
+
+        self.green_tfp = self.intialize_green_tfp(
+            fixed_savings_rate, green_aggregated_gdp, input_dataset, region_mapping_json
+        )
+
+        print("Green TFP Shape", self.green_tfp.shape)
+        ######## TFP Init #################
+
+        # TODO: Maybe need to replace region_list with green_region_list
 
         # Initializing the capital array Unit: Trill 2005 USD PPP
         self.capital = np.zeros(
@@ -182,6 +308,17 @@ class GreenEconomyModel:
 
         return optimal_long_run_savings_rate
 
+    def intialize_green_tfp(
+        self,
+        fixed_savings_rate,
+        aggregated_gdp_array,
+        input_dataset,
+        region_mapping_json,
+    ):
+        investment_tfp = fixed_savings_rate * aggregated_gdp_array
+
+        return investment_tfp
+
     def initialize_tfp(self, fixed_savings_rate):
         """
         This method initializes the TFP.
@@ -238,6 +375,28 @@ class GreenEconomyModel:
             next_rate = self.savings_rate_init_arr + (
                 optimal_long_run_savings_rate - self.savings_rate_init_arr
             ) * ((t - 1) / (len(time_horizon) - 1))
+            # append to the fixed savings rate array for each year
+            fixed_savings_rate = np.column_stack((fixed_savings_rate, next_rate))
+
+        return fixed_savings_rate
+
+    def get_green_fixed_savings_rate(self):
+        # TODO: Need to change this later for different exponents
+        """
+        This method returns the fixed savings rate for the green economy model.
+        It takes the initial savings rate and increases it linearly to the optimal long run savings rate.
+        """
+        # fixed_savings_rate Validated with RICE50 for timestep 1 and 5
+        fixed_savings_rate = np.copy(self.green_saving_rate_init_array).reshape(-1, 1)
+
+        # Calculate the Optimal long-run Savings Rate
+        # This will depend on the input parameters. This is also a upper limit of the savings rate
+        optimal_long_run_savings_rate = self.get_optimal_long_run_savings_rate()
+
+        for t in range(2, (len(self.model_time_horizon) + 1)):
+            next_rate = self.green_saving_rate_init_array + (
+                optimal_long_run_savings_rate - self.green_saving_rate_init_array
+            ) * ((t - 1) / (len(self.model_time_horizon) - 1))
             # append to the fixed savings rate array for each year
             fixed_savings_rate = np.column_stack((fixed_savings_rate, next_rate))
 

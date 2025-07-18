@@ -1,6 +1,6 @@
-Region,elasticity_of_market_natural_capital,elasticity_of_labour,elasticity_of_capital,NK_Market,NK_NonMarket,elasticity_of_non_market_natural_capital
-Asian countries except Japan,0.001994108,0.7,0.298005892,8.341226841,16.0927671,0.559234
-Latin America,0.004616858,0.7,0.295383142,4.869726291,21.60603474,0.193776
-Middle East and Africa,0.00786708,0.7,0.29213292,7.277834164,8.39568299,0.322886
-OECD90 and EU (and EU candidate) countries,0.000493684,0.7,0.299506316,5.362920581,56.31046746,0.153859
-Reforming Economies of the Former Soviet Union,0.002408661,0.7,0.297591339,1.431244127,9.645388887,0.612428
+Region,elasticity_of_market_natural_capital,elasticity_of_labour,elasticity_of_capital,NK_Market,NK_NonMarket,elasticity_of_non_market_natural_capital,forest_initial
+Asian countries except Japan,0.001994108,0.7,0.298005892,8.341226841,16.0927671,0.559234,504.207
+Latin America,0.004616858,0.7,0.295383142,4.869726291,21.60603474,0.193776,922.755
+Middle East and Africa,0.00786708,0.7,0.29213292,7.277834164,8.39568299,0.322886,643.866
+OECD90 and EU (and EU candidate) countries,0.000493684,0.7,0.299506316,5.362920581,56.31046746,0.153859,993.408
+Reforming Economies of the Former Soviet Union,0.002408661,0.7,0.297591339,1.431244127,9.645388887,0.612428,839.378
