@@ -6,10 +6,11 @@ from typing import Any
 from scipy.interpolate import interp1d
 import numpy as np
 import copy
-
+import h5py
 
 from config.default_parameters import EconomyDefaults
 from justice.util.enumerations import Economy, get_economic_scenario
+from justice.util.regional_configuration import justice_region_aggregator
 
 
 class GreenEconomyModel:
@@ -38,23 +39,20 @@ class GreenEconomyModel:
         self.scenario = get_economic_scenario(scenario)
 
         # Fetch the defaults for neoclassical submodule
-        econ_neoclassical_defaults = econ_defaults.get_defaults(
-            Economy.NEOCLASSICAL.name
+        econ_defaults = econ_defaults.get_defaults(  # TODO Needs to change
+            Economy.GREEN.name
         )
 
         # Assign retrieved values to instance variables if kwargs is empty
-        self.capital_elasticity_in_production_function = kwargs.get(
-            "capital_elasticity_in_production_function",
-            econ_neoclassical_defaults["capital_elasticity_in_production_function"],
-        )
+
         # NOTE: Depreciation rate is for every year
         self.depreciation_rate_capital = kwargs.get(
             "depreciation_rate_capital",
-            econ_neoclassical_defaults["depreciation_rate_capital"],
+            econ_defaults["depreciation_rate_capital"],
         )
         self.elasticity_of_output_to_capital = kwargs.get(
             "elasticity_of_output_to_capital",
-            econ_neoclassical_defaults["elasticity_of_output_to_capital"],
+            econ_defaults["elasticity_of_output_to_capital"],
         )
 
         self.elasticity_of_marginal_utility_of_consumption = (
@@ -75,10 +73,9 @@ class GreenEconomyModel:
         self.gdp_array = self.gdp_array[:, :, self.scenario]
         self.population_array = self.population_array[:, :, self.scenario]
 
-        self.capital_init_arr = input_dataset.CAPITAL_INIT_ARRAY
-        self.savings_rate_init_arr = (
-            input_dataset.SAVING_RATE_INIT_ARRAY
-        )  # Probably won't be used. Can be passed while setting up the Savings Rate Lever
+        self.capital_init_arr = input_dataset.CAPITAL_INIT_ARRAY  # TODO - Change this
+
+        self.savings_rate_init_arr = input_dataset.SAVING_RATE_INIT_ARRAY
 
         # Load PPP2MER conversion factor. Conversion factor for Purchasing Power Parity (PPP) to Market Exchange Rate (MER)
         # PPP is widely used to calculate international ineqquality (Milanovic, 2005)
@@ -101,7 +98,7 @@ class GreenEconomyModel:
             (len(self.region_list), len(self.data_time_horizon))
         )
 
-        # Calculate the baseline TFP
+        # Calculate the baseline TFP #TODO: Change this
         self.tfp = self.initialize_tfp(
             fixed_savings_rate=self.get_fixed_savings_rate(self.data_time_horizon),
         )

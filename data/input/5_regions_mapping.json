@@ -1,0 +1,69 @@
+{
+    "Latin America": [
+        "rcam",
+        "arg",
+        "bra",
+        "chl",
+        "rsam",
+        "mex"
+    ],
+    "Middle East and Africa": [
+        "noan",
+        "noap",
+        "egy",
+        "zaf",
+        "rsaf",
+        "meme",
+        "golf57"
+    ],
+    "OECD90 and EU (and EU candidate) countries": [
+        "aut",
+        "bel",
+        "rfa",
+        "dnk",
+        "esp",
+        "fin",
+        "fra",
+        "gbr",
+        "grc",
+        "irl",
+        "ita",
+        "nld",
+        "prt",
+        "swe",
+        "bgr",
+        "rcz",
+        "hun",
+        "pol",
+        "rom",
+        "rsl",
+        "slo",
+        "cro",
+        "nor",
+        "sui",
+        "tur",
+        "blt",
+        "oeu",
+        "aus",
+        "jpn",
+        "can",
+        "usa"
+    ],
+    "Asian countries except Japan": [
+        "rjan57",
+        "chn",
+        "nde",
+        "mys",
+        "tha",
+        "vnm",
+        "cor",
+        "idn",
+        "osea",
+        "rsas"
+    ],
+    "Reforming Economies of the Former Soviet Union": [
+        "rus",
+        "ukr",
+        "ris"
+    ]
+}

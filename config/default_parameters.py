@@ -23,10 +23,6 @@ class EconomyDefaults:
             "GREEN": {
                 "depreciation_rate_capital": 0.1,
                 "elasticity_of_output_to_capital": 0.004,
-                "elasticity_of_non_market_natural_capital": 0.3,  # TODO
-                "elasticity_of_market_natural_capital": 0.3,
-                "elasticity_of_labour": 0.7,
-                "elasticity_of_capital": 0.3,
             },
         }
 

@@ -112,4 +112,4 @@ def justice_region_aggregator(
         # Sum the emissions for the regions in the value list
         aggregated_data[index, :, :] = np.sum(data[indices, :, :], axis=0)
 
-    return aggregated_region_list, aggregated_data
+    return aggregated_region_list, aggregated_data, mapping_dictionary
