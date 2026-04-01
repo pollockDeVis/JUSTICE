@@ -1,6 +1,6 @@
 from collections import defaultdict
 import os
-from ema_workbench.em_framework.optimization import ArchiveLogger, EpsilonProgress
+from ema_workbench import load_archives
 from sklearn.preprocessing import MinMaxScaler
 from deap.tools import _hypervolume
 import numpy as np
@@ -66,35 +66,25 @@ def load_archives(
         raise ValueError("file_name cannot be None.")
 
     full_path = Path(data_path) / file_name
-    archives = ArchiveLogger.load_archives(str(full_path))
+    # load_archives returns list[tuple[int, DataFrame]] in ema-workbench >= 3.0
+    raw_archives = load_archives(str(full_path))
+    # Convert to dict for backwards-compatible downstream usage (archives[nfe])
+    archives = {nfe: df for nfe, df in raw_archives}
 
     list_of_archives = []
     num_objectives = len(list_of_objectives)
 
     print(f"Loading archives for {file_name}")
 
-    for key, df in archives.items():
-        # If "Unnamed: 0" exists, group by it. Otherwise, group by the index.
-        group_key = "Unnamed: 0" if "Unnamed: 0" in df.columns else None
-
-        grouped = (
-            df.groupby(group_key)
-            if group_key
-            else ((idx, group) for idx, group in df.groupby(df.index))
+    for _nfe, df in raw_archives:
+        # Rename integer-indexed columns to objective names (last N columns)
+        generation = df.rename(
+            {str(i): name for i, name in enumerate(list_of_objectives)},
+            axis=1,
         )
-
-        for nfe, generation in grouped:
-            # Rename columns from 0-based indices to objective names for only the last N columns
-            # It assumes that the last `num_objectives` columns correspond to objectives.
-            generation = generation.rename(
-                {str(i): name for i, name in enumerate(list_of_objectives)},
-                axis=1,
-            )
-
-            # Select only the last n objective columns
-            generation = generation.iloc[:, -num_objectives:]
-
-            list_of_archives.append(generation)
+        # Select only the last n objective columns
+        generation = generation.iloc[:, -num_objectives:]
+        list_of_archives.append(generation)
 
     print("Archives loaded")
     return archives, list_of_archives
@@ -134,7 +124,9 @@ def load_archives_all_seeds(
             if filename.startswith(f"{current_swf}_{nfe}"):
                 file_name = filename
                 print("Matching file:", file_name)
-                archives = ArchiveLogger.load_archives(f"{data_path}/{file_name}")
+                # load_archives returns list[tuple[int, DataFrame]] in ema-workbench >= 3.0
+                raw_archives = load_archives(f"{data_path}/{file_name}")
+                archives = {nfe: df for nfe, df in raw_archives}
 
                 print("Loading archives from:", file_name)
 

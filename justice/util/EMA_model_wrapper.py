@@ -63,11 +63,11 @@ def model_wrapper_emodps(**kwargs):
     weights = np.zeros(weights_shape)
 
     for i in range(centers_shape[0]):
-        centers[i] = kwargs.pop(f"center {i}")
-        radii[i] = kwargs.pop(f"radii {i}")
+        centers[i] = kwargs.pop(f"center_{i}")
+        radii[i] = kwargs.pop(f"radii_{i}")
 
     for i in range(weights_shape[0]):
-        weights[i] = kwargs.pop(f"weights {i}")
+        weights[i] = kwargs.pop(f"weights_{i}")
 
     # Populating the decision variables
     centers_flat = centers.flatten()
@@ -183,10 +183,10 @@ def _compute_inverse_range(min_value: float, max_value: float) -> float:
 
 
 def _extract_vector(kwargs_dict, prefix, size, macro_idx):
-    """Pull a flat vector of length `size` from kwargs named `{prefix} {macro_idx} {i}`."""
+    """Pull a flat vector of length `size` from kwargs named `{prefix}_{macro_idx}_{i}`."""
     vector = np.empty(size, dtype=float)
     for i in range(size):
-        vector[i] = kwargs_dict.pop(f"{prefix} {macro_idx} {i}")
+        vector[i] = kwargs_dict.pop(f"{prefix}_{macro_idx}_{i}")
     return vector
 
 
