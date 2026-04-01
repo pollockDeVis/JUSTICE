@@ -2,65 +2,69 @@
 <svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 801.714 548.082">
   <defs>
     <style>
+      /* LIGHT MODE (default) */
       .cls-1 {
         stroke-dasharray: 8.572;
         stroke-linejoin: round;
       }
-
+    
       .cls-1, .cls-2, .cls-3 {
         stroke-width: 1.714px;
       }
-
+    
       .cls-1, .cls-2, .cls-3, .cls-4 {
         fill: none;
-        stroke: #000;
+        stroke: #000; /* lines */
       }
 
+      polygon {
+        fill: #000;
+      }
+    
       .cls-5 {
         font-family: OptimaNovaLTPro-Black, 'Optima nova LT Pro';
         font-size: 19px;
         font-weight: 800;
       }
-
-      .cls-5, .cls-6 {
-        fill: #231f20;
-      }
-
+    
       .cls-2 {
         stroke-miterlimit: 5;
       }
-
+    
       .cls-3, .cls-4 {
         stroke-miterlimit: 10;
       }
-
-      .cls-7 {
-        letter-spacing: 0em;
-      }
-
+    
       .cls-8, .cls-6 {
         font-family: Menlo-Regular, Menlo;
         font-size: 18.859px;
       }
-
+    
       .cls-4 {
         stroke-width: 3.429px;
       }
-
-      .cls-9 {
-        letter-spacing: -.036em;
+      
+      .cls-5, .cls-6, .cls-8 {
+        fill: #000;
       }
 
-      .cls-10 {
-        letter-spacing: -.03em;
-      }
+      /* DARK MODE */
+      @media (prefers-color-scheme: dark) {
+        .cls-1, .cls-2, .cls-3, .cls-4 {
+          stroke: #ffffff; /* lines become white */
+        }
 
-      .cls-11 {
-        letter-spacing: -.009em;
-      }
+        .cls-5, .cls-6, .cls-8 {
+          fill: #ffffff;
+        }
 
-      .cls-12 {
-        letter-spacing: .07em;
+        polygon {
+          fill: #ffffff;
+        }
+
+
+      
+    
       }
     </style>
   </defs>
