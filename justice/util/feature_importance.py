@@ -29,7 +29,7 @@ def aggregate_abated_emissions(
     """
     Aggregate abated emissions to 12 regions and slice to [splice_start_year, splice_end_year] inclusively.
     Returns: (aggregated_array, region_list, years_vector)
-      - aggregated_array shape: (12, T, S) regions x years x samples
+      - aggregated_array shape: (12, T, S) regions x years x samples from FaIR ensemble members
       - years_vector: numpy array of years of length T
     """
     time_horizon = TimeHorizon(
@@ -85,46 +85,54 @@ def build_long_dataframe(
     Build a long/tidy DataFrame with columns:
     Optimization, Regret, Scenario, Welfare, Region, Year, Sample, AbatedEmission, Scope
     Includes both Regional and Global (summed across regions) entries for selected years.
+
+    The dataframe looks like:
+
+    | Optimization | Regret | Scenario | Welfare     | Region   | Year | Sample | AbatedEmission | Scope    |
+    |--------------|--------|----------|-------------|----------|------|--------|----------------|----------|
+    | SSP126       | Min    | SSP126   | Utilitarian | Region A | 2030 | 0      | 123.45         | Regional |
+    | SSP126       | Min    | SSP126   | Utilitarian | Region A | 2030 | 1      | 130.67         | Regional |
+    | ...          | ...    | ...      | ...         | ...      | ...  | ...    | ...            | ...      |
+
     """
     scenario_list = ["SSP126", "SSP245", "SSP370", "SSP460", "SSP534"]
 
+    # Reads the policy indices mapping. This dict maps (reference_scenario, welfare_type) → {regret_type: policy_index}
     with open(base_path + "min_regret_policy_indices.json", "r") as f:
         policy_indices = json.load(f)
 
     # ── resolve model_output_dir ───────────────────────────────────────────────
     model_output_path = Path(model_output_dir) if model_output_dir else Path(base_path)
 
+    # Load the baseline emissions for all SSPs (shape expected: regions x years x SSP scenarios)
     baseline_path = Path(base_path) / "emissions_array_all_SSPs.npy"
-    baseline_emissions = np.load(
-        baseline_path
-    )  # shape expected: (src_regions, time, scenarios)
+    baseline_emissions = np.load(baseline_path)
 
     rows = []
 
+    # Loop over policy combinations For each (reference_scenario, welfare_type, regret, scenario):
     for reference_scenario, welfare_map in policy_indices.items():
         for welfare_type, regret_map in welfare_map.items():
             for scenario_index, scenario in enumerate(scenario_list):
                 for regret in regret_map.keys():
                     policy_idx = regret_map[regret]
 
-                    # ── Option A flat naming ───────────────────────────────────
+                    # Construct the filename for the emissions data based on the current policy combination§
                     emissions_file = (
                         model_output_path
                         / f"{welfare_type}_{reference_scenario}_{regret}"
                         f"_emissions_idx{policy_idx}_{scenario}_emissions.npy"
                     )
+                    # Load the policy emission array (shape expected: regions x years x samples from FaIR ensemble members)
+                    emissions_data = np.load(emissions_file)
 
-                    emissions_data = np.load(
-                        emissions_file
-                    )  # (src_regions, time, samples)
-
-                    # Abated emissions relative to baseline
+                    # Compute the Abated emissions relative to baseline
                     abated_emissions = (
                         baseline_emissions[:, :, scenario_index][:, :, np.newaxis]
                         - emissions_data
                     )
 
-                    # Aggregate to 12 regions and slice years inclusively
+                    # Aggregate to 12 regions and slice years inclusively - Shape returned: (12, T, samples)
                     region_agg_arr, region_list, agg_years = aggregate_abated_emissions(
                         input_data_arrays=[abated_emissions],
                         region_mapping_path=region_mapping_path,
@@ -136,21 +144,18 @@ def build_long_dataframe(
                         data_timestep=5,
                         timestep=1,
                     )
-                    # region_agg_arr: (12, T, samples)
 
-                    # Select only desired years
+                    # Select only desired years - Shape: (12, len(years_of_interest), samples)
                     year_mask = np.isin(agg_years, years_of_interest)
                     if not np.any(year_mask):
                         continue
                     years_sel = agg_years[year_mask]
-                    arr_sel = region_agg_arr[
-                        :, year_mask, :
-                    ]  # (12, len(years_sel), samples)
+                    arr_sel = region_agg_arr[:, year_mask, :]
 
                     n_regions, n_years, n_samples = arr_sel.shape
 
-                    # Regional rows
-                    vals = arr_sel.reshape(-1)  # flatten: region->year->sample
+                    # Regional rows. Each row corresponds to one region-year-sample combination.
+                    vals = arr_sel.reshape(-1)  # flatten: region->year->sample.
                     region_rep = np.repeat(region_list, n_years * n_samples)
                     year_rep = np.tile(np.repeat(years_sel, n_samples), n_regions)
                     sample_rep = np.tile(np.arange(n_samples), n_regions * n_years)
@@ -171,7 +176,7 @@ def build_long_dataframe(
                         )
                     )
 
-                    # Global rows (sum across regions, per year and sample)
+                    # Global rows (sum across regions, per year and sample). Each row corresponds to one year-sample combination.
                     global_arr = arr_sel.sum(axis=0)  # (n_years, n_samples)
                     g_vals = global_arr.reshape(-1)
                     g_year_rep = np.repeat(years_sel, n_samples)
@@ -211,8 +216,39 @@ def build_cell_level_targets(
     long_df, years=(2030, 2050, 2070, 2100), target_stat="mean", scope="Global"
 ):
     """
+    This method Aggregates the long_df into the structure the ML model will see.
     Aggregate across 1001 samples to get one scalar target per cell, unless target_stat='raw'
-    in which case each sample is kept.
+    in which case each sample is kept. target_stat = "raw", so no aggregation — each of the 1001 samples is a separate data point
+    In case of 'raw', the ML model will be trained to predict the distribution of abated emissions across samples, rather than a single statistic.
+
+    For scope="Global":
+
+    | Column       | Type                     |
+    | ------------ | ------------------------ |
+    | Year         | int                      |
+    | Optimization | category                 |
+    | Regret       | category                 |
+    | Scenario     | category                 |
+    | Welfare      | category                 |
+    | Sample       | category                 |
+    | Y            | float (abated emissions) |
+
+    For scope="Regional":
+
+    | Column       | Type     |
+    | ------------ | -------- |
+    | Year         | int      |
+    | Region       | category |
+    | Optimization | category |
+    | Regret       | category |
+    | Scenario     | category |
+    | Welfare      | category |
+    | Sample       | category |
+    | Y            | float    |
+
+    Features for ML: ["Optimization", "Regret", "Scenario", "Welfare"] (+ "Sample" for raw).
+    For Regional scope, ML models will be trained separately per region, so "Region" is not a feature but a grouping variable.
+
     """
     assert scope in ("Global", "Regional")
     stat = target_stat.lower()
@@ -340,6 +376,7 @@ def _cat_indices(X, categorical_cols):
 def shap_values_mean_abs(model, X, categorical_cols):
     """
     Mean absolute SHAP values per feature using CatBoost's SHAP.
+    Measures influence strength, not positive/negative effect
     """
     pool = Pool(X, cat_features=_cat_indices(X, categorical_cols))
     shap_vals = model.get_feature_importance(data=pool, type="ShapValues")
@@ -388,6 +425,8 @@ def fit_catboost_cv_shap(
         )
 
     k = min(cv_folds, max(2, len(X)))  # ensure at least 2, at most N
+
+    # Cross-validation setup with shuffling for better fold randomness, fixed random state for reproducibility
     kf = KFold(n_splits=k, shuffle=True, random_state=random_state)
 
     cv_metrics = []
@@ -395,6 +434,10 @@ def fit_catboost_cv_shap(
     shap_series_list = []
 
     cat_idx = _cat_indices(X, categorical_cols)
+
+    # Splits data into folds (5 default), trains model on N-1 folds, validates on the held-out fold
+    # Early stopping if val loss doesn't improve for 50 (default) iterations
+    # Records metrics on validation fold, Validation metrics (RMSE + R² for mean/raw; Pinball loss for median/p90), Best iteration count (this means the number of trees that were actually used before early stopping), SHAP importances (mean absolute) on validation fold
 
     for fold, (tr_idx, va_idx) in enumerate(kf.split(X), start=1):
         X_tr, X_va = X.iloc[tr_idx], X.iloc[va_idx]
@@ -528,21 +571,52 @@ def run_ml_importance_for_scope(
     years=(2030, 2050, 2070, 2100),
     target_stat="mean",
     output_dir="ml_importance_plots",
-    cv_folds=5,
+    cv_folds=5,  # Using 5-fold CV for more stable SHAP estimates. 5 balances computation and stability.
     random_state=0,
     model_params=None,
     normalized_plots=True,
     model_type="final",  # "final" or "cv-mean"
 ):
     """
+    @args:
+    cell_df: DataFrame with columns depending on scope (see build_cell_level_targets)
+    scope: "Global" or "Regional"
+    years: which years to run models for. Takes tuple of ints, e.g. (2030, 2050, 2070, 2100)
+    target_stat: "raw", "mean", "median" (or "p50"), "p90" - for the FaIR ensemble members
+    output_dir: base directory to save plots and importance data
+    cv_folds: number of CV folds for CatBoost training and SHAP estimation. More folds = more stable SHAP but longer runtime.
+    random_state: for reproducibility of CV splits and model training
+    model_params: dict of CatBoost parameters to override defaults (e.g., depth, learning_rate)
+    normalized_plots: whether to normalize SHAP importances to sum to 1 in the plots
+    model_type: whether to plot SHAP from "final" model or "cv-mean" (average across CV folds).
+
+
     For the given scope (Global or Regional cell-level data), fit CatBoost models per year with CV.
+
+    Filter to one year (e.g., 2030)
+
+    For Global scope: one dataset
+
+    For Regional scope: group by Region, fit one model per region
+
+    Categorical features: CatBoost needs explicit cat feature indices:
+
+    categorical_cols = ["Optimization", "Regret", "Scenario", "Welfare"]
+    if target_stat == "raw":
+        categorical_cols += ["Sample"]
     """
     results = {}
     target_name = f"Y_{target_stat.lower()}"
     df = cell_df.copy()
     df = df.rename(columns={"Y": target_name})
 
+    # Core categorical features for all models
     feature_cols = ["Optimization", "Regret", "Scenario", "Welfare"]
+
+    # For raw targets, we include "Sample" as a categorical feature to allow the model to learn sample-specific effects.
+    # This shows the contribution of FaIR ensemble members to the abated emissions.
+    # For aggregated targets, "Sample" is not included since the target is already a summary statistic across samples.
+
     if target_stat.lower() == "raw":
         feature_cols = feature_cols + ["Sample"]
     categorical_cols = feature_cols[:]
@@ -550,8 +624,7 @@ def run_ml_importance_for_scope(
     outbase = Path(output_dir) / scope.lower() / target_stat.lower()
     outbase.mkdir(parents=True, exist_ok=True)
 
-    # print(f"Saving plots to: {outbase.resolve()}")
-
+    # Per-year models
     for yr in years:
         d = df[df["Year"] == yr].copy()
         if d.empty:
