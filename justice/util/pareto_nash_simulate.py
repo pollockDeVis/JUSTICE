@@ -91,22 +91,36 @@ def build_policy_bank_from_5row_csv(
     return policy_bank, config
 
 
+DEFAULT_DATASETS_TO_SAVE = (
+    "constrained_emission_control_rate",
+    "emissions",
+    "economic_damage",
+    "abatement_cost",
+    "global_temperature",
+    "net_economic_output",
+    "gross_economic_output",
+)
+
+
 def save_selected_datasets(
     datasets: Dict[str, np.ndarray],
     out_dir: str,
     profile_index: int,
+    datasets_to_save: Sequence[str] = DEFAULT_DATASETS_TO_SAVE,
 ) -> None:
+    """Save the requested model output arrays for one Nash profile as .npy files.
+
+    datasets_to_save defaults to all outputs. Pass a subset (e.g. ["emissions"])
+    to save disk space when simulating many profiles.
+    """
+    unknown = [name for name in datasets_to_save if name not in datasets]
+    if unknown:
+        raise KeyError(
+            f"Unknown dataset(s) {unknown}. Available: {sorted(datasets.keys())}"
+        )
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
-    for name in [
-        "constrained_emission_control_rate",
-        "emissions",
-        "economic_damage",
-        "abatement_cost",
-        "global_temperature",
-        "net_economic_output",
-        "gross_economic_output",
-    ]:
+    for name in datasets_to_save:
         np.save(out_path / f"{name}_nash_profile_{profile_index}.npy", datasets[name])
 
 
@@ -321,6 +335,7 @@ def simulate_nash_profiles_by_row_index(
     selected_profile_indices: Optional[Sequence[int]] = None,
     scenario: int = 2,
     mapping_base_path: str = "data/input",
+    datasets_to_save: Sequence[str] = DEFAULT_DATASETS_TO_SAVE,
 ) -> None:
     """
     Main entry point. Simulates selected (or all) Pareto-Nash profiles and
@@ -335,6 +350,9 @@ def simulate_nash_profiles_by_row_index(
     selected_profile_indices : Row indices to simulate. None = simulate all.
     scenario                 : SSP scenario (default 2)
     mapping_base_path        : Folder with R5_regions.json and rice50_regions_dict.json
+    datasets_to_save         : Output arrays to save per profile. Defaults to all
+                               (see DEFAULT_DATASETS_TO_SAVE); pass e.g. ["emissions"]
+                               to save disk space when simulating many profiles.
     """
     nash_df = pd.read_csv(nash_profiles_csv)
     n_agents = infer_n_agents_from_actions(nash_df)
@@ -346,6 +364,7 @@ def simulate_nash_profiles_by_row_index(
     print(f"Policy CSV       : {policy_5row_csv}")
     print(f"Profiles to run  : {selected_profile_indices}")
     print(f"Output dir       : {out_dir}")
+    print(f"Datasets saved   : {list(datasets_to_save)}")
     print(f"⚠ This may take several minutes per profile.\n")
 
     policy_bank, config = build_policy_bank_from_5row_csv(
@@ -364,7 +383,12 @@ def simulate_nash_profiles_by_row_index(
 
         print(f"  Profile {idx:>3} | actions: {actions}", end=" ... ", flush=True)
         objectives, datasets = sim.simulate(actions)
-        save_selected_datasets(datasets, out_dir=out_dir, profile_index=int(idx))
+        save_selected_datasets(
+            datasets,
+            out_dir=out_dir,
+            profile_index=int(idx),
+            datasets_to_save=datasets_to_save,
+        )
 
         meta = {
             "nash_profile_row_index": int(idx),
