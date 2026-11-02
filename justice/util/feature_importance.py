@@ -25,9 +25,14 @@ def aggregate_abated_emissions(
     splice_end_year,
     data_timestep=5,
     timestep=1,
+    similarity_threshold=0.0,
 ):
     """
     Aggregate abated emissions to 12 regions and slice to [splice_start_year, splice_end_year] inclusively.
+    similarity_threshold is passed to justice_region_aggregator. The default of 0.0 maps every
+    JUSTICE region to the macro-region it overlaps most; with 0.01, single-country regions in a
+    large macro-region (e.g. Mexico or Indonesia in a 129-country 'Rest of the World') were dropped.
+    A ValueError is raised if the aggregation does not conserve the 57-region total.
     Returns: (aggregated_array, region_list, years_vector)
       - aggregated_array shape: (12, T, S) regions x years x samples from FaIR ensemble members
       - years_vector: numpy array of years of length T
@@ -53,8 +58,23 @@ def aggregate_abated_emissions(
     for economic_data in input_data_arrays:
         # Aggregate to 12 regions
         region_list, economic_data_aggregated = justice_region_aggregator(
-            data_loader, region_mapping_json, economic_data
+            data_loader,
+            region_mapping_json,
+            economic_data,
+            similarity_threshold=similarity_threshold,
         )
+
+        # Every JUSTICE region must be assigned to a macro-region: the macro-regional
+        # totals must add up to the 57-region total, otherwise regions were dropped.
+        if not np.allclose(
+            np.sum(economic_data_aggregated, axis=0),
+            np.sum(economic_data, axis=0),
+            equal_nan=True,
+        ):
+            raise ValueError(
+                "Region aggregation does not conserve the 57-region total: some JUSTICE "
+                "regions are not mapped to any macro-region. Check region_mapping_path."
+            )
 
         # Inclusive end-year slice (ensure 2100 is included if requested)
         start_idx = time_horizon.year_to_timestep(splice_start_year, timestep=timestep)
@@ -77,9 +97,10 @@ def aggregate_abated_emissions(
 def build_long_dataframe(
     base_path="data/temporary/NU_DATA/mmBorg/",
     model_output_dir=None,
-    region_mapping_path="data/input/12_regions.json",
+    region_mapping_path="data/input/12_regions_nu.json",
     rice_region_dict_path="data/input/rice50_regions_dict.json",
     years_of_interest=(2030, 2050, 2070, 2100),
+    similarity_threshold=0.0,
 ):
     """
     Build a long/tidy DataFrame with columns:
@@ -143,6 +164,7 @@ def build_long_dataframe(
                         splice_end_year=2100,  # inclusive in helper
                         data_timestep=5,
                         timestep=1,
+                        similarity_threshold=similarity_threshold,
                     )
 
                     # Select only desired years - Shape: (12, len(years_of_interest), samples)
