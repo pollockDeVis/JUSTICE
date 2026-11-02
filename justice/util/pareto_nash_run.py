@@ -61,13 +61,13 @@ def build_policy_bank_from_5row_csv(
         row = df.iloc[a]
         for i in range(n_agents):
             centers = np.array(
-                [row[f"center {i} {j}"] for j in range(centers_len)], dtype=np.float64
+                [row[f"center_{i}_{j}"] for j in range(centers_len)], dtype=np.float64
             )
             radii = np.array(
-                [row[f"radii {i} {j}"] for j in range(radii_len)], dtype=np.float64
+                [row[f"radii_{i}_{j}"] for j in range(radii_len)], dtype=np.float64
             )
             weights = np.array(
-                [row[f"weights {i} {j}"] for j in range(weights_len)], dtype=np.float64
+                [row[f"weights_{i}_{j}"] for j in range(weights_len)], dtype=np.float64
             )
             policy_bank[i, a, :] = np.concatenate([centers, radii, weights])
 

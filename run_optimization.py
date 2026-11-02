@@ -19,7 +19,6 @@ from solvers.emodps.rbf import RBF
 import numpy as np
 from ema_workbench import (
     Model,
-    Policy,
     RealParameter,
     ScalarOutcome,
     CategoricalParameter,
@@ -28,14 +27,9 @@ from ema_workbench import (
     SequentialEvaluator,
     MPIEvaluator,
     Constant,
-    Scenario,
-    perform_experiments,
+    Sample,
 )
-from ema_workbench.em_framework.optimization import (
-    ArchiveLogger,
-    EpsilonProgress,
-    EpsNSGAII,
-)
+from platypus import EpsNSGAII
 
 from justice.util.EMA_model_wrapper import (
     model_wrapper_emodps,
@@ -298,12 +292,12 @@ def run_optimization_adaptive(
     centers_shape = n_rbfs * n_inputs
     weights_shape = len(data_loader.REGION_LIST) * n_rbfs
 
-    centers = [RealParameter(f"center {i}", -1.0, 1.0) for i in range(centers_shape)]
+    centers = [RealParameter(f"center_{i}", -1.0, 1.0) for i in range(centers_shape)]
     radii = [
-        RealParameter(f"radii {i}", SMALL_NUMBER, 1.0) for i in range(centers_shape)
+        RealParameter(f"radii_{i}", SMALL_NUMBER, 1.0) for i in range(centers_shape)
     ]
     weights = [
-        RealParameter(f"weights {i}", SMALL_NUMBER, 1.0) for i in range(weights_shape)
+        RealParameter(f"weights_{i}", SMALL_NUMBER, 1.0) for i in range(weights_shape)
     ]
     model.levers = centers + radii + weights
 
@@ -316,7 +310,7 @@ def run_optimization_adaptive(
         ),
     ]
 
-    reference_scenario = Scenario("reference", ssp_rcp_scenario=reference_index)
+    reference_scenario = Sample("reference", ssp_rcp_scenario=reference_index)
 
     filename = f"{social_welfare_function.value[1]}_{nfe}_{seed}.tar.gz"
     timestamp = datetime.datetime.now().strftime("%Y_%m")  # _%d_%H_%M_%S
@@ -332,18 +326,6 @@ def run_optimization_adaptive(
     os.makedirs(directory_name, exist_ok=True)
 
     rank = _mpi_rank()
-    if rank == 0:
-        convergence = [
-            ArchiveLogger(
-                directory_name,
-                [lever.name for lever in model.levers],
-                [outcome.name for outcome in model.outcomes],
-                base_filename=filename,
-            ),
-            EpsilonProgress(),
-        ]
-    else:
-        convergence = []
 
     if optimizer == Optimizer.EpsNSGAII:
         algorithm_class = EpsNSGAII
@@ -368,7 +350,8 @@ def run_optimization_adaptive(
                 nfe=nfe,
                 epsilons=epsilons,
                 reference=reference_scenario,
-                convergence=convergence,
+                filename=filename,
+                directory=directory_name,
                 population_size=population_size,
                 algorithm=algorithm_class,
             )
@@ -379,7 +362,8 @@ def run_optimization_adaptive(
                 nfe=nfe,
                 epsilons=epsilons,
                 reference=reference_scenario,
-                convergence=convergence,
+                filename=filename,
+                directory=directory_name,
                 population_size=population_size,
                 algorithm=algorithm_class,
             )
@@ -390,7 +374,8 @@ def run_optimization_adaptive(
                 nfe=nfe,
                 epsilons=epsilons,
                 reference=reference_scenario,
-                convergence=convergence,
+                filename=filename,
+                directory=directory_name,
                 population_size=population_size,
                 algorithm=algorithm_class,
             )
@@ -524,15 +509,15 @@ def run_optimization_momadps(
     levers = []
     for macro_idx in range(n_macro_regions):
         levers.extend(
-            RealParameter(f"center {macro_idx} {i}", -1.0, 1.0)
+            RealParameter(f"center_{macro_idx}_{i}", -1.0, 1.0)
             for i in range(centers_len)
         )
         levers.extend(
-            RealParameter(f"radii {macro_idx} {i}", SMALL_NUMBER, 1.0)
+            RealParameter(f"radii_{macro_idx}_{i}", SMALL_NUMBER, 1.0)
             for i in range(radii_len)
         )
         levers.extend(
-            RealParameter(f"weights {macro_idx} {i}", SMALL_NUMBER, 1.0)
+            RealParameter(f"weights_{macro_idx}_{i}", SMALL_NUMBER, 1.0)
             for i in range(weights_len)
         )
     model.levers = levers
@@ -570,7 +555,7 @@ def run_optimization_momadps(
         ),
     ]
 
-    reference_scenario = Scenario(
+    reference_scenario = Sample(
         "reference", ssp_rcp_scenario=reference_ssp_rcp_scenario_index
     )
 
@@ -589,15 +574,6 @@ def run_optimization_momadps(
     rank = _mpi_rank()
     lever_names = [lever.name for lever in model.levers]
     outcome_names = [outcome.name for outcome in model.outcomes]
-    if rank == 0:
-        convergence = [
-            ArchiveLogger(
-                directory_name, lever_names, outcome_names, base_filename=filename
-            ),
-            EpsilonProgress(),
-        ]
-    else:
-        convergence = []
 
     optimizer_map = {
         Optimizer.EpsNSGAII: EpsNSGAII,
@@ -628,7 +604,8 @@ def run_optimization_momadps(
             nfe=nfe,
             epsilons=epsilons,
             reference=reference_scenario,
-            convergence=convergence,
+            filename=filename,
+            directory=directory_name,
             population_size=population_size,
             algorithm=algorithm_class,
         )
@@ -768,10 +745,10 @@ def run_single_agent_momadps(
     for macro_idx in range(n_macro_regions):
         action_row = policy_bank_df.iloc[actions[macro_idx]]
         for i in range(centers_len):
-            fixed_centers[macro_idx, i] = action_row[f"center {macro_idx} {i}"]
-            fixed_radii[macro_idx, i] = action_row[f"radii {macro_idx} {i}"]
+            fixed_centers[macro_idx, i] = action_row[f"center_{macro_idx}_{i}"]
+            fixed_radii[macro_idx, i] = action_row[f"radii_{macro_idx}_{i}"]
         for i in range(weights_len):
-            fixed_weights[macro_idx, i] = action_row[f"weights {macro_idx} {i}"]
+            fixed_weights[macro_idx, i] = action_row[f"weights_{macro_idx}_{i}"]
 
     model.constants = [
         Constant("n_regions", n_regions),
@@ -814,14 +791,14 @@ def run_single_agent_momadps(
 
     levers = []
     for i in range(centers_len):
-        levers.append(RealParameter(f"center {variable_macro_index} {i}", -1.0, 1.0))
+        levers.append(RealParameter(f"center_{variable_macro_index}_{i}", -1.0, 1.0))
     for i in range(radii_len):
         levers.append(
-            RealParameter(f"radii {variable_macro_index} {i}", SMALL_NUMBER, 1.0)
+            RealParameter(f"radii_{variable_macro_index}_{i}", SMALL_NUMBER, 1.0)
         )
     for i in range(weights_len):
         levers.append(
-            RealParameter(f"weights {variable_macro_index} {i}", SMALL_NUMBER, 1.0)
+            RealParameter(f"weights_{variable_macro_index}_{i}", SMALL_NUMBER, 1.0)
         )
     model.levers = levers
 
@@ -834,7 +811,7 @@ def run_single_agent_momadps(
         ScalarOutcome("fraction_above_threshold", kind=ScalarOutcome.MINIMIZE),
     ]
 
-    reference_scenario = Scenario(
+    reference_scenario = Sample(
         "reference", ssp_rcp_scenario=reference_ssp_rcp_scenario_index
     )
 
@@ -852,17 +829,9 @@ def run_single_agent_momadps(
     os.makedirs(directory_name, exist_ok=True)
 
     rank = _mpi_rank()
+
     lever_names = [lever.name for lever in model.levers]
     outcome_names = [outcome.name for outcome in model.outcomes]
-    if rank == 0:
-        convergence = [
-            ArchiveLogger(
-                directory_name, lever_names, outcome_names, base_filename=filename
-            ),
-            EpsilonProgress(),
-        ]
-    else:
-        convergence = []
 
     set_ema_context(
         model=model,
@@ -884,7 +853,8 @@ def run_single_agent_momadps(
             nfe=nfe,
             epsilons=epsilons,
             reference=reference_scenario,
-            convergence=convergence,
+            filename=filename,
+            directory=directory_name,
             population_size=population_size,
             algorithm=algorithm_class,
         )
@@ -918,7 +888,7 @@ def build_random_policy(model, seed=1234):
     for lever in model.levers:
         low, high = lever.lower_bound, lever.upper_bound
         policy_data[lever.name] = rng.uniform(low, high)
-    return Policy("random_policy", **policy_data)
+    return Sample("random_policy", **policy_data)
 
 
 def setup_model_from_config(config_path, mapping_base_path="data/input"):
@@ -1015,15 +985,15 @@ def setup_model_from_config(config_path, mapping_base_path="data/input"):
     levers = []
     for macro_idx in range(n_macro_regions):
         levers.extend(
-            RealParameter(f"center {macro_idx} {i}", -1.0, 1.0)
+            RealParameter(f"center_{macro_idx}_{i}", -1.0, 1.0)
             for i in range(centers_len)
         )
         levers.extend(
-            RealParameter(f"radii {macro_idx} {i}", SMALL_NUMBER, 1.0)
+            RealParameter(f"radii_{macro_idx}_{i}", SMALL_NUMBER, 1.0)
             for i in range(radii_len)
         )
         levers.extend(
-            RealParameter(f"weights {macro_idx} {i}", SMALL_NUMBER, 1.0)
+            RealParameter(f"weights_{macro_idx}_{i}", SMALL_NUMBER, 1.0)
             for i in range(weights_len)
         )
     model.levers = levers
