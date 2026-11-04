@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 801.714 548.082">
+  <defs>
+    <style>
+      /* LIGHT MODE (default) */
+      .cls-1 {
+        stroke-dasharray: 8.572;
+        stroke-linejoin: round;
+      }
+    
+      .cls-1, .cls-2, .cls-3 {
+        stroke-width: 1.714px;
+      }
+    
+      .cls-1, .cls-2, .cls-3, .cls-4 {
+        fill: none;
+        stroke: #000; /* lines */
+      }
+
+      polygon {
+        fill: #000;
+      }
+    
+      .cls-5 {
+        font-family: OptimaNovaLTPro-Black, 'Optima nova LT Pro';
+        font-size: 19px;
+        font-weight: 800;
+      }
+    
+      .cls-2 {
+        stroke-miterlimit: 5;
+      }
+    
+      .cls-3, .cls-4 {
+        stroke-miterlimit: 10;
+      }
+    
+      .cls-8, .cls-6 {
+        font-family: Menlo-Regular, Menlo;
+        font-size: 18.859px;
+      }
+    
+      .cls-4 {
+        stroke-width: 3.429px;
+      }
+      
+      .cls-5, .cls-6, .cls-8 {
+        fill: #000;
+      }
+
+      /* DARK MODE */
+      @media (prefers-color-scheme: dark) {
+        .cls-1, .cls-2, .cls-3, .cls-4 {
+          stroke: #ffffff; /* lines become white */
+        }
+
+        .cls-5, .cls-6, .cls-8 {
+          fill: #ffffff;
+        }
+
+        polygon {
+          fill: #ffffff;
+        }
+
+
+      
+    
+      }
+    </style>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <rect class="cls-1" x="526.544" y="1.187" width="274.313" height="546.038"/>
+    <rect class="cls-1" x=".857" y="188.154" width="274.313" height="171.445"/>
+    <rect class="cls-1" x=".857" y=".857" width="274.313" height="171.445"/>
+    <rect class="cls-1" x=".857" y="375.45" width="274.313" height="171.445"/>
+    <g>
+      <rect class="cls-2" x="46.243" y="242.072" width="177.096" height="80.753" rx="8.745" ry="8.745"/>
+      <g>
+        <rect class="cls-3" x="77.603" y="225.029" width="34.289" height="17.145"/>
+        <rect class="cls-3" x="157.689" y="224.928" width="34.289" height="17.145"/>
+      </g>
+    </g>
+    <g>
+      <rect class="cls-2" x="46.243" y="429.369" width="177.096" height="80.753" rx="8.745" ry="8.745"/>
+      <g>
+        <rect class="cls-3" x="77.603" y="412.325" width="34.289" height="17.145"/>
+        <rect class="cls-3" x="157.689" y="412.224" width="34.289" height="17.145"/>
+      </g>
+    </g>
+    <g>
+      <rect class="cls-2" x="46.243" y="54.776" width="177.096" height="80.753" rx="8.745" ry="8.745"/>
+      <g>
+        <rect class="cls-3" x="77.603" y="37.732" width="34.289" height="17.145"/>
+        <rect class="cls-3" x="157.689" y="37.631" width="34.289" height="17.145"/>
+      </g>
+    </g>
+    <g>
+      <rect class="cls-2" x="313.493" y="242.072" width="177.096" height="80.753" rx="8.745" ry="8.745"/>
+      <g>
+        <rect class="cls-3" x="344.853" y="225.029" width="34.289" height="17.145"/>
+        <rect class="cls-3" x="424.94" y="224.928" width="34.289" height="17.145"/>
+      </g>
+    </g>
+    <g>
+      <rect class="cls-2" x="580.744" y="63.297" width="177.096" height="80.753" rx="8.745" ry="8.745"/>
+      <g>
+        <rect class="cls-3" x="612.104" y="46.254" width="34.289" height="17.145"/>
+        <rect class="cls-3" x="692.19" y="46.153" width="34.289" height="17.145"/>
+      </g>
+    </g>
+    <g>
+      <rect class="cls-2" x="580.744" y="182.481" width="177.096" height="80.753" rx="8.745" ry="8.745"/>
+      <g>
+        <rect class="cls-3" x="612.104" y="165.437" width="34.289" height="17.145"/>
+        <rect class="cls-3" x="692.19" y="165.336" width="34.289" height="17.145"/>
+      </g>
+    </g>
+    <g>
+      <rect class="cls-2" x="580.744" y="301.664" width="177.096" height="80.753" rx="8.745" ry="8.745"/>
+      <g>
+        <rect class="cls-3" x="612.104" y="284.621" width="34.289" height="17.145"/>
+        <rect class="cls-3" x="692.19" y="284.519" width="34.289" height="17.145"/>
+      </g>
+    </g>
+    <g>
+      <rect class="cls-2" x="580.744" y="420.847" width="177.096" height="80.753" rx="8.745" ry="8.745"/>
+      <g>
+        <rect class="cls-3" x="612.104" y="403.804" width="34.289" height="17.145"/>
+        <rect class="cls-3" x="692.19" y="403.702" width="34.289" height="17.145"/>
+      </g>
+    </g>
+    <g>
+      <line class="cls-4" x1="223.338" y1="282.449" x2="301.19" y2="282.449"/>
+      <polygon points="298.689 290.998 313.493 282.449 298.689 273.9 298.689 290.998"/>
+    </g>
+    <g>
+      <line class="cls-4" x1="134.791" y1="135.529" x2="134.791" y2="229.769"/>
+      <polygon points="126.242 227.268 134.791 242.072 143.339 227.268 126.242 227.268"/>
+    </g>
+    <g>
+      <line class="cls-4" x1="134.791" y1="322.825" x2="134.791" y2="417.065"/>
+      <polygon points="126.242 414.564 134.791 429.369 143.339 414.564 126.242 414.564"/>
+    </g>
+    <g>
+      <path class="cls-4" d="M402.041,242.173V112.297c0-9.43-7.715-17.145-17.145-17.145h-149.255"/>
+      <polygon points="238.143 86.603 223.338 95.152 238.143 103.701 238.143 86.603"/>
+    </g>
+    <g>
+      <path class="cls-4" d="M402.041,322.825v129.877c0,9.43-7.715,17.14-17.145,17.135l-149.255-.085"/>
+      <polygon points="238.148 461.205 223.338 469.745 238.138 478.302 238.148 461.205"/>
+    </g>
+    <g>
+      <line class="cls-4" x1="490.589" y1="282.449" x2="514.241" y2="282.449"/>
+      <polygon points="511.74 290.998 526.544 282.449 511.74 273.9 511.74 290.998"/>
+    </g>
+    <text class="cls-5" transform="translate(8.724 22.553)"><tspan x="0" y="0">Damage</tspan></text>
+    <text class="cls-5" transform="translate(8.724 209.998)"><tspan x="0" y="0">Economy</tspan></text>
+    <text class="cls-5" transform="translate(8.847 396.337)"><tspan x="0" y="0">Abatement</tspan></text>
+    <text class="cls-5" transform="translate(541.009 22.553)"><tspan x="0" y="0">Social </tspan><tspan class="cls-9" x="56.752" y="0">W</tspan><tspan x="75.354" y="0">elfa</tspan><tspan class="cls-11" x="107.614" y="0">r</tspan><tspan x="115.139" y="0">e </tspan><tspan class="cls-10" x="129.236" y="0">F</tspan><tspan class="cls-7" x="138.053" y="0">unc</tspan><tspan class="cls-12" x="170.713" y="0">t</tspan><tspan x="178.636" y="0">ion</tspan></text>
+    <text class="cls-5" transform="translate(298.961 209.998)"><tspan x="0" y="0">Climate</tspan></text>
+    <text class="cls-6" transform="translate(94.747 103.674)"><tspan x="0" y="0">Kalkuhl</tspan></text>
+    <text class="cls-6" transform="translate(94.747 289.299)"><tspan x="0" y="0">RICE50+</tspan></text>
+    <text class="cls-6" transform="translate(85.284 473.73)"><tspan x="0" y="0">EnerData</tspan></text>
+    <text class="cls-6" transform="translate(379.141 289.588)"><tspan x="0" y="0">FaIR</tspan></text>
+    <text class="cls-8" transform="translate(601.849 111.537)"><tspan x="0" y="0">Utilitarian</tspan></text>
+    <text class="cls-8" transform="translate(605.142 225.028)"><tspan x="0" y="0">Prioritarian</tspan></text>
+    <text class="cls-8" transform="translate(584.063 346.158)"><tspan x="0" y="0">Sufficientarian</tspan></text>
+    <text class="cls-8" transform="translate(603.207 469.746)"><tspan x="0" y="0">Egalitarian</tspan></text>
+    <rect class="cls-1" x="291.53" y="188.867" width="213.048" height="171.445"/>
+  </g>
+</svg>
