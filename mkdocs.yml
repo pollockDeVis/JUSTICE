@@ -1,0 +1,83 @@
+site_name: JUSTICE
+site_description: >-
+  An open-source integrated assessment modelling framework for analysing the
+  policy implications of modelling assumptions.
+site_url: https://pollockdevis.github.io/JUSTICE/
+repo_url: https://github.com/pollockDeVis/JUSTICE
+repo_name: pollockDeVis/JUSTICE
+docs_dir: docs
+
+# Older pages that stay in the repository until their content moves into the
+# outline below. The images in docs/diagrams/ are still published.
+exclude_docs: |
+  rl_docs.md
+  diagrams/*.md
+
+# A link to a heading that is gone warns, so `mkdocs build --strict` fails on it.
+validation:
+  anchors: warn
+
+theme:
+  name: material
+  icon:
+    logo: material/scale-balance
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - navigation.footer
+    - toc.follow
+    - content.code.copy
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Model:
+      - model/index.md
+      - Economy: model/economy.md
+      - Emissions: model/emissions.md
+      - Abatement: model/abatement.md
+      - Climate: model/climate.md
+      - Damages: model/damages.md
+      - Welfare: model/welfare.md
+      - Objectives: model/objectives.md
+  - Optimisation:
+      - MOEA: optimisation/moea.md
+      - MOMARL: optimisation/momarl.md
+  - Analysis: analysis.md
+  - Reference:
+      - Regions: reference/regions.md
+      - API reference: reference/api.md
+  - Development: development.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

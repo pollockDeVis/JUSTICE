@@ -1,0 +1,4 @@
+# Documentation build dependencies (pinned). Kept out of pyproject.toml until
+# the justice-v2 tooling is settled, so poetry.lock is not affected.
+mkdocs==1.6.1
+mkdocs-material==9.8.0
