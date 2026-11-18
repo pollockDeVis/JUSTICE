@@ -2,6 +2,7 @@
 This module contains methods to visualize different kinds of output data from the JUSTICE model.
 """
 
+from __future__ import annotations
 from ema_workbench.analysis import plotting, Density, parcoords
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -27,6 +28,7 @@ import plotly.graph_objects as go
 import re
 from typing import Dict, List
 from typing import Iterable
+from typing import Sequence, Mapping
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 import matplotlib.colors as mcolors
@@ -36,6 +38,9 @@ from matplotlib.colors import LinearSegmentedColormap
 import plotly.colors as pc
 from matplotlib.patches import PathPatch
 import matplotlib.path as mpath
+from justice.util.regional_configuration import build_macro_region_mapping
+import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
 
 # =============================================================================
 
@@ -536,30 +541,32 @@ def plot_grouped_stacked_feature_importance_from_csvs(
     sns.set_theme(style="white")
 
     if group_map:
-        group_order = list(group_map.keys())
-        label_map = {
-            group: f"{group} ({', '.join(group_map[group])})" for group in group_order
+        # Reverse map: feature → group name
+        feat_to_group = {
+            feat: group for group, feats in group_map.items() for feat in feats
         }
-        group_colors = group_colors if group_colors is not None else GROUP_COLORS
+        group_feat_counts = {group: len(feats) for group, feats in group_map.items()}
 
-        def aggregate_by_group(df_row):
-            row = {"Year": df_row["Year"]}
-            for group, feats in group_map.items():
-                missing = [f for f in feats if f not in df_row.index]
-                if missing:
-                    raise KeyError(
-                        f"Missing features {missing} required for group '{group}'"
-                    )
-                row[group] = df_row[list(feats)].sum()
-            return row
+        # Preserve feature_order for stacking; use feature_colors for exact colors
+        sub_feature_order = [f for f in feature_order if f in feat_to_group]
+        sub_feature_colors = {
+            feat: feature_colors.get(feat, "#999999") for feat in sub_feature_order
+        }
+        sub_legend_labels = {
+            feat: (
+                f"{feat_to_group[feat]} — {feat}"
+                if group_feat_counts[feat_to_group[feat]] > 1
+                else feat_to_group[feat]
+            )
+            for feat in sub_feature_order
+        }
 
         def transform_df(df_plot):
-            records = [aggregate_by_group(row) for _, row in df_plot.iterrows()]
             return (
-                pd.DataFrame(records),
-                group_order,
-                group_colors,
-                label_map,
+                df_plot,
+                sub_feature_order,
+                sub_feature_colors,
+                sub_legend_labels,
                 group_map,
             )
 
@@ -5515,9 +5522,6 @@ def _interp_hex_colors(colors, t):
     return f"rgb({r},{g},{b})"
 
 
-
-
-
 def plot_alluvial_plotly(
     df,
     objectives,
@@ -5695,8 +5699,6 @@ def scale_and_orient_objectives(
             out[obj] = 1.0 - out[obj]
 
     return out
-
-
 
 
 def curved_parallel_coordinates_clustered(
@@ -5894,9 +5896,6 @@ def curved_parallel_coordinates_clustered(
     return df_scaled, df_clustered, fig, ax
 
 
-
-
-
 def plot_colorbar_standalone(
     df: pd.DataFrame,
     color_by: str,
@@ -5929,16 +5928,16 @@ def plot_colorbar_standalone(
 
     # --- Standalone figure with a single colorbar ---
     fig, ax = plt.subplots(figsize=figsize)
-    ax.set_visible(False)                         # hide the axes entirely
+    ax.set_visible(False)  # hide the axes entirely
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])                              # required by matplotlib
+    sm.set_array([])  # required by matplotlib
 
     cbar = fig.colorbar(
         sm,
         ax=ax,
         orientation=orientation,
-        fraction=1.0,           # fill the whole figure
+        fraction=1.0,  # fill the whole figure
         pad=0.0,
     )
     cbar.set_label(label if label is not None else color_by, fontsize=12)
@@ -5950,3 +5949,483 @@ def plot_colorbar_standalone(
     plt.show()
 
     return fig, cbar
+
+
+def plot_region_choropleth(
+    *,
+    region_map: str | Path,
+    projection: str = "natural earth",
+    colourmap: Sequence[str] | None = None,
+    path_to_output: str | Path,
+    plot_saving_format: str = "svg",
+    saving: bool = False,
+    fig_title: str | None = None,
+    show_legend: bool = True,
+    width: int = 1000,
+    height: int = 600,
+    pretty_region_names: Mapping[str, str] | None = None,
+) -> go.Figure:
+    """
+    Draw a choropleth that colours every region (group of countries) with a single discrete colour.
+    """
+    path = Path(region_map)
+    if not path.is_file():
+        raise FileNotFoundError(f"region_map not found: {path}")
+
+    with path.open("r", encoding="utf-8") as fh:
+        region_definition = json.load(fh)
+
+    if not isinstance(region_definition, dict):
+        raise ValueError(
+            "region_map JSON must be an object mapping region names to lists of ISO3 codes."
+        )
+
+    records = []
+    for region_name, members in region_definition.items():
+        if not isinstance(members, Sequence):
+            raise ValueError(
+                "Each region entry must map to a sequence of ISO3 country identifiers."
+            )
+        for iso_code in members:
+            records.append({"region": region_name, "iso_alpha": iso_code})
+
+    if not records:
+        raise ValueError("No regions found in the provided JSON map.")
+
+    df = pd.DataFrame.from_records(records)
+    df["region"] = df["region"].astype(str)
+    df = df[df["iso_alpha"].str.upper() != "ATA"]  # Exclude Antarctica
+
+    pretty_region_names = pretty_region_names or {}
+    df["pretty_region"] = df["region"].map(pretty_region_names).fillna(df["region"])
+
+    unique_pretty_labels = df["pretty_region"].unique()
+    palette = list(colourmap) if colourmap else px.colors.qualitative.Plotly
+    if not palette:
+        palette = px.colors.qualitative.Plotly
+
+    color_discrete_map = {
+        label: palette[i % len(palette)] for i, label in enumerate(unique_pretty_labels)
+    }
+
+    fig = px.choropleth(
+        df,
+        locations="iso_alpha",
+        color="pretty_region",
+        color_discrete_map=color_discrete_map,
+        projection=projection,
+        scope="world",
+        height=height,
+        width=width,
+        title=fig_title or "Region choropleth",
+        hover_name="pretty_region",  # bold title in hover
+        hover_data={
+            "iso_alpha": True,  # show ISO code
+            "pretty_region": False,
+        },  # already shown via hover_name
+        labels={"iso_alpha": "Country code", "pretty_region": "Region"},
+    )
+
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=40, b=0),
+        template="plotly_white",
+        showlegend=show_legend,
+    )
+    fig.update_traces(
+        marker_line_width=0,
+        marker_line_color="white",
+    )
+
+    if saving:
+        output_dir = Path(path_to_output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        filename = output_dir / f"region_choropleth.{plot_saving_format}"
+        fig.write_image(str(filename))
+
+    return fig
+
+
+def plot_abatement_damage_costs(
+    profile_indices: List[int],
+    data_dir: str = "data/temporary/MOMA_DATA/200k/nash_profile_reruns",
+    output_path: str = "data/temporary/MOMA_DATA/200k/plots",
+    config_path: str = "analysis/momadps_config.json",
+    mapping_base_path: str = "data/input",
+    pretty_names: Optional[dict] = None,
+    color_abatement: str = "#2f8ac4",
+    color_damage: str = "#dc503c",
+    band_alpha: float = 0.20,
+    median_linewidth: float = 2.0,
+    uncertainty_lower_percentile: float = 0.0,
+    uncertainty_upper_percentile: float = 100.0,
+    height_in: float = 6.0,
+    width_in: float = 10.0,
+    visualization_start_year: int = 2015,
+    visualization_end_year: int = 2300,
+    fontsize: int = 14,
+    xaxis_label: str = "Year",
+    yaxis_label: str = "Share of Gross Output (%)",
+    yaxis_lower_limit: float = 0.0,
+    yaxis_upper_limit: float = 30.0,
+    show_legend: bool = True,
+    saving: bool = True,
+) -> None:
+    """
+    Plots damage cost and abatement cost as % of gross economic output,
+    each shown as a transparent min/max envelope with a solid median line.
+
+    Design (simple):
+        - damage  / gross * 100  → red band + red median line
+        - abatement / gross * 100 → blue band + blue median line
+
+    Fractions are computed per ensemble member BEFORE taking percentiles,
+    so each member's fractions are individually well-defined relative to gross.
+
+    Parameters
+    ----------
+    profile_indices             : Row indices in pareto_nash_profiles.csv to plot.
+    data_dir                    : Directory where .npy files are saved.
+    output_path                 : Directory to save output SVG files.
+    config_path                 : Path to momadps_config.json.
+    mapping_base_path           : Folder with R5_regions.json and rice50_regions_dict.json.
+    pretty_names                : Dict mapping R5 region keys to display names.
+    color_abatement             : Hex color for abatement cost.
+    color_damage                : Hex color for economic damage.
+    band_alpha                  : Transparency of min/max bands (0–1).
+    median_linewidth            : Width of solid median lines.
+    uncertainty_lower_percentile: Lower percentile for band (0.0 = min).
+    uncertainty_upper_percentile: Upper percentile for band (100.0 = max).
+    height_in                   : Figure height in inches.
+    width_in                    : Figure width in inches.
+    visualization_start_year    : First year shown on x-axis.
+    visualization_end_year      : Last year shown on x-axis.
+    fontsize                    : Font size for all text.
+    xaxis_label                 : X-axis label.
+    yaxis_label                 : Y-axis label.
+    yaxis_lower_limit           : Y-axis lower bound.
+    yaxis_upper_limit           : Y-axis upper bound.
+    show_legend                 : Whether to show the legend.
+    saving                      : If True, saves as SVG.
+    """
+
+    if pretty_names is None:
+        pretty_names = {
+            "R5ASIA": "Asia",
+            "R5LAM": "Latin America",
+            "R5MAF": "Middle East & Africa",
+            "R5OECD": "OECD & EU",
+            "R5REF": "Reforming Economies",
+        }
+
+    data_dir = Path(data_dir)
+    output_path = Path(output_path)
+
+    sns.set_theme(style="white", font_scale=fontsize / 12)
+
+    # ── LOAD CONFIG & TIME HORIZON ────────────────────────────────────────────
+    with open(config_path) as f:
+        config = json.load(f)
+
+    time_horizon = TimeHorizon(
+        start_year=config["start_year"],
+        end_year=config["end_year"],
+        data_timestep=config["data_timestep"],
+        timestep=config["timestep"],
+    )
+    years = np.array(time_horizon.model_time_horizon)
+    year_mask = (years >= visualization_start_year) & (years <= visualization_end_year)
+    years_vis = years[year_mask]
+
+    # ── LOAD MACRO REGION MAPPING ─────────────────────────────────────────────
+    data_loader = DataLoader()
+    region_list = data_loader.REGION_LIST
+
+    region_to_macro, macro_region_names = build_macro_region_mapping(
+        region_list=region_list,
+        r5_json_path=Path(mapping_base_path) / "R5_regions.json",
+        rice50_json_path=Path(mapping_base_path) / "rice50_regions_dict.json",
+    )
+    n_macro = len(macro_region_names)
+
+    # ── HELPERS ───────────────────────────────────────────────────────────────
+    def to_macro_ensemble(arr):
+        """(n_regions, T, E) → (n_macro, T, E): sum regions within each macro."""
+        out = np.zeros((n_macro, arr.shape[1], arr.shape[2]))
+        for m in range(n_macro):
+            out[m] = arr[region_to_macro == m].sum(axis=0)
+        return out
+
+    def get_stats(frac_te):
+        """
+        frac_te: (T_vis, E)
+        Returns median, lo, hi — each (T_vis,).
+        Fractions already computed per member before calling this.
+        """
+        median = np.median(frac_te, axis=1)
+        lo = np.percentile(frac_te, uncertainty_lower_percentile, axis=1)
+        hi = np.percentile(frac_te, uncertainty_upper_percentile, axis=1)
+        return median, lo, hi
+
+    # ── VERIFICATION ──────────────────────────────────────────────────────────
+    print("=" * 55)
+    print("VERIFICATION: net + damage + abatement ≈ gross")
+    print("=" * 55)
+    for idx in profile_indices:
+        net = np.load(data_dir / f"net_economic_output_nash_profile_{idx}.npy")
+        damage = np.load(data_dir / f"economic_damage_nash_profile_{idx}.npy")
+        abat = np.load(data_dir / f"abatement_cost_nash_profile_{idx}.npy")
+        gross = np.load(data_dir / f"gross_economic_output_nash_profile_{idx}.npy")
+        rel_err = np.max(np.abs(net + damage + abat - gross) / (np.abs(gross) + 1e-12))
+        status = "✓ PASS" if rel_err < 1e-4 else "✗ FAIL"
+        print(f"  Profile {idx:>3}: max_rel_err={rel_err:.2e}  {status}")
+    print()
+
+    # ── PLOTTING ──────────────────────────────────────────────────────────────
+    if saving:
+        output_path.mkdir(parents=True, exist_ok=True)
+
+    for idx in profile_indices:
+        gross = np.load(data_dir / f"gross_economic_output_nash_profile_{idx}.npy")
+        damage = np.load(data_dir / f"economic_damage_nash_profile_{idx}.npy")
+        abat = np.load(data_dir / f"abatement_cost_nash_profile_{idx}.npy")
+
+        # (n_macro, T_vis, E)
+        gross_e = to_macro_ensemble(gross)[:, year_mask, :]
+        damage_e = to_macro_ensemble(damage)[:, year_mask, :]
+        abat_e = to_macro_ensemble(abat)[:, year_mask, :]
+
+        # Fraction per ensemble member independently — shape (n_macro, T_vis, E)
+        dmg_frac = (damage_e / (gross_e + 1e-12)) * 100.0
+        abt_frac = (abat_e / (gross_e + 1e-12)) * 100.0
+
+        for m, region_key in enumerate(macro_region_names):
+            region_label = pretty_names.get(region_key, region_key)
+
+            # Stats per component: median, lo, hi — each (T_vis,)
+            dmg_med, dmg_lo, dmg_hi = get_stats(dmg_frac[m])
+            abt_med, abt_lo, abt_hi = get_stats(abt_frac[m])
+
+            fig, ax = plt.subplots(figsize=(width_in, height_in))
+
+            # ── Damage: band then median line ─────────────────────────────
+            ax.fill_between(
+                years_vis,
+                dmg_lo,
+                dmg_hi,
+                color=color_damage,
+                alpha=band_alpha,
+                linewidth=0,
+            )
+            ax.plot(years_vis, dmg_med, color=color_damage, linewidth=median_linewidth)
+
+            # ── Abatement: band then median line ──────────────────────────
+            ax.fill_between(
+                years_vis,
+                abt_lo,
+                abt_hi,
+                color=color_abatement,
+                alpha=band_alpha,
+                linewidth=0,
+            )
+            ax.plot(
+                years_vis, abt_med, color=color_abatement, linewidth=median_linewidth
+            )
+
+            # ── Axes & style ──────────────────────────────────────────────
+            ax.set_xlim(visualization_start_year, visualization_end_year)
+            ax.set_ylim(yaxis_lower_limit, yaxis_upper_limit)
+            ax.set_xlabel(xaxis_label, fontsize=fontsize)
+            ax.set_ylabel(yaxis_label, fontsize=fontsize)
+            ax.set_title(
+                f"Damage & Abatement Cost — {region_label}\n"
+                f"Nash Profile {idx}  |  "
+                f"Bands: P{uncertainty_lower_percentile:.0f}–P{uncertainty_upper_percentile:.0f}",
+                fontsize=fontsize,
+            )
+            ax.tick_params(axis="both", labelsize=fontsize - 2, direction="out")
+            ax.spines[["top", "right"]].set_visible(False)
+            ax.spines[["left", "bottom"]].set_linewidth(1.0)
+
+            # ── Legend ────────────────────────────────────────────────────
+            if show_legend:
+                band_dmg = mpatches.Patch(
+                    color=color_damage, alpha=band_alpha, label="Damage (min–max band)"
+                )
+                line_dmg = mlines.Line2D(
+                    [],
+                    [],
+                    color=color_damage,
+                    linewidth=median_linewidth,
+                    label="Damage (median)",
+                )
+                band_abt = mpatches.Patch(
+                    color=color_abatement,
+                    alpha=band_alpha,
+                    label="Abatement (min–max band)",
+                )
+                line_abt = mlines.Line2D(
+                    [],
+                    [],
+                    color=color_abatement,
+                    linewidth=median_linewidth,
+                    label="Abatement (median)",
+                )
+                ax.legend(
+                    handles=[line_dmg, band_dmg, line_abt, band_abt],
+                    loc="upper center",
+                    bbox_to_anchor=(0.5, -0.15),
+                    ncol=2,
+                    frameon=False,
+                    fontsize=fontsize - 2,
+                )
+
+            plt.tight_layout()
+
+            if saving:
+                fname = f"cost_share_profile{idx}_{region_key}.svg"
+                fig.savefig(output_path / fname, format="svg", bbox_inches="tight")
+                print(f"Saved: {fname}")
+                plt.close(fig)
+            else:
+                plt.show()
+
+
+# ── private helper ────────────────────────────────────────────────────────────
+def _agent_columns(columns: Sequence[str], prefix: str, agent: int) -> list[str]:
+    """Return column names matching `<prefix> <agent> <index>`, sorted by index."""
+    pattern = re.compile(rf"^{re.escape(prefix)}\s+{agent}\s+(\d+)$")
+    matched = [(int(m.group(1)), col) for col in columns if (m := pattern.match(col))]
+    return [col for _, col in sorted(matched)]
+
+
+# ── public function ───────────────────────────────────────────────────────────
+def visualize_rbf_hyperparameters(
+    *,
+    filepath: str | Path,
+    agent: int,
+    row_index: int,
+    colorscale: str = "plasma",
+    outline_gap: float = 1.5,
+    fig_title: str | None = None,
+    background_color: str = "white",
+    width: int = 900,
+    height: int = 320,
+    saving: bool = False,
+    output_path: str | Path | None = None,
+    output_filename: str | None = None,
+    plot_saving_format: str = "svg",
+    show: bool = True,
+) -> go.Figure:
+    """
+    Visualise the center, radii, and weights RBF hyperparameters for one
+    agent–row combination as side-by-side uniform heatmap boxes.
+
+    Parameters
+    ----------
+    filepath : path to the reference-set CSV
+    agent : zero-based agent index
+    row_index : row in the CSV corresponding to the policy profile
+    colorscale : Plotly colorscale name
+    outline_gap : pixel gap between heatmap cells
+    fig_title : override the auto-generated figure title
+    background_color : paper/plot background colour string
+    width / height : figure dimensions in pixels
+    saving : write the figure to disk when True
+    output_path : directory to save into (required when saving=True)
+    output_filename : stem of the output file (auto-generated if None)
+    plot_saving_format : file extension, e.g. "svg", "png", "pdf"
+    show : call fig.show() before returning
+    """
+    path = Path(filepath)
+    if not path.is_file():
+        raise FileNotFoundError(f"Reference set not found: {path}")
+
+    df = pd.read_csv(path)
+
+    if not (0 <= row_index < len(df)):
+        raise IndexError(
+            f"row_index {row_index} out of bounds — data has {len(df)} rows."
+        )
+
+    row = df.iloc[row_index]
+    hyperparameter_types = ["center", "radii", "weights"]
+
+    columns_per_type = {
+        prefix: _agent_columns(df.columns, prefix, agent)
+        for prefix in hyperparameter_types
+    }
+
+    missing = [p for p, cols in columns_per_type.items() if not cols]
+    if missing:
+        raise ValueError(f"No columns found for {', '.join(missing)} (agent {agent}).")
+
+    max_cols = max(len(cols) for cols in columns_per_type.values())
+
+    panels: list[tuple[str, np.ndarray]] = []
+    for prefix in hyperparameter_types:
+        cols = columns_per_type[prefix]
+        values = pd.to_numeric(row[cols], errors="coerce").to_numpy(dtype=float)
+
+        if prefix == "center":
+            values = np.clip((values + 1) / 2, 0.0, 1.0)
+
+        padded = np.full(max_cols, np.nan, dtype=float)
+        padded[: len(values)] = values
+        panels.append((prefix.capitalize(), padded.reshape(1, -1)))
+
+    n_panels = len(panels)
+    fig = make_subplots(
+        rows=1,
+        cols=n_panels,
+        shared_yaxes=False,
+        horizontal_spacing=0.03,
+        subplot_titles=[title for title, _ in panels],
+        column_widths=[1.0 / n_panels] * n_panels,
+    )
+
+    for col_id, (_, matrix) in enumerate(panels, start=1):
+        fig.add_trace(
+            go.Heatmap(
+                z=matrix,
+                colorscale=colorscale,
+                zmin=0,
+                zmax=1,
+                hoverinfo="skip",
+                xgap=outline_gap,
+                ygap=outline_gap,
+                zsmooth=False,
+                showscale=(col_id == 1),
+            ),
+            row=1,
+            col=col_id,
+        )
+        fig.update_xaxes(
+            showticklabels=False,
+            range=[-0.5, max_cols - 0.5],
+            row=1,
+            col=col_id,
+        )
+        fig.update_yaxes(showticklabels=False, row=1, col=col_id)
+
+    fig.update_layout(
+        title=fig_title or f"Agent {agent} RBF hyperparameters (row {row_index})",
+        height=height,
+        width=width,
+        margin=dict(t=90, b=20, l=30, r=30),
+        template="plotly_white",
+        paper_bgcolor=background_color,
+        plot_bgcolor=background_color,
+    )
+
+    if saving:
+        if output_path is None:
+            raise ValueError("output_path must be provided when saving=True.")
+        out_dir = Path(output_path)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        stem = output_filename or f"rbf_agent{agent}_row{row_index}"
+        fig.write_image(str(out_dir / f"{stem}.{plot_saving_format}"))
+
+    if show:
+        fig.show()
+
+    return fig

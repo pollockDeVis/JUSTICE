@@ -1,7 +1,7 @@
 # JUSTICE Integrated Assessment Framework
 
 ![GitHub Actions build status](https://github.com/pollockDeVis/JUSTICE/actions/workflows/pytest.yml/badge.svg?event=push)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15710403.svg)](https://doi.org/10.5281/zenodo.15710403)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15145122.svg)](https://doi.org/10.5281/zenodo.15145122)
 
 <p align="center">
   <img title="JUSTICE Logo" alt="JUSTICE Logo" src="/docs/diagrams/JUSTICE LOGO.svg" width="400"/>
@@ -48,3 +48,38 @@ doi = {10.24963/ijcai.2025/1064},
 url = {https://doi.org/10.24963/ijcai.2025/1064},
 }
 ```
+
+
+### JUSTICE Region codes
+
+| Code | Region | Code | Region |
+|---|---|---|---|
+| `usa` | United States | `rsaf` | Sub-Saharan Africa |
+| `chn` | China | `rsas` | Rest of South Asia |
+| `nde` | India | `rcam` | Rest of Central America & Caribbean |
+| `rus` | Russia | `rjan57` | Pacific Islands |
+| `bra` | Brazil | `golf57` | Gulf Countries |
+| `zaf` | South Africa | `meme` | Middle East |
+| `aus` | Australia | `osea` | Rest of Southeast Asia |
+| `can` | Canada | `rsam` | Rest of South America |
+| `tur` | Turkey | `idn` | Indonesia |
+| `gbr` | United Kingdom | `mys` | Malaysia |
+| `fra` | France | `tha` | Thailand |
+| `rfa` | Germany | `vnm` | Vietnam |
+| `nor` | Norway | `jpn` | Japan |
+| `dnk` | Denmark | `cor` | South Korea |
+| `swe` | Sweden | `mex` | Mexico |
+| `fin` | Finland | `pol` | Poland |
+| `egy` | Egypt | `sui` | Switzerland |
+| `noan` | W. Sahara, Tunisia & Morocco | `arg` | Argentina |
+| `noap` | Libya & Algeria | `chl` | Chile |
+| `aut` | Austria | `bel` | Belgium |
+| `esp` | Spain | `grc` | Greece |
+| `irl` | Ireland | `ita` | Italy |
+| `nld` | Netherlands | `prt` | Portugal |
+| `bgr` | Bulgaria | `rcz` | Czechia |
+| `hun` | Hungary | `rom` | Romania |
+| `rsl` | Slovakia | `slo` | Slovenia |
+| `cro` | Croatia | `blt` | Baltic States |
+| `oeu` | Other European Countries | `ukr` | Ukraine |
+| `ris` | Former Soviet Union | | |

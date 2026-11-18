@@ -114,6 +114,4 @@ def reevaluate_policies_for_all_scenarios(
 
 if __name__ == "__main__":
 
-    reevaluate_policies_for_all_scenarios(
-        output_path="data/temporary/NU_DATA/mmBorg/"  # "/Volumes/justicedrive/NU_data_20_Oct/reevaluation/"
-    )
+    reevaluate_policies_for_all_scenarios(output_path="data/temporary/NU_DATA/mmBorg/")

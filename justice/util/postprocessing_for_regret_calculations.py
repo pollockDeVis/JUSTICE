@@ -72,22 +72,24 @@ def process_scenario_parallel(
 
 if __name__ == "__main__":
 
-    # Get  swf, ssp, base_dir from sys.argv or set default values
-    base_dir = sys.argv[1] if len(sys.argv) > 4 else "data/temporary/NU_DATA/mmBorg/"
+    base_dir = (
+        sys.argv[1] if len(sys.argv) > 1 else "data/temporary/NU_DATA/mmBorg/reproduce/"
+    )
     swf_input = (sys.argv[2] if len(sys.argv) > 2 else "PRIORITARIAN").upper()
     ssp_name = (sys.argv[3] if len(sys.argv) > 3 else "SSP1").upper()
 
     ssp = SSP[ssp_name]
-
     social_welfare_function = WelfareFunction[swf_input]
-
     scenario_list = ["SSP126", "SSP245", "SSP370", "SSP460", "SSP534"]
 
-    print(f"Selected Social Welfare Function: {social_welfare_function}, SSP: {ssp}")
+    # Absolute path for the final output
+    mapping_dir = Path(base_dir) / "mapping"
+    mapping_dir.mkdir(parents=True, exist_ok=True)
 
-    ########################################
+    print(f"Selected SWF: {social_welfare_function}, SSP: {ssp}")
+    print(f"Final output: {mapping_dir}")
 
-    # Step 1: Parallel Scenario Processing Block which produces welfare and temperature data for all policies and scenarios and ensemble members
+    # ── Step 1: Parallel scenario processing ──────────────────────────────────
     process_scenario_parallel(
         start_year=2015,
         end_year=2300,
@@ -98,14 +100,24 @@ if __name__ == "__main__":
         ssp=ssp,
         base_path=base_dir,
     )
-    ########################################
-    # Step 2: Generate Mapping from policy index to objective values
+
+    # ── Step 2: Generate mapping — save relative to data_root ─────────────────
+    # Writes to: {data_root}/mapping/mapping_{swf}.h5
+    data_root = Path(base_dir) / f"{social_welfare_function.value[1]}_{ssp.name}"
     mapping = generate_reference_set_policy_mapping(
         swf=social_welfare_function,
-        data_root=Path(base_dir + social_welfare_function.value[1] + "_" + ssp.name),
+        data_root=data_root,
         scenario_list=scenario_list,
         saving=True,
-        output_directory="mapping",
-        delete_loaded_files=True,  # Set to True to delete the loaded files after processing
+        output_directory="mapping",  # relative to data_root — safe
+        delete_loaded_files=True,
     )
-    ########################################
+
+    # ── Step 3: Move and rename to reproduce/mapping/ with SSP in filename ─────
+    src = data_root / "mapping" / f"mapping_{social_welfare_function.value[1]}.h5"
+    dst = mapping_dir / f"mapping_{social_welfare_function.value[1]}_{ssp_name}.h5"
+    if src.exists():
+        src.rename(dst)
+        print(f"✓ Saved → {dst}")
+    else:
+        print(f"✗ Expected file not found: {src}")
