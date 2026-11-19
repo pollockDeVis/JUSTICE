@@ -90,20 +90,25 @@ class EmissionControlConstraint:
                     emission_control_rate - self.previous_emission_control_rate
                 )
 
-                if np.any(annual_growth_rate > self.max_annual_growth_rate):
-                    mask_high_growth = annual_growth_rate > self.max_annual_growth_rate
-                    emission_control_rate[mask_high_growth] = (
-                        self.previous_emission_control_rate[mask_high_growth]
-                        + self.max_annual_growth_rate
-                    )
-                    self.constrained_emission_control_rate = emission_control_rate
+                # Apply the new rates every year, capping increases at the maximum
+                # annual growth rate. Work on a copy so the input is not modified.
+                constrained_emission_control_rate = np.array(
+                    emission_control_rate, dtype=float, copy=True
+                )
+                mask_high_growth = annual_growth_rate > self.max_annual_growth_rate
+                constrained_emission_control_rate[mask_high_growth] = (
+                    self.previous_emission_control_rate[mask_high_growth]
+                    + self.max_annual_growth_rate
+                )
 
-                if allow_fallback == False:
-                    if np.any(annual_growth_rate < 0):
-                        mask_fallback = annual_growth_rate < 0
-                        self.constrained_emission_control_rate[mask_fallback] = (
-                            self.previous_emission_control_rate[mask_fallback]
-                        )
+                # Mitigation cannot be reversed: hold rates that would decrease
+                if not allow_fallback:
+                    mask_fallback = annual_growth_rate < 0
+                    constrained_emission_control_rate[mask_fallback] = (
+                        self.previous_emission_control_rate[mask_fallback]
+                    )
+
+                self.constrained_emission_control_rate = constrained_emission_control_rate
 
             self.previous_emission_control_rate = self.constrained_emission_control_rate
 
